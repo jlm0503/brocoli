@@ -39,7 +39,12 @@ interface CampoContextValue {
   marcar: (keys: string[], status: "pendiente" | "cancelado") => void;
 }
 
-const CampoContext = createContext<CampoContextValue | null>(null);
+// Keep one context instance across hot reloads; otherwise editing this file creates a
+// new context and screens lose the provider mounted in __root ("debe usarse dentro de CampoProvider").
+const CTX_KEY = "__campoContext__";
+const globalCtx = globalThis as unknown as Record<string, React.Context<CampoContextValue | null>>;
+const CampoContext: React.Context<CampoContextValue | null> =
+  globalCtx[CTX_KEY] ?? (globalCtx[CTX_KEY] = createContext<CampoContextValue | null>(null));
 
 function recepcionesIniciales(): Record<string, Recepcion> {
   // Esta semana, El Mirador ya recibió su surtido.
