@@ -408,10 +408,12 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
             Inversión estimada en insumos de esta siembra:{" "}
             <span className="num font-medium">{formatoMXN(preview.costo)}</span>
             <br />
+            {preview.presiembra > 0 && (
             <span className="text-xs">
               Presiembra ({preview.presiembra} productos: suelo, agroquímicos y manguera) se surte
               en la semana {preview.inicio}.
             </span>
+            )}
           </div>
         )}
         {ha && error && <p className="text-sm text-destructive">{error}</p>}
