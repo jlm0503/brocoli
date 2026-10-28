@@ -177,6 +177,7 @@ const cancelado = lote("m06", "6-A", 43, 3, { entregado: true });
 lote("s01", "1-A", 34, 7, { entregado: true, avances: completa(34, 7) });
 lote("s02", "2-A", 38, 6, { entregado: true, avances: completa(38, 6) });
 const tardio = lote("s03", "3-A", 45, 5, { urgente: true });
+pedidos.find((p) => p.loteId === tardio.id)!.fecha = "2026-10-26"; // se planeó tarde, esta semana
 // La Loma
 lote("l01", "1-A", 41, 8, { entregado: true, avances: completa(41, 8) });
 lote("l02", "2-A", 46, 6, { entregado: true });
