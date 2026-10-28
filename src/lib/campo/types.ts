@@ -1,6 +1,9 @@
 export type Role = "admin" | "ingeniero" | "compras";
 
 export type Familia =
+  | "Suelo"
+  | "Agroquímico"
+  | "Riego"
   | "Fertilizante"
   | "Bioestimulante"
   | "Micronutriente"
@@ -8,7 +11,7 @@ export type Familia =
   | "Insecticida"
   | "Herbicida";
 
-export type Unidad = "kg" | "L";
+export type Unidad = "kg" | "L" | "rollo";
 
 export interface Producto {
   id: string;
@@ -25,6 +28,8 @@ export interface Receta {
   semanas: number;
   /** productId -> dosis por ha en cada semana de cultivo (índice 0 = semana 1). Siempre 12 posiciones. */
   dosis: Record<string, number[]>;
+  /** productId -> dosis por ha que se entrega 2 semanas antes de plantar (suelo, agroquímicos, manguera). */
+  presiembra: Record<string, number>;
 }
 
 export interface Avance {
@@ -36,7 +41,9 @@ export interface Avance {
   ha: number;
 }
 
+/** Una siembra planeada dentro de una tabla. Una tabla puede tener varias en semanas distintas. */
 export interface Plan {
+  id: string;
   /** Semana del año en que se planeó plantar */
   semana: number;
   ha: number;
@@ -49,7 +56,8 @@ export interface Tabla {
   ranchoId: string;
   nombre: string;
   hectareas: number;
-  plan?: Plan | undefined;
+  /** Siembras planeadas; vacío = tabla libre. */
+  planes: Plan[];
 }
 
 export interface Rancho {
@@ -84,7 +92,7 @@ export interface LineaDemanda {
   productoId: string;
   /** Semana del año en que se aplica el insumo */
   semana: number;
-  /** Semana de vida del cultivo */
+  /** Semana de vida del cultivo (menor a 1 = presiembra) */
   semanaCultivo: number;
   cantidad: number;
 }

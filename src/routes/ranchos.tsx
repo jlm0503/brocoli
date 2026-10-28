@@ -18,6 +18,7 @@ import {
   formatoNum,
   hectareasActivas,
   lineasSemanas,
+  planesOrdenados,
   semanaCultivoTabla,
 } from "@/lib/campo/calc";
 import { RANCHOS } from "@/lib/campo/seed";
@@ -150,7 +151,7 @@ function Ranchos() {
                           </>
                         ) : (
                           <div className="text-xs capitalize opacity-80">
-                            {est === "planeada" ? `Siembra sem ${t.plan?.semana}` : "Disponible"}
+                            {est === "planeada" ? `Siembra sem ${planesOrdenados(t).map((x) => x.semana).join(" y ")}` : "Disponible"}
                           </div>
                         )}
                         <div className="num mt-2 text-sm font-medium">{formatoMXN(costoDe(t.id))}</div>
