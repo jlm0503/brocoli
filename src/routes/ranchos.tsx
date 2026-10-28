@@ -11,19 +11,28 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  ESTATUS_TABLA_LABEL,
   cantidadRecibida,
+  costoPlaneacionLote,
+  esArrastrado,
   estatusLinea,
   estatusTabla,
+  etapa,
   formatoMXN,
   formatoNum,
   hectareasActivas,
-  lineasSemanas,
-  planesOrdenados,
+  insumosEntregados,
+  lineasSemana,
+  lotesDeTabla,
+  pendientesLote,
+  plantadasLote,
   semanaCultivoTabla,
+  semanaRealLote,
+  semanaRecetaLote,
 } from "@/lib/campo/calc";
 import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { LineaDemanda, Tabla } from "@/lib/campo/types";
+import type { EstatusTabla, LineaDemanda, Tabla } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/ranchos")({
   head: () => ({
@@ -31,12 +40,13 @@ export const Route = createFileRoute("/ranchos")({
       { title: "Estatus de ranchos y costos · Brócoli" },
       {
         name: "description",
-        content: "Qué tablas están ocupadas, en qué semana de cultivo van y cuánto se ha invertido en insumos en cada una.",
+        content:
+          "Cada tabla con sus lotes, semana de cultivo, hectáreas activas y costo acumulado en insumos.",
       },
       { property: "og:title", content: "Estatus de ranchos y costos · Brócoli" },
       {
         property: "og:description",
-        content: "Inversión acumulada en insumos por rancho y por tabla, en tiempo real.",
+        content: "Inversión acumulada en insumos por rancho, tabla y lote.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -45,69 +55,74 @@ export const Route = createFileRoute("/ranchos")({
   component: Ranchos,
 });
 
-const TILE: Record<string, string> = {
+const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",
+  "parcial-planeada":
+    "bg-status-planeada/60 text-status-planeada-foreground ring-1 ring-dashed ring-status-planeada-foreground/40",
   planeada: "bg-status-planeada text-status-planeada-foreground",
+  "plantada-parcial":
+    "bg-status-plantada/60 text-status-plantada-foreground ring-1 ring-status-plantada-foreground/30",
   plantada: "bg-status-plantada text-status-plantada-foreground",
 };
 
-function Ranchos() {
-  const { tablas, receta, productos, recepciones, semanaActual } = useCampo();
-  const [abierta, setAbierta] = useState<Tabla | null>(null);
-  const precio = useMemo(() => new Map(productos.map((p) => [p.id, p.precio])), [productos]);
-
-  // Lo recibido hasta hoy, por tabla
-  const recibidas = useMemo(() => {
-    const semanas = Array.from({ length: 16 }, (_, i) => semanaActual - 14 + i);
-    return lineasSemanas(tablas, receta, semanas, semanaActual).filter(
+function useCostos() {
+  const { lotes, receta, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
+  return useMemo(() => {
+    const precio = new Map(productos.map((p) => [p.id, p.precio]));
+    const semanas = Array.from({ length: 17 }, (_, i) => semanaActual - 16 + i);
+    const recibidas = lineasSemana(lotes, receta, adicionales, semanas).filter(
       (l) => estatusLinea(l, recepciones, semanaActual) === "recibido",
     );
-  }, [tablas, receta, recepciones, semanaActual]);
+    const porLote = new Map<string, LineaDemanda[]>();
+    for (const l of recibidas) porLote.set(l.loteId, [...(porLote.get(l.loteId) ?? []), l]);
+    const costoLote = (loteId: string) => {
+      const lote = lotes.find((x) => x.id === loteId);
+      const semanal = (porLote.get(loteId) ?? []).reduce(
+        (s, l) => s + cantidadRecibida(l, recepciones) * (precio.get(l.productoId) ?? 0),
+        0,
+      );
+      return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0);
+    };
+    const costoTabla = (tablaId: string) =>
+      lotes.filter((l) => l.tablaId === tablaId).reduce((s, l) => s + costoLote(l.id), 0);
+    return { porLote, costoLote, costoTabla };
+  }, [lotes, receta, adicionales, productos, recepciones, pedidos, semanaActual]);
+}
 
-  const porTabla = useMemo(() => {
-    const m = new Map<string, LineaDemanda[]>();
-    for (const l of recibidas) m.set(l.tablaId, [...(m.get(l.tablaId) ?? []), l]);
-    return m;
-  }, [recibidas]);
+function Ranchos() {
+  const { tablas, lotes, semanaActual } = useCampo();
+  const [abierta, setAbierta] = useState<Tabla | null>(null);
+  const { costoTabla } = useCostos();
 
-  const costoDe = (id: string) =>
-    (porTabla.get(id) ?? []).reduce(
-      (s, l) => s + cantidadRecibida(l, recepciones) * (precio.get(l.productoId) ?? 0),
-      0,
-    );
-
-  const total = tablas.reduce((s, t) => s + costoDe(t.id), 0);
-  const haActivas = tablas.reduce((s, t) => s + hectareasActivas(t, receta, semanaActual), 0);
-  const ocupadas = tablas.filter((t) => estatusTabla(t) !== "libre").length;
+  const total = tablas.reduce((s, t) => s + costoTabla(t.id), 0);
+  const haActivas = tablas.reduce((s, t) => s + hectareasActivas(lotes, t.id, semanaActual), 0);
+  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes) !== "libre").length;
 
   return (
     <AppShell
       path="/ranchos"
       eyebrow={`Administrador · semana ${semanaActual}`}
       title="Estatus de ranchos y costos"
-      description="Cada tabla con su semana de cultivo y el dinero en insumos recibidos a la fecha."
+      description="Cada tabla con sus lotes, semana de cultivo y el dinero en insumos entregados a la fecha (planeación + semanal)."
     >
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
-        <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} />
-        <Stat
-          label="Tablas ocupadas"
-          value={`${ocupadas}/${tablas.length}`}
-          hint="Planeadas o plantadas"
-          tone="soil"
-        />
+        <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} hint="Plantadas, semana 0 a 12" />
+        <Stat label="Tablas ocupadas" value={`${ocupadas}/${tablas.length}`} hint="Planeadas o plantadas" tone="soil" />
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2 text-xs">
-        <Badge variant="libre">Libre</Badge>
-        <Badge variant="planeada">Planeada</Badge>
-        <Badge variant="plantada">Plantada</Badge>
+        {(Object.keys(ESTATUS_TABLA_LABEL) as EstatusTabla[]).map((e) => (
+          <Badge key={e} variant={e}>
+            {ESTATUS_TABLA_LABEL[e]}
+          </Badge>
+        ))}
       </div>
 
       <div className="space-y-10">
         {RANCHOS.map((r) => {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
-          const costo = ts.reduce((s, t) => s + costoDe(t.id), 0);
+          const costo = ts.reduce((s, t) => s + costoTabla(t.id), 0);
           const ha = ts.reduce((s, t) => s + t.hectareas, 0);
           return (
             <section key={r.id}>
@@ -115,16 +130,16 @@ function Ranchos() {
                 <div>
                   <h2 className="text-3xl font-semibold">{r.nombre}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {r.ubicacion} · <span className="num">{formatoNum(ha)}</span> ha en{" "}
-                    {ts.length} tablas
+                    {r.zona} · <span className="num">{formatoNum(ha)}</span> ha en {ts.length} tablas
                   </p>
                 </div>
                 <span className="num text-lg">{formatoMXN(costo)}</span>
               </header>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {ts.map((t) => {
-                  const est = estatusTabla(t);
-                  const sc = semanaCultivoTabla(t, semanaActual);
+                  const est = estatusTabla(t, lotes);
+                  const sc = semanaCultivoTabla(lotes, t.id, semanaActual);
+                  const ls = lotesDeTabla(lotes, t.id);
                   return (
                     <button
                       key={t.id}
@@ -134,27 +149,27 @@ function Ranchos() {
                       <div>
                         <div className="text-sm font-medium">{t.nombre}</div>
                         <div className="num text-xs opacity-70">{formatoNum(t.hectareas)} ha</div>
+                        <div className="mt-1 text-[0.7rem] leading-tight opacity-80">
+                          {ESTATUS_TABLA_LABEL[est]}
+                        </div>
                       </div>
                       <div>
                         {sc !== null ? (
-                          <>
-                            <div className="font-display text-3xl leading-none">
-                              S{sc}
-                              <span className="text-base opacity-60">/{receta.semanas}</span>
-                            </div>
-                            <div className="mt-2 h-1 overflow-hidden rounded-full bg-foreground/10">
-                              <div
-                                className="h-full bg-primary"
-                                style={{ width: `${Math.min(100, (sc / receta.semanas) * 100)}%` }}
-                              />
-                            </div>
-                          </>
+                          <div className="font-display text-3xl leading-none">
+                            S{sc}
+                            <span className="text-base opacity-60">/12</span>
+                          </div>
                         ) : (
-                          <div className="text-xs capitalize opacity-80">
-                            {est === "planeada" ? `Siembra sem ${planesOrdenados(t).map((x) => x.semana).join(" y ")}` : "Disponible"}
+                          <div className="text-xs opacity-80">
+                            {ls.length > 0 ? `Siembra sem ${ls.map((x) => x.semanaPlaneada).join(", ")}` : "Disponible"}
                           </div>
                         )}
-                        <div className="num mt-2 text-sm font-medium">{formatoMXN(costoDe(t.id))}</div>
+                        {ls.length > 0 && (
+                          <div className="num mt-1 text-[0.7rem] opacity-70">
+                            {ls.map((l) => l.codigo).join(" · ")}
+                          </div>
+                        )}
+                        <div className="num mt-2 text-sm font-medium">{formatoMXN(costoTabla(t.id))}</div>
                       </div>
                     </button>
                   );
@@ -167,44 +182,31 @@ function Ranchos() {
 
       <Sheet open={!!abierta} onOpenChange={(o) => !o && setAbierta(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-          {abierta && (
-            <ResumenTabla
-              tabla={abierta}
-              lineas={porTabla.get(abierta.id) ?? []}
-              costo={costoDe(abierta.id)}
-            />
-          )}
+          {abierta && <ResumenTabla tabla={abierta} />}
         </SheetContent>
       </Sheet>
     </AppShell>
   );
 }
 
-function ResumenTabla({
-  tabla,
-  lineas,
-  costo,
-}: {
-  tabla: Tabla;
-  lineas: LineaDemanda[];
-  costo: number;
-}) {
-  const { productos, receta, recepciones, semanaActual } = useCampo();
+function ResumenTabla({ tabla }: { tabla: Tabla }) {
+  const { productos, lotes, pedidos, recepciones, semanaActual } = useCampo();
+  const { porLote, costoLote, costoTabla } = useCostos();
   const rancho = RANCHOS.find((r) => r.id === tabla.ranchoId);
-  const sc = semanaCultivoTabla(tabla, semanaActual);
-  const est = estatusTabla(tabla);
+  const est = estatusTabla(tabla, lotes);
+  const ls = lotesDeTabla(lotes, tabla.id);
 
-  const aplicados = productos
-    .map((p) => {
-      const ls = lineas.filter((l) => l.productoId === p.id);
-      const receta = ls.reduce((s, l) => s + l.cantidad, 0);
-      const recibido = ls.reduce((s, l) => s + cantidadRecibida(l, recepciones), 0);
-      return { p, receta, recibido };
-    })
-    .filter((x) => x.recibido > 0 || x.receta > 0);
-
-  const totalReceta = aplicados.reduce((s, a) => s + a.receta * a.p.precio, 0);
-  const desviacion = totalReceta > 0 ? ((costo - totalReceta) / totalReceta) * 100 : 0;
+  // Productos entregados a la fecha: planeación + semanal
+  const entregados = new Map<string, number>();
+  for (const l of ls) {
+    for (const i of insumosEntregados(l, pedidos))
+      entregados.set(i.productoId, (entregados.get(i.productoId) ?? 0) + i.cantidad);
+    for (const x of porLote.get(l.id) ?? [])
+      entregados.set(x.productoId, (entregados.get(x.productoId) ?? 0) + cantidadRecibida(x, recepciones));
+  }
+  const lista = productos
+    .filter((p) => (entregados.get(p.id) ?? 0) > 0)
+    .map((p) => ({ p, cantidad: entregados.get(p.id)! }));
 
   return (
     <>
@@ -213,68 +215,80 @@ function ResumenTabla({
         <SheetTitle className="font-display text-3xl">{tabla.nombre}</SheetTitle>
         <SheetDescription asChild>
           <div>
-            <Badge variant={est} className="capitalize">
-              {est}
-            </Badge>
+            <Badge variant={est}>{ESTATUS_TABLA_LABEL[est]}</Badge>
           </div>
         </SheetDescription>
       </SheetHeader>
 
       <dl className="mt-6 grid grid-cols-3 gap-3 px-4 text-sm">
         <div className="rounded-lg bg-secondary p-3">
-          <dt className="eyebrow">Semana</dt>
-          <dd className="num mt-1 text-lg">{sc !== null ? `${sc}/${receta.semanas}` : "—"}</dd>
+          <dt className="eyebrow">Total</dt>
+          <dd className="num mt-1 text-lg">{formatoNum(tabla.hectareas)} ha</dd>
         </div>
         <div className="rounded-lg bg-secondary p-3">
           <dt className="eyebrow">Ha activas</dt>
-          <dd className="num mt-1 text-lg">
-            {formatoNum(hectareasActivas(tabla, receta, semanaActual))}
-          </dd>
+          <dd className="num mt-1 text-lg">{formatoNum(hectareasActivas(lotes, tabla.id, semanaActual))}</dd>
         </div>
         <div className="rounded-lg bg-primary p-3 text-primary-foreground">
           <dt className="eyebrow !text-primary-foreground/70">Invertido</dt>
-          <dd className="num mt-1 text-lg">{formatoMXN(costo)}</dd>
+          <dd className="num mt-1 text-lg">{formatoMXN(costoTabla(tabla.id))}</dd>
         </div>
       </dl>
 
-      {aplicados.length > 0 ? (
-        <div className="mt-6 px-4 pb-6">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h3 className="text-lg font-semibold">Productos aplicados a la fecha</h3>
-            <span
-              className={`num text-xs ${Math.abs(desviacion) < 0.5 ? "text-primary" : "text-destructive"}`}
-            >
-              {Math.abs(desviacion) < 0.5
-                ? "Igual a receta"
-                : `${desviacion > 0 ? "+" : ""}${formatoNum(desviacion)}% vs receta`}
-            </span>
-          </div>
+      <div className="mt-6 px-4">
+        <h3 className="mb-2 text-lg font-semibold">Lotes</h3>
+        {ls.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Tabla libre.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {ls.map((l) => {
+              const real = semanaRealLote(l);
+              const sr = semanaRecetaLote(l, semanaActual);
+              return (
+                <li key={l.id} className="rounded-lg border border-border p-3">
+                  <div className="flex justify-between">
+                    <span className="font-medium">
+                      Lote {l.codigo} · <span className="num">{formatoNum(l.ha)} ha</span>
+                    </span>
+                    <span className="num">{formatoMXN(costoLote(l.id))}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {real !== null
+                      ? `Plantado sem ${real} · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!).toLowerCase()})`
+                      : esArrastrado(l, semanaActual)
+                        ? `Pendiente arrastrado · ${formatoNum(pendientesLote(l))} ha`
+                        : `Planeado para sem ${l.semanaPlaneada}`}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-6 px-4 pb-6">
+        <h3 className="mb-2 text-lg font-semibold">Productos entregados a la fecha</h3>
+        {lista.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aún no se han entregado insumos.</p>
+        ) : (
           <ul className="divide-y divide-border text-sm">
-            {aplicados.map(({ p, recibido, receta }) => (
+            {lista.map(({ p, cantidad }) => (
               <li key={p.id} className="flex items-center justify-between py-2">
                 <div>
                   <div className="font-medium">{p.nombre}</div>
-                  <div className="text-xs text-muted-foreground">{p.familia}</div>
+                  <div className="num text-xs text-muted-foreground">{p.codigo}</div>
                 </div>
                 <div className="text-right">
                   <div className="num">
-                    {formatoNum(recibido)} {p.unidad}
+                    {formatoNum(cantidad)} {p.unidad}
                   </div>
-                  <div className="num text-xs text-muted-foreground">
-                    {Math.abs(recibido - receta) > 0.01
-                      ? `receta ${formatoNum(receta)}`
-                      : formatoMXN(recibido * p.precio)}
-                  </div>
+                  <div className="num text-xs text-muted-foreground">{formatoMXN(cantidad * p.precio)}</div>
                 </div>
               </li>
             ))}
           </ul>
-        </div>
-      ) : (
-        <p className="mt-8 px-4 text-sm text-muted-foreground">
-          Aún no se han recibido insumos para esta tabla.
-        </p>
-      )}
+        )}
+      </div>
     </>
   );
 }

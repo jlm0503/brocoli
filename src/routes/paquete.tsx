@@ -1,17 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useMemo } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  CICLO_MAX,
-  CICLO_MIN,
-  PRESIEMBRA_SEMANAS,
-  dosisEnSemana,
-  formatoMXN,
-} from "@/lib/campo/calc";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SEMANAS_RECETA, etapa, formatoMXN, formatoNum } from "@/lib/campo/calc";
+import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { Familia } from "@/lib/campo/types";
+import type { Adicional, Familia } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/paquete")({
   head: () => ({
@@ -19,12 +35,13 @@ export const Route = createFileRoute("/paquete")({
       { title: "Paquete tecnológico · Brócoli" },
       {
         name: "description",
-        content: "Receta maestra de insumos por hectárea para cada semana del ciclo del brócoli.",
+        content:
+          "Receta base por semana de cultivo, de la planeación (-2) al cierre (12), y productos adicionales por tabla.",
       },
       { property: "og:title", content: "Paquete tecnológico · Brócoli" },
       {
         property: "og:description",
-        content: "Define productos, dosis por hectárea y precios por semana de vida del cultivo.",
+        content: "Dosis por hectárea en cada semana de receta y adicionales por tabla.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -45,85 +62,68 @@ const FAMILIAS: Familia[] = [
   "Herbicida",
 ];
 
+const ETAPA_CORTA: Record<string, string> = {
+  Planeación: "Plan.",
+  Preparación: "Prep.",
+  Plantación: "Plant.",
+  Desarrollo: "Desarr.",
+  Cosecha: "Cosecha",
+  "Máxima cosecha y cierre": "Cierre",
+};
+
 function Paquete() {
-  const { productos, receta, setCiclo, setDosis, setPresiembra, setPrecio } = useCampo();
-  const semanas = Array.from({ length: CICLO_MAX }, (_, i) => i + 1);
+  const { productos, receta, setDosis } = useCampo();
 
   const costoSemana = useMemo(
     () =>
-      semanas.map((w) =>
-        productos.reduce((s, p) => s + dosisEnSemana(receta, p.id, w) * p.precio, 0),
+      SEMANAS_RECETA.map((w) =>
+        productos.reduce((s, p) => s + (receta.dosis[w]?.[p.id] ?? 0) * p.precio, 0),
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [productos, receta],
   );
-  const costoPresiembra = productos.reduce(
-    (s, p) => s + (receta.presiembra[p.id] ?? 0) * p.precio,
-    0,
-  );
-  const costoCiclo = costoPresiembra + costoSemana.reduce((s, c) => s + c, 0);
-  const picoIdx = costoSemana.indexOf(Math.max(...costoSemana));
+  const costoCiclo = costoSemana.reduce((s, c) => s + c, 0);
+  const costoPlaneacion = costoSemana[0] ?? 0;
+  const max = Math.max(...costoSemana);
+  const picoW = SEMANAS_RECETA[costoSemana.indexOf(max)]!;
 
   return (
     <AppShell
       path="/paquete"
-      eyebrow="Administrador · receta maestra"
+      eyebrow="Administrador · receta base"
       title="Paquete tecnológico"
-      description={`Dosis exacta por hectárea en cada semana de vida, más la presiembra (suelo, agroquímicos y manguera) que se entrega ${PRESIEMBRA_SEMANAS} semanas antes de plantar. Todo pedido de insumos sale de esta tabla; nadie más puede cambiarla.`}
-      actions={
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-card">
-          <span className="eyebrow">Ciclo</span>
-          <ToggleGroup
-            type="single"
-            value={String(receta.semanas)}
-            onValueChange={(v) => v && setCiclo(Number(v))}
-          >
-            {Array.from({ length: CICLO_MAX - CICLO_MIN + 1 }, (_, i) => CICLO_MIN + i).map((n) => (
-              <ToggleGroupItem
-                key={n}
-                value={String(n)}
-                className="num data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                {n} sem
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-      }
+      description="Cantidad por hectárea en cada semana de receta. La semana -2 es el paquete de planeación que se pide al planear un lote. Al plantarse, cada lote guarda una copia: si cambias algo aquí, solo aplica a lotes nuevos."
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Stat
           label="Costo por ha del ciclo"
           value={formatoMXN(costoCiclo)}
-          hint={`Incluye ${formatoMXN(costoPresiembra)} de presiembra`}
+          hint={`Incluye ${formatoMXN(costoPlaneacion)} de planeación`}
           tone="primary"
         />
         <Stat
           label="Semana de mayor gasto"
-          value={`Sem ${picoIdx + 1}`}
-          hint={`${formatoMXN(costoSemana[picoIdx] ?? 0)} por ha`}
+          value={`Sem ${picoW}`}
+          hint={`${formatoMXN(max)} por ha · ${etapa(picoW)}`}
           tone="soil"
         />
-        <Stat label="Productos en receta" value={productos.length} hint={`${FAMILIAS.length} familias`} />
+        <Stat label="Productos en catálogo" value={productos.length} hint="Precios en Catálogos" />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
-        <table className="w-full min-w-[1010px] border-collapse text-sm">
+        <table className="w-full min-w-[1100px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-left">
               <th className="sticky left-0 z-10 bg-secondary px-4 py-3 font-medium">Producto</th>
               <th className="px-2 py-3 font-medium">Unidad</th>
-              <th className="px-2 py-3 font-medium">Precio</th>
-              <th className="border-r border-border bg-soil-soft px-1 py-3 text-center text-xs font-medium text-soil-foreground">
-                Presiembra
-                <div className="num font-normal opacity-80">{PRESIEMBRA_SEMANAS} sem antes</div>
-              </th>
-              {semanas.map((w) => (
+              {SEMANAS_RECETA.map((w) => (
                 <th
                   key={w}
-                  className={`num px-1 py-3 text-center text-xs font-medium ${w > receta.semanas ? "text-muted-foreground/50" : ""}`}
+                  className={`num px-1 py-2 text-center text-xs font-medium ${w < 0 ? "bg-soil-soft text-soil-foreground" : ""}`}
                 >
                   S{w}
+                  <div className="font-sans text-[0.6rem] font-normal opacity-70">
+                    {ETAPA_CORTA[etapa(w)]}
+                  </div>
                 </th>
               ))}
             </tr>
@@ -135,58 +135,31 @@ function Paquete() {
               return (
                 <Fragment key={fam}>
                   <tr>
-                    <td
-                      colSpan={4 + CICLO_MAX}
-                      className="sticky left-0 bg-card px-4 pt-4 pb-1"
-                    >
+                    <td colSpan={2 + SEMANAS_RECETA.length} className="sticky left-0 bg-card px-4 pt-4 pb-1">
                       <span className="eyebrow">{fam}</span>
                     </td>
                   </tr>
                   {items.map((p) => (
                     <tr key={p.id} className="border-b border-border/60 last:border-0">
-                      <td className="sticky left-0 z-10 bg-card px-4 py-1.5 font-medium whitespace-nowrap">
-                        {p.nombre}
+                      <td className="sticky left-0 z-10 bg-card px-4 py-1.5 whitespace-nowrap">
+                        <span className="num mr-2 text-xs text-muted-foreground">{p.codigo}</span>
+                        <span className="font-medium">{p.nombre}</span>
                       </td>
-                      <td className="px-2 text-muted-foreground">{p.unidad === "rollo" ? "rollos" : p.unidad}/ha</td>
-                      <td className="px-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">$</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={p.precio}
-                            onChange={(e) => setPrecio(p.id, Number(e.target.value))}
-                            className="num w-16 rounded border border-transparent bg-transparent px-1.5 py-1 text-right hover:border-input focus:border-ring focus:outline-none"
-                            aria-label={`Precio de ${p.nombre}`}
-                          />
-                        </div>
+                      <td className="px-2 text-muted-foreground">
+                        {p.unidad === "rollo" ? "rollos" : p.unidad}/ha
                       </td>
-                      <td className="border-r border-border bg-soil-soft/40 px-0.5 py-1">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={(receta.presiembra[p.id] ?? 0) === 0 ? "" : receta.presiembra[p.id]}
-                          placeholder="·"
-                          onChange={(e) => setPresiembra(p.id, Number(e.target.value))}
-                          className={`num w-full min-w-14 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none ${(receta.presiembra[p.id] ?? 0) > 0 ? "bg-soil-soft text-soil-foreground" : "bg-transparent hover:bg-muted"}`}
-                          aria-label={`${p.nombre} presiembra`}
-                        />
-                      </td>
-                      {semanas.map((w) => {
-                        const fuera = w > receta.semanas;
-                        const v = receta.dosis[p.id]?.[w - 1] ?? 0;
+                      {SEMANAS_RECETA.map((w) => {
+                        const v = receta.dosis[w]?.[p.id] ?? 0;
                         return (
-                          <td key={w} className={`px-0.5 py-1 ${fuera ? "furrows" : ""}`}>
+                          <td key={w} className={`px-0.5 py-1 ${w < 0 ? "bg-soil-soft/40" : ""}`}>
                             <input
                               type="number"
                               min="0"
                               step="0.1"
-                              disabled={fuera}
                               value={v === 0 ? "" : v}
                               placeholder="·"
-                              onChange={(e) => setDosis(p.id, w - 1, Number(e.target.value))}
-                              className={`num w-full min-w-10 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-30 ${v > 0 && !fuera ? "bg-primary-soft text-accent-foreground" : "bg-transparent hover:bg-muted"}`}
+                              onChange={(e) => setDosis(p.id, w, Number(e.target.value))}
+                              className={`num w-full min-w-11 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none ${v > 0 ? (w < 0 ? "bg-soil-soft text-soil-foreground" : "bg-primary-soft text-accent-foreground") : "bg-transparent hover:bg-muted"}`}
                               aria-label={`${p.nombre} semana ${w}`}
                             />
                           </td>
@@ -200,18 +173,12 @@ function Paquete() {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-border bg-ink text-ink-foreground">
-              <td className="sticky left-0 z-10 bg-ink px-4 py-3 font-medium" colSpan={3}>
+              <td className="sticky left-0 z-10 bg-ink px-4 py-3 font-medium" colSpan={2}>
                 Costo por ha en la semana
               </td>
-              <td className="num border-r border-ink-foreground/20 px-1 py-3 text-center text-[0.7rem]">
-                ${Math.round(costoPresiembra).toLocaleString("es-MX")}
-              </td>
               {costoSemana.map((c, i) => (
-                <td
-                  key={i}
-                  className={`num px-1 py-3 text-center text-[0.7rem] ${i + 1 > receta.semanas ? "opacity-30" : ""}`}
-                >
-                  {i + 1 > receta.semanas ? "—" : `$${Math.round(c).toLocaleString("es-MX")}`}
+                <td key={i} className="num px-1 py-3 text-center text-[0.7rem]">
+                  {c > 0 ? `$${Math.round(c).toLocaleString("es-MX")}` : "—"}
                 </td>
               ))}
             </tr>
@@ -219,8 +186,223 @@ function Paquete() {
         </table>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Cambia una dosis o precio y verás el efecto inmediato en compras y en el costo de cada tabla.
+        Rollos de cinta: consumibles, se piden completos por lote y su costo se carga al 100% al
+        lote. Las semanas sin productos se quedan vacías.
       </p>
+
+      <Adicionales />
     </AppShell>
+  );
+}
+
+function Adicionales() {
+  const { adicionales, productos, tablas, eliminarAdicional } = useCampo();
+  const [editando, setEditando] = useState<Adicional | "nuevo" | null>(null);
+
+  return (
+    <section className="mt-12">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-semibold">Adicionales por tabla</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Productos extra que solo aplican a ciertas tablas. Se suman a la receta base de esa
+            semana.
+          </p>
+        </div>
+        <Button onClick={() => setEditando("nuevo")}>
+          <Plus /> Nuevo adicional
+        </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {adicionales.map((a) => {
+          const p = productos.find((x) => x.id === a.productoId);
+          const rancho = RANCHOS.find((r) => r.id === a.ranchoId);
+          return (
+            <article key={a.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold">
+                    {p?.nombre} <span className="font-normal text-muted-foreground">· {a.motivo}</span>
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {rancho?.nombre} ·{" "}
+                    {a.tablaIds.map((id) => tablas.find((t) => t.id === id)?.nombre).join(", ")}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" aria-label="Editar" onClick={() => setEditando(a)}>
+                    <Pencil />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Eliminar"
+                    onClick={() => {
+                      eliminarAdicional(a.id);
+                      toast("Adicional eliminado");
+                    }}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+              <p className="num mt-3 text-sm">
+                {formatoNum(a.dosis)} {p?.unidad}/ha · semana{a.semanas.length > 1 ? "s" : ""}{" "}
+                {[...a.semanas].sort((x, y) => x - y).join(", ")}
+              </p>
+            </article>
+          );
+        })}
+        {adicionales.length === 0 && (
+          <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground md:col-span-2">
+            Sin adicionales.
+          </p>
+        )}
+      </div>
+
+      <AdicionalDialog
+        key={editando === null ? "x" : editando === "nuevo" ? "nuevo" : editando.id}
+        valor={editando}
+        onClose={() => setEditando(null)}
+      />
+    </section>
+  );
+}
+
+function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null; onClose: () => void }) {
+  const { productos, tablas, guardarAdicional } = useCampo();
+  const inicial = valor && valor !== "nuevo" ? valor : null;
+  const [ranchoId, setRanchoId] = useState(inicial?.ranchoId ?? RANCHOS[0]!.id);
+  const [tablaIds, setTablaIds] = useState<string[]>(inicial?.tablaIds ?? []);
+  const [productoId, setProductoId] = useState(inicial?.productoId ?? "");
+  const [semanas, setSemanas] = useState<string[]>(inicial?.semanas.map(String) ?? []);
+  const [dosis, setDosisV] = useState(inicial ? String(inicial.dosis) : "");
+  const [motivo, setMotivo] = useState(inicial?.motivo ?? "");
+  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
+
+  const guardar = () => {
+    if (tablaIds.length === 0) return toast.error("Elige al menos una tabla");
+    if (!productoId) return toast.error("Elige el producto");
+    if (semanas.length === 0) return toast.error("Elige al menos una semana de receta");
+    if (!(Number(dosis) > 0)) return toast.error("Indica la cantidad por hectárea");
+    if (!motivo.trim()) return toast.error("Escribe el motivo");
+    guardarAdicional({
+      id: inicial?.id ?? `ad-${Date.now()}`,
+      ranchoId,
+      tablaIds,
+      productoId,
+      semanas: semanas.map(Number),
+      dosis: Number(dosis),
+      motivo: motivo.trim(),
+    });
+    toast.success("Adicional guardado. Aplica a los lotes que se planten de aquí en adelante.");
+    onClose();
+  };
+
+  return (
+    <Dialog open={valor !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">
+            {inicial ? "Editar adicional" : "Nuevo adicional"}
+          </DialogTitle>
+          <DialogDescription>Ej. Starkop para corrección de pH en algunas tablas.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Rancho</Label>
+              <Select
+                value={ranchoId}
+                onValueChange={(v) => {
+                  setRanchoId(v);
+                  setTablaIds([]);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RANCHOS.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Producto</Label>
+              <Select value={productoId} onValueChange={setProductoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elige" />
+                </SelectTrigger>
+                <SelectContent>
+                  {productos.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.codigo} · {p.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Tablas</Label>
+            <div className="flex flex-wrap gap-3">
+              {deRancho.map((t) => (
+                <label key={t.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={tablaIds.includes(t.id)}
+                    onCheckedChange={(c) =>
+                      setTablaIds((ids) => (c ? [...ids, t.id] : ids.filter((x) => x !== t.id)))
+                    }
+                  />
+                  {t.nombre}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Semanas de receta</Label>
+            <ToggleGroup type="multiple" value={semanas} onValueChange={setSemanas} className="flex-wrap justify-start">
+              {SEMANAS_RECETA.map((w) => (
+                <ToggleGroupItem
+                  key={w}
+                  value={String(w)}
+                  className="num h-8 min-w-9 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  {w}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="ad-dosis">Cantidad por ha</Label>
+              <Input
+                id="ad-dosis"
+                type="number"
+                inputMode="decimal"
+                value={dosis}
+                onChange={(e) => setDosisV(e.target.value)}
+                className="num"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ad-motivo">Motivo</Label>
+              <Input id="ad-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar}>Guardar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
