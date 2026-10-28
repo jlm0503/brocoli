@@ -40,19 +40,47 @@ export function fechaLimite(semana: number): string {
   return fechaCorta(inicioSemana(semana));
 }
 
-export function hectareasPlantadas(plan?: Plan): number {
-  if (!plan) return 0;
+/** Semanas antes de la siembra en que se entregan los insumos de presiembra. */
+export const PRESIEMBRA_SEMANAS = 2;
+
+export function plantadasPlan(plan: Plan): number {
   return redondear(plan.avances.reduce((s, a) => s + a.ha, 0));
 }
 
-export function hectareasPendientes(plan?: Plan): number {
-  if (!plan) return 0;
-  return redondear(Math.max(0, plan.ha - hectareasPlantadas(plan)));
+export function pendientesPlan(plan: Plan): number {
+  return redondear(Math.max(0, plan.ha - plantadasPlan(plan)));
+}
+
+export function hectareasPlantadas(t: Tabla): number {
+  return redondear(t.planes.reduce((s, p) => s + plantadasPlan(p), 0));
+}
+
+export function hectareasPendientes(t: Tabla): number {
+  return redondear(t.planes.reduce((s, p) => s + pendientesPlan(p), 0));
+}
+
+export function hectareasPlaneadas(t: Tabla): number {
+  return redondear(t.planes.reduce((s, p) => s + p.ha, 0));
+}
+
+/** Hectáreas de la tabla que aún no tienen siembra planeada. */
+export function hectareasSinPlanear(t: Tabla): number {
+  return redondear(Math.max(0, t.hectareas - hectareasPlaneadas(t)));
 }
 
 export function estatusTabla(t: Tabla): EstatusTabla {
-  if (!t.plan) return "libre";
-  return hectareasPlantadas(t.plan) > 0 ? "plantada" : "planeada";
+  if (t.planes.length === 0) return "libre";
+  return hectareasPlantadas(t) > 0 ? "plantada" : "planeada";
+}
+
+/** Siembras ordenadas por semana. */
+export function planesOrdenados(t: Tabla): Plan[] {
+  return [...t.planes].sort((a, b) => a.semana - b.semana);
+}
+
+/** Siembras cuya semana ya llegó y aún tienen hectáreas por plantar (de la más vieja a la más nueva). */
+export function planesPorPlantar(t: Tabla, semanaActual: number): Plan[] {
+  return planesOrdenados(t).filter((p) => p.semana <= semanaActual && pendientesPlan(p) > 0);
 }
 
 /**
@@ -63,23 +91,31 @@ export function semanaPendiente(plan: Plan, semanaActual: number): number {
   return Math.max(plan.semana, semanaActual);
 }
 
-export function pendienteArrastrado(plan: Plan | undefined, semanaActual: number): boolean {
-  if (!plan) return false;
-  return hectareasPendientes(plan) > 0 && plan.semana < semanaActual;
+export function planArrastrado(plan: Plan, semanaActual: number): boolean {
+  return pendientesPlan(plan) > 0 && plan.semana < semanaActual;
+}
+
+export function pendienteArrastrado(t: Tabla, semanaActual: number): boolean {
+  return t.planes.some((p) => planArrastrado(p, semanaActual));
 }
 
 /** Grupos de hectáreas por semana de plantación: lo real + lo pendiente proyectado. */
 export function cohortes(t: Tabla, semanaActual: number): Cohorte[] {
-  const plan = t.plan;
-  if (!plan) return [];
-  const porSemana = new Map<number, number>();
-  for (const a of plan.avances) porSemana.set(a.semana, (porSemana.get(a.semana) ?? 0) + a.ha);
-  const out: Cohorte[] = [...porSemana.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([semana, ha]) => ({ semana, ha: redondear(ha), real: true }));
-  const pend = hectareasPendientes(plan);
-  if (pend > 0) out.push({ semana: semanaPendiente(plan, semanaActual), ha: pend, real: false });
-  return out;
+  const reales = new Map<number, number>();
+  const proyectadas = new Map<number, number>();
+  for (const plan of t.planes) {
+    for (const a of plan.avances) reales.set(a.semana, (reales.get(a.semana) ?? 0) + a.ha);
+    const pend = pendientesPlan(plan);
+    if (pend > 0) {
+      const w = semanaPendiente(plan, semanaActual);
+      proyectadas.set(w, (proyectadas.get(w) ?? 0) + pend);
+    }
+  }
+  const out = (m: Map<number, number>, real: boolean): Cohorte[] =>
+    [...m.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([semana, ha]) => ({ semana, ha: redondear(ha), real }));
+  return [...out(reales, true), ...out(proyectadas, false)];
 }
 
 export function semanaCultivo(semanaPlantacion: number, semana: number): number {
@@ -127,6 +163,18 @@ export function lineasTabla(
       if (d <= 0) continue;
       const prev = acumulado.get(pid);
       acumulado.set(pid, { cantidad: (prev?.cantidad ?? 0) + d * c.ha, sc: prev?.sc ?? sc });
+    }
+  }
+  // Presiembra: se entrega para todas las hectáreas planeadas, 2 semanas antes de la siembra.
+  for (const plan of t.planes) {
+    if (semana !== plan.semana - PRESIEMBRA_SEMANAS) continue;
+    for (const [pid, d] of Object.entries(receta.presiembra)) {
+      if (!(d > 0)) continue;
+      const prev = acumulado.get(pid);
+      acumulado.set(pid, {
+        cantidad: (prev?.cantidad ?? 0) + d * plan.ha,
+        sc: prev?.sc ?? 1 - PRESIEMBRA_SEMANAS,
+      });
     }
   }
   return [...acumulado.entries()].map(([productoId, v]) => ({
@@ -199,30 +247,61 @@ export function consolidar(
   });
 }
 
-/** Errores de validación al apartar una tabla. `null` si es válido. */
+/** Errores de validación al apartar (parte de) una tabla. `null` si es válido. */
 export function validarApartado(
   t: Tabla,
   semana: number,
   ha: number,
   semanaActual: number,
 ): string | null {
-  if (estatusTabla(t) !== "libre") return "Solo se pueden apartar tablas libres.";
+  const disponibles = hectareasSinPlanear(t);
+  if (disponibles <= 0) return "Toda la tabla ya tiene siembra planeada.";
   if (semana < semanaActual + ANTICIPACION_SEMANAS)
     return `Se aparta con al menos ${ANTICIPACION_SEMANAS} semanas de anticipación (semana ${semanaActual + ANTICIPACION_SEMANAS} o posterior).`;
+  if (t.planes.some((p) => p.semana === semana))
+    return `Ya hay una siembra planeada en la semana ${semana}. Elige otra semana.`;
   if (!(ha > 0)) return "Indica cuántas hectáreas se van a plantar.";
-  if (ha > t.hectareas) return `La tabla solo tiene ${t.hectareas} ha.`;
+  if (ha > disponibles)
+    return t.planes.length === 0
+      ? `La tabla solo tiene ${formatoNum(t.hectareas)} ha.`
+      : `Solo quedan ${formatoNum(disponibles)} ha sin planear en esta tabla.`;
   return null;
 }
 
 /** Errores al registrar un avance diario. `null` si es válido. */
 export function validarAvance(t: Tabla, ha: number, semanaActual: number): string | null {
-  if (!t.plan) return "La tabla no tiene una plantación planeada.";
-  if (t.plan.semana > semanaActual)
-    return `La plantación está planeada para la semana ${t.plan.semana}.`;
+  if (t.planes.length === 0) return "La tabla no tiene una plantación planeada.";
+  const due = planesPorPlantar(t, semanaActual);
+  if (due.length === 0) {
+    const prox = planesOrdenados(t).find((p) => pendientesPlan(p) > 0);
+    return prox
+      ? `La siguiente siembra está planeada para la semana ${prox.semana}.`
+      : "La tabla ya está plantada completa.";
+  }
   if (!(ha > 0)) return "Indica las hectáreas plantadas hoy.";
-  const pend = hectareasPendientes(t.plan);
-  if (ha > pend) return `Solo quedan ${pend} ha por plantar.`;
+  const pend = redondear(due.reduce((s, p) => s + pendientesPlan(p), 0));
+  if (ha > pend) return `Solo quedan ${formatoNum(pend)} ha por plantar esta semana.`;
   return null;
+}
+
+/**
+ * Reparte las hectáreas plantadas hoy entre las siembras que ya tocan,
+ * empezando por la más antigua (lo arrastrado se planta primero).
+ */
+export function repartirAvance(
+  t: Tabla,
+  ha: number,
+  semanaActual: number,
+): { planId: string; ha: number }[] {
+  let resto = ha;
+  const out: { planId: string; ha: number }[] = [];
+  for (const p of planesPorPlantar(t, semanaActual)) {
+    if (resto <= 0) break;
+    const toma = redondear(Math.min(resto, pendientesPlan(p)));
+    if (toma > 0) out.push({ planId: p.id, ha: toma });
+    resto = redondear(resto - toma);
+  }
+  return out;
 }
 
 export function costoLineas(
