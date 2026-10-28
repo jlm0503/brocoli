@@ -1,129 +1,206 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cohortes,
-  hectareasSinPlanear,
-  lineasTabla,
-  pendienteArrastrado,
+  cerrarSemana,
+  codigoArrastre,
+  consolidar,
+  descontar,
+  esPlaneacionTardia,
+  estatusTabla,
+  hectareasDisponibles,
+  lineasLote,
+  lineasPlaneacion,
+  lineasSemana,
+  pendientesConInsumos,
+  radioValidacion,
+  recetaEfectiva,
   repartirAvance,
+  semaforoPedido,
   validarApartado,
   validarAvance,
 } from "@/lib/campo/calc";
-import type { Plan, Receta, Tabla } from "@/lib/campo/types";
+import type { Adicional, Lote, PedidoPlaneacion, Producto, Receta, Tabla } from "@/lib/campo/types";
 
+// Receta de prueba: la semana N de receta pide N kg de urea por ha (fácil de verificar).
 const receta: Receta = {
-  semanas: 12,
-  dosis: { urea: [10, 20, 30, 0, 0, 0, 0, 0, 0, 0, 0, 5] },
-  presiembra: {},
+  dosis: Object.fromEntries(
+    Array.from({ length: 15 }, (_, i) => i - 2).map((w) => [
+      w,
+      w === -2 ? { cinta: 2.1, yeso: 500 } : w >= 0 ? { urea: w + 100 } : {},
+    ]),
+  ),
 };
+const productos: Producto[] = [
+  { id: "urea", codigo: "FER-002", nombre: "Urea", familia: "Fertilizante", unidad: "kg", precio: 10 },
+  { id: "cinta", codigo: "RIE-001", nombre: "Cinta", familia: "Riego", unidad: "rollo", precio: 1850 },
+  { id: "yeso", codigo: "SUE-001", nombre: "Yeso", familia: "Suelo", unidad: "kg", precio: 4 },
+];
 
-const libre: Tabla = { id: "t", ranchoId: "r", nombre: "Tabla", hectareas: 5, planes: [] };
+const t12: Tabla = { id: "t1", ranchoId: "r", nombre: "Tabla 1", hectareas: 12 };
 
-function plan(id: string, semana: number, ha: number, avances: Plan["avances"] = []): Plan {
-  return { id, semana, ha, ingeniero: "Israel", avances };
+function lote(p: Partial<Lote> & { id: string; ha: number; semanaPlaneada: number }): Lote {
+  return {
+    codigo: "1-A",
+    tablaId: "t1",
+    ranchoId: "r",
+    ingeniero: "Israel",
+    avances: [],
+    insumos: [],
+    ...p,
+  };
 }
+const av = (semana: number, ha: number) => ({ id: `a${semana}${ha}`, fecha: "2026-10-01", semana, ha });
 
-describe("Reglas de planeación", () => {
-  it("no se aparta una tabla que ya está planeada completa", () => {
-    const ocupada: Tabla = { ...libre, planes: [plan("p", 46, 5)] };
-    expect(validarApartado(ocupada, 47, 1, 44)).not.toBeNull();
+describe("Lotes de plantación", () => {
+  it("una tabla de 12 ha se planea 6 ha en la sem 45 y 6 ha en la sem 46", () => {
+    expect(validarApartado(t12, [], 45, 6, 43)).toBeNull();
+    const conA = [lote({ id: "a", ha: 6, semanaPlaneada: 45 })];
+    expect(hectareasDisponibles(t12, conA)).toBe(6);
+    expect(validarApartado(t12, conA, 46, 6, 43)).toBeNull();
+    expect(validarApartado(t12, conA, 46, 6.5, 43)).not.toBeNull();
   });
 
-  it("exige dos semanas de anticipación", () => {
-    expect(validarApartado(libre, 45, 3, 44)).not.toBeNull();
-    expect(validarApartado(libre, 46, 3, 44)).toBeNull();
+  it("permite hectáreas con decimales", () => {
+    expect(validarApartado(t12, [], 46, 3.75, 44)).toBeNull();
   });
 
-  it("no permite apartar más hectáreas que las de la tabla", () => {
-    expect(validarApartado(libre, 46, 5.5, 44)).not.toBeNull();
+  it("estatus: parcialmente planeada → planeada completa → plantada parcial → plantada completa", () => {
+    expect(estatusTabla(t12, [])).toBe("libre");
+    expect(estatusTabla(t12, [lote({ id: "a", ha: 6, semanaPlaneada: 46 })])).toBe("parcial-planeada");
+    expect(estatusTabla(t12, [lote({ id: "a", ha: 12, semanaPlaneada: 46 })])).toBe("planeada");
+    expect(
+      estatusTabla(t12, [lote({ id: "a", ha: 12, semanaPlaneada: 44, avances: [av(44, 4)] })]),
+    ).toBe("plantada-parcial");
+    expect(
+      estatusTabla(t12, [lote({ id: "a", ha: 12, semanaPlaneada: 44, avances: [av(44, 12)] })]),
+    ).toBe("plantada");
   });
 
-  it("una tabla de 12 ha se puede planear 6 ha una semana y 6 ha la siguiente", () => {
-    const t12: Tabla = { ...libre, hectareas: 12 };
-    expect(validarApartado(t12, 46, 6, 44)).toBeNull();
-    const conPrimera: Tabla = { ...t12, planes: [plan("a", 46, 6)] };
-    expect(hectareasSinPlanear(conPrimera)).toBe(6);
-    expect(validarApartado(conPrimera, 47, 6, 44)).toBeNull();
-    expect(validarApartado(conPrimera, 47, 6.5, 44)).not.toBeNull();
+  it("6 planeadas y 4 plantadas: al cerrar la semana las 2 restantes pasan al lote 1-A2", () => {
+    const a = lote({
+      id: "a",
+      ha: 6,
+      semanaPlaneada: 44,
+      avances: [av(44, 4)],
+      insumos: [{ productoId: "cinta", cantidad: 12.6, pedidoId: "p" }],
+    });
+    const out = cerrarSemana([a], 44, () => "nuevo");
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ id: "a", ha: 4 });
+    expect(out[0]!.insumos[0]!.cantidad).toBe(8.4);
+    expect(out[1]).toMatchObject({ id: "nuevo", codigo: "1-A2", ha: 2, semanaPlaneada: 45, origenId: "a" });
+    expect(out[1]!.insumos[0]!.cantidad).toBe(4.2);
+    expect(codigoArrastre({ ...a, codigo: "1-A2" })).toBe("1-A3");
   });
 
-  it("no permite dos siembras de la misma tabla en la misma semana", () => {
-    const t12: Tabla = { ...libre, hectareas: 12, planes: [plan("a", 46, 6)] };
-    expect(validarApartado(t12, 46, 3, 44)).not.toBeNull();
-  });
-
-  it("no permite registrar más hectáreas que las pendientes", () => {
-    const t: Tabla = {
-      ...libre,
-      planes: [plan("p", 44, 5, [{ id: "a", fecha: "2026-10-26", semana: 44, ha: 1 }])],
-    };
-    expect(validarAvance(t, 4.5, 44)).not.toBeNull();
-    expect(validarAvance(t, 4, 44)).toBeNull();
-  });
-
-  it("no deja registrar avance de una siembra que aún no llega", () => {
-    const t: Tabla = { ...libre, hectareas: 12, planes: [plan("a", 44, 6), plan("b", 45, 6)] };
-    expect(validarAvance(t, 7, 44)).not.toBeNull();
-    expect(validarAvance(t, 6, 44)).toBeNull();
-  });
-
-  it("el avance se aplica primero a lo arrastrado", () => {
-    const t: Tabla = {
-      ...libre,
-      hectareas: 12,
-      planes: [
-        plan("vieja", 43, 6, [{ id: "x", fecha: "2026-10-20", semana: 43, ha: 4 }]),
-        plan("nueva", 44, 6),
-      ],
-    };
-    expect(repartirAvance(t, 5, 44)).toEqual([
-      { planId: "vieja", ha: 2 },
-      { planId: "nueva", ha: 3 },
+  it("el avance se aplica primero al lote más antiguo", () => {
+    const ls = [
+      lote({ id: "viejo", ha: 2, semanaPlaneada: 44, origenId: "x" }),
+      lote({ id: "nuevo", ha: 6, semanaPlaneada: 45 }),
+    ];
+    expect(repartirAvance(ls, 5, 45)).toEqual([
+      { loteId: "viejo", ha: 2 },
+      { loteId: "nuevo", ha: 3 },
     ]);
+    expect(validarAvance(ls, 8.5, 45)).not.toBeNull();
+  });
+});
+
+describe("Paquete de planeación (semana -2)", () => {
+  it("se pide al planear: receta -2 × hectáreas planeadas, con adicionales de la tabla", () => {
+    const ad: Adicional[] = [
+      { id: "x", ranchoId: "r", tablaIds: ["t1"], productoId: "yeso", semanas: [-2], dosis: 200, motivo: "salino" },
+    ];
+    const lineas = lineasPlaneacion(receta, ad, "t1", 6);
+    expect(lineas.find((l) => l.productoId === "cinta")?.cantidad).toBe(12.6);
+    expect(lineas.find((l) => l.productoId === "yeso")?.cantidad).toBe(4200);
+    // Otra tabla no lleva el adicional
+    expect(lineasPlaneacion(receta, ad, "t2", 6).find((l) => l.productoId === "yeso")?.cantidad).toBe(3000);
   });
 
-  it("arrastra lo no plantado a la semana actual", () => {
-    const t: Tabla = {
-      ...libre,
-      planes: [plan("p", 43, 5, [{ id: "a", fecha: "2026-10-20", semana: 43, ha: 3 }])],
+  it("semáforo: amarillo en tiempo, rojo desde la semana P-1 sin entregar, verde entregado", () => {
+    const p: PedidoPlaneacion = {
+      id: "p", loteId: "a", tablaId: "t1", ranchoId: "r", semanaPlantacion: 47, ha: 6,
+      lineas: [], fecha: "2026-10-28", ingeniero: "Israel", urgente: false, status: "pendiente",
     };
-    expect(pendienteArrastrado(t, 44)).toBe(true);
-    expect(cohortes(t, 44)).toEqual([
-      { semana: 43, ha: 3, real: true },
-      { semana: 44, ha: 2, real: false },
+    expect(semaforoPedido(p, 45)).toBe("amarillo");
+    expect(semaforoPedido(p, 46)).toBe("rojo");
+    expect(semaforoPedido({ ...p, status: "entregado" }, 46)).toBe("verde");
+  });
+
+  it("planeación con menos de 2 semanas es tardía pero no se bloquea", () => {
+    expect(esPlaneacionTardia(45, 44)).toBe(true);
+    expect(esPlaneacionTardia(46, 44)).toBe(false);
+    expect(validarApartado(t12, [], 45, 6, 44)).toBeNull();
+  });
+
+  it("los pendientes con insumos entregados se ofrecen y se descuentan del pedido", () => {
+    const pedidos: PedidoPlaneacion[] = [
+      { id: "p", loteId: "a", tablaId: "t1", ranchoId: "r", semanaPlantacion: 43, ha: 2,
+        lineas: [], fecha: "", ingeniero: "", urgente: false, status: "entregado" },
+    ];
+    const pend = lote({ id: "a", ha: 2, semanaPlaneada: 43, insumos: [{ productoId: "cinta", cantidad: 4.2, pedidoId: "p" }] });
+    expect(pendientesConInsumos([pend], pedidos, "r", 44).map((l) => l.id)).toEqual(["a"]);
+    expect(pendientesConInsumos([{ ...pend, sinInsumos: true }], pedidos, "r", 44)).toEqual([]);
+    expect(descontar([{ productoId: "cinta", cantidad: 6.3 }], pend.insumos)).toEqual([
+      { productoId: "cinta", cantidad: 2.1 },
     ]);
   });
 });
 
-describe("Pedido automático", () => {
-  it("multiplica hectáreas de cada etapa por la dosis de su semana", () => {
-    const t: Tabla = {
-      ...libre,
-      planes: [plan("p", 43, 5, [{ id: "a", fecha: "2026-10-20", semana: 43, ha: 3 }])],
-    };
-    // Semana 45: 3 ha en semana de cultivo 3 (30/ha) + 2 ha en semana 2 (20/ha) = 130
-    const [linea] = lineasTabla(t, receta, 45, 44);
-    expect(linea?.cantidad).toBe(130);
+describe("Entregar semana N y comprar N+2", () => {
+  const ls = [
+    lote({ id: "t1", tablaId: "t1", codigo: "1-A", ha: 5, semanaPlaneada: 40, avances: [av(40, 5)] }),
+    lote({ id: "t2", tablaId: "t2", codigo: "2-A", ha: 3, semanaPlaneada: 41, avances: [av(41, 3)] }),
+  ];
+
+  it("caso obligatorio: en la sem 45 se entrega receta 5 × 5 ha + receta 4 × 3 ha", () => {
+    const l45 = lineasSemana(ls, receta, [], [45]);
+    expect(l45.find((l) => l.loteId === "t1")).toMatchObject({ semanaReceta: 5, cantidad: 105 * 5 });
+    expect(l45.find((l) => l.loteId === "t2")).toMatchObject({ semanaReceta: 4, cantidad: 104 * 3 });
   });
 
-  it("no pide insumos fuera del ciclo configurado", () => {
-    const t: Tabla = {
-      ...libre,
-      planes: [plan("p", 30, 2, [{ id: "a", fecha: "2026-07-21", semana: 30, ha: 2 }])],
-    };
-    // Semana de cultivo 12 tiene dosis 5, pero con ciclo de 10 semanas no se pide
-    expect(lineasTabla(t, { ...receta, semanas: 10 }, 41, 44)).toEqual([]);
-    expect(lineasTabla(t, receta, 41, 44)[0]?.cantidad).toBe(10);
+  it("caso obligatorio: se compra para la sem 47 receta 7 × 5 ha + receta 6 × 3 ha", () => {
+    const l47 = lineasSemana(ls, receta, [], [47]);
+    expect(l47.find((l) => l.loteId === "t1")).toMatchObject({ semanaReceta: 7, cantidad: 107 * 5 });
+    expect(l47.find((l) => l.loteId === "t2")).toMatchObject({ semanaReceta: 6, cantidad: 106 * 3 });
   });
 
-  it("pide la presiembra 2 semanas antes de plantar, por las hectáreas planeadas", () => {
-    const conPre: Receta = { ...receta, presiembra: { cinta: 4 } };
-    const t: Tabla = { ...libre, hectareas: 12, planes: [plan("a", 46, 6), plan("b", 47, 6)] };
-    const sem44 = lineasTabla(t, conPre, 44, 44).find((l) => l.productoId === "cinta");
-    const sem45 = lineasTabla(t, conPre, 45, 44).find((l) => l.productoId === "cinta");
-    const sem46 = lineasTabla(t, conPre, 46, 44).find((l) => l.productoId === "cinta");
-    expect(sem44?.cantidad).toBe(24);
-    expect(sem45?.cantidad).toBe(24);
-    expect(sem46).toBeUndefined();
+  it("solo cuenta hectáreas realmente plantadas y no repite la semana -2", () => {
+    const parcial = lote({ id: "p", ha: 6, semanaPlaneada: 44, avances: [av(44, 4)] });
+    expect(lineasLote(parcial, receta, [], 45)[0]?.cantidad).toBe(101 * 4);
+    const sinPlantar = lote({ id: "s", ha: 6, semanaPlaneada: 46 });
+    expect(lineasLote(sinPlantar, receta, [], 44)).toEqual([]);
+  });
+
+  it("el ciclo inicia en la semana real de plantación, no en la planeada", () => {
+    const tarde = lote({ id: "x", ha: 2, semanaPlaneada: 43, avances: [av(44, 2)] });
+    expect(lineasLote(tarde, receta, [], 46)[0]?.semanaReceta).toBe(2);
+  });
+
+  it("los rollos se redondean hacia arriba después de sumar los lotes del rancho", () => {
+    const cinta: Receta = { dosis: { 0: { cinta: 2.1 } } };
+    const dos = [
+      lote({ id: "a", ha: 1, semanaPlaneada: 44, avances: [av(44, 1)] }),
+      lote({ id: "b", ha: 1, semanaPlaneada: 44, avances: [av(44, 1)], tablaId: "t2" }),
+    ];
+    const [fila] = consolidar(lineasSemana(dos, cinta, [], [44]), productos, {}, 44);
+    expect(fila?.cantidad).toBe(4.2);
+    expect(fila?.cantidadPedido).toBe(5);
+  });
+
+  it("la receta del lote se fija al plantarse: cambios posteriores no la afectan", () => {
+    const copia = recetaEfectiva(receta, [], "t1");
+    const plantado = lote({ id: "f", ha: 1, semanaPlaneada: 40, avances: [av(40, 1)], receta: copia });
+    const nueva: Receta = { dosis: { ...receta.dosis, 5: { urea: 999 } } };
+    expect(lineasLote(plantado, nueva, [], 45)[0]?.cantidad).toBe(105);
+  });
+});
+
+describe("Catálogos", () => {
+  it("radio automático = √(ha × 10,000 ÷ 3.1416) × 1.5 con mínimo de 100 m", () => {
+    expect(radioValidacion({ ...t12, hectareas: 12 })).toBe(293);
+    expect(radioValidacion({ ...t12, hectareas: 0.2 })).toBe(100);
+    expect(radioValidacion({ ...t12, radio: 250 })).toBe(250);
   });
 });

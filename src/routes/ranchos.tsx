@@ -58,7 +58,7 @@ export const Route = createFileRoute("/ranchos")({
 const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",
   "parcial-planeada":
-    "bg-status-planeada/60 text-status-planeada-foreground ring-1 ring-dashed ring-status-planeada-foreground/40",
+    "bg-status-planeada/60 text-status-planeada-foreground ring-1 ring-status-planeada-foreground/30",
   planeada: "bg-status-planeada text-status-planeada-foreground",
   "plantada-parcial":
     "bg-status-plantada/60 text-status-plantada-foreground ring-1 ring-status-plantada-foreground/30",
