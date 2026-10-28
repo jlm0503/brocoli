@@ -14,6 +14,13 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        libre: "border-transparent bg-status-libre text-status-libre-foreground",
+        planeada: "border-transparent bg-status-planeada text-status-planeada-foreground",
+        plantada: "border-transparent bg-status-plantada text-status-plantada-foreground",
+        recibido: "border-transparent bg-primary-soft text-primary",
+        pendiente: "border-transparent bg-soil-soft text-soil-foreground",
+        cancelado: "border-transparent bg-destructive-soft text-destructive",
+        parcial: "border-dashed border-soil bg-transparent text-soil-foreground",
       },
     },
     defaultVariants: {
