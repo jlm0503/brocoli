@@ -124,7 +124,7 @@ function PedidosPlaneacion() {
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
   const visibles = pedidos.filter(
-    (p) => todos || p.status === "pendiente" || p.semanaPlantacion >= semanaActual - 1,
+    (p) => todos || p.status === "pendiente" || semanaEntregaLimite(p) >= semanaActual,
   );
   const grupos = useMemo(() => {
     const m = new Map<string, PedidoPlaneacion[]>();
