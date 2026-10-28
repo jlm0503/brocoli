@@ -90,7 +90,7 @@ function Paquete() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
-        <table className="w-full min-w-[1100px] border-collapse text-sm">
+        <table className="w-full min-w-[940px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-left">
               <th className="sticky left-0 z-10 bg-secondary px-4 py-3 font-medium">Producto</th>
@@ -134,7 +134,7 @@ function Paquete() {
                             min="0"
                             value={p.precio}
                             onChange={(e) => setPrecio(p.id, Number(e.target.value))}
-                            className="num w-20 rounded border border-transparent bg-transparent px-1.5 py-1 text-right hover:border-input focus:border-ring focus:outline-none"
+                            className="num w-16 rounded border border-transparent bg-transparent px-1.5 py-1 text-right hover:border-input focus:border-ring focus:outline-none"
                             aria-label={`Precio de ${p.nombre}`}
                           />
                         </div>
@@ -152,7 +152,7 @@ function Paquete() {
                               value={v === 0 ? "" : v}
                               placeholder="·"
                               onChange={(e) => setDosis(p.id, w - 1, Number(e.target.value))}
-                              className={`num w-full min-w-12 rounded px-1 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-30 ${v > 0 && !fuera ? "bg-primary-soft text-accent-foreground" : "bg-transparent hover:bg-muted"}`}
+                              className={`num w-full min-w-10 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-30 ${v > 0 && !fuera ? "bg-primary-soft text-accent-foreground" : "bg-transparent hover:bg-muted"}`}
                               aria-label={`${p.nombre} semana ${w}`}
                             />
                           </td>
