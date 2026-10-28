@@ -1,11 +1,16 @@
 import { inicioSemana } from "./calc";
-import type { Avance, Producto, Rancho, Receta, Tabla } from "./types";
+import type { Avance, Plan, Producto, Rancho, Receta, Tabla } from "./types";
 
 /** "Hoy" en el prototipo: miércoles 28 de octubre de 2026, semana 44. */
 export const SEMANA_ACTUAL = 44;
 export const HOY = "2026-10-28";
 
 export const PRODUCTOS_INICIALES: Producto[] = [
+  // Presiembra: se entregan 2 semanas antes de plantar
+  { id: "yeso", nombre: "Yeso agrícola", familia: "Suelo", unidad: "kg", precio: 4.5 },
+  { id: "metam", nombre: "Metam sodio", familia: "Agroquímico", unidad: "L", precio: 95 },
+  { id: "trif", nombre: "Trifluralina", familia: "Agroquímico", unidad: "L", precio: 260 },
+  { id: "cinta", nombre: "Cintilla de riego (rollo)", familia: "Riego", unidad: "rollo", precio: 1850 },
   { id: "map", nombre: "MAP 11-52-00", familia: "Fertilizante", unidad: "kg", precio: 18 },
   { id: "urea", nombre: "Urea 46%", familia: "Fertilizante", unidad: "kg", precio: 9.5 },
   { id: "nca", nombre: "Nitrato de calcio", familia: "Fertilizante", unidad: "kg", precio: 14 },
@@ -34,6 +39,7 @@ export const RECETA_INICIAL: Receta = {
     imi: [0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0, 0],
     pen: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   },
+  presiembra: { yeso: 500, metam: 60, trif: 1.5, cinta: 4 },
 };
 
 export const RANCHOS: Rancho[] = [
@@ -53,10 +59,16 @@ function av(semana: number, ha: number, dia = 1, fecha?: string): Avance {
   return { id: `av-${++n}`, semana, ha, fecha: fecha ?? fechaEnSemana(semana, dia) };
 }
 
-/** Tabla completamente plantada en una semana (en dos jornadas). */
-function plantadaEn(semana: number, ha: number, ingeniero = "Israel") {
+let p = 0;
+function plan(semana: number, ha: number, ingeniero: string, avances: Avance[]): Plan {
+  return { id: `pl-${++p}`, semana, ha, ingeniero, avances };
+}
+
+/** Siembra completamente plantada en una semana (en dos jornadas). */
+function plantadaEn(semana: number, ha: number, ingeniero = "Israel"): Plan {
   const primera = Math.round(ha * 0.6 * 2) / 2;
   return {
+    id: `pl-${++p}`,
     semana,
     ha,
     ingeniero,
@@ -66,68 +78,69 @@ function plantadaEn(semana: number, ha: number, ingeniero = "Israel") {
 
 export const TABLAS_INICIALES: Tabla[] = [
   // El Mirador
-  { id: "m01", ranchoId: "mirador", nombre: "Tabla 1", hectareas: 6, plan: plantadaEn(36, 6) },
-  { id: "m02", ranchoId: "mirador", nombre: "Tabla 2", hectareas: 5, plan: plantadaEn(39, 5) },
+  { id: "m01", ranchoId: "mirador", nombre: "Tabla 1", hectareas: 6, planes: [plantadaEn(36, 6)] },
+  { id: "m02", ranchoId: "mirador", nombre: "Tabla 2", hectareas: 5, planes: [plantadaEn(39, 5)] },
   {
     id: "m03",
     ranchoId: "mirador",
     nombre: "Tabla 3",
     hectareas: 4,
-    plan: {
-      semana: 44,
-      ha: 4,
-      ingeniero: "Israel",
-      avances: [av(44, 1, 0, "2026-10-26"), av(44, 1.5, 1, "2026-10-27")],
-    },
+    planes: [plan(44, 4, "Israel", [av(44, 1, 0, "2026-10-26"), av(44, 1.5, 1, "2026-10-27")])],
   },
   {
     id: "m04",
     ranchoId: "mirador",
     nombre: "Tabla 4",
     hectareas: 5,
-    plan: { semana: 43, ha: 5, ingeniero: "Israel", avances: [av(43, 2, 1), av(43, 1, 3)] },
+    planes: [plan(43, 5, "Israel", [av(43, 2, 1), av(43, 1, 3)])],
   },
   {
     id: "m05",
     ranchoId: "mirador",
     nombre: "Tabla 5",
     hectareas: 4.5,
-    plan: { semana: 46, ha: 4.5, ingeniero: "Israel", avances: [] },
+    planes: [plan(46, 4.5, "Israel", [])],
   },
-  { id: "m06", ranchoId: "mirador", nombre: "Tabla 6", hectareas: 3 },
+  { id: "m06", ranchoId: "mirador", nombre: "Tabla 6", hectareas: 3, planes: [] },
   // San Isidro
-  { id: "s01", ranchoId: "isidro", nombre: "Tabla 1", hectareas: 7, plan: plantadaEn(34, 7) },
-  { id: "s02", ranchoId: "isidro", nombre: "Tabla 2", hectareas: 6, plan: plantadaEn(38, 6) },
+  { id: "s01", ranchoId: "isidro", nombre: "Tabla 1", hectareas: 7, planes: [plantadaEn(34, 7)] },
+  { id: "s02", ranchoId: "isidro", nombre: "Tabla 2", hectareas: 6, planes: [plantadaEn(38, 6)] },
   {
     id: "s03",
     ranchoId: "isidro",
     nombre: "Tabla 3",
     hectareas: 5,
-    plan: { semana: 45, ha: 5, ingeniero: "Israel", avances: [] },
+    planes: [plan(45, 5, "Israel", [])],
   },
-  { id: "s04", ranchoId: "isidro", nombre: "Tabla 4", hectareas: 4 },
-  { id: "s05", ranchoId: "isidro", nombre: "Tabla 5", hectareas: 5 },
+  { id: "s04", ranchoId: "isidro", nombre: "Tabla 4", hectareas: 4, planes: [] },
+  { id: "s05", ranchoId: "isidro", nombre: "Tabla 5", hectareas: 12, planes: [] },
   // La Loma
   {
     id: "l01",
     ranchoId: "loma",
     nombre: "Tabla 1",
     hectareas: 8,
-    plan: plantadaEn(41, 8, "Ramiro"),
+    planes: [plantadaEn(41, 8, "Ramiro")],
   },
   {
     id: "l02",
     ranchoId: "loma",
     nombre: "Tabla 2",
     hectareas: 6,
-    plan: { semana: 46, ha: 6, ingeniero: "Ramiro", avances: [] },
+    planes: [plan(46, 6, "Ramiro", [])],
   },
-  { id: "l03", ranchoId: "loma", nombre: "Tabla 3", hectareas: 5 },
+  {
+    id: "l03",
+    ranchoId: "loma",
+    nombre: "Tabla 3",
+    hectareas: 10,
+    planes: [plan(46, 5, "Ramiro", []), plan(47, 5, "Ramiro", [])],
+  },
   {
     id: "l04",
     ranchoId: "loma",
     nombre: "Tabla 4",
     hectareas: 4,
-    plan: plantadaEn(37, 4, "Ramiro"),
+    planes: [plantadaEn(37, 4, "Ramiro")],
   },
 ];
