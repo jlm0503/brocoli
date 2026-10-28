@@ -10,11 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComprasRouteImport } from './routes/compras'
+import { Route as PaqueteRouteImport } from './routes/paquete'
 import { Route as PlaneacionRouteImport } from './routes/planeacion'
+import { Route as RanchosRouteImport } from './routes/ranchos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComprasRoute = ComprasRouteImport.update({
+  id: '/compras',
+  path: '/compras',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaqueteRoute = PaqueteRouteImport.update({
+  id: '/paquete',
+  path: '/paquete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlaneacionRoute = PlaneacionRouteImport.update({
@@ -22,31 +35,48 @@ const PlaneacionRoute = PlaneacionRouteImport.update({
   path: '/planeacion',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RanchosRoute = RanchosRouteImport.update({
+  id: '/ranchos',
+  path: '/ranchos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compras': typeof ComprasRoute
+  '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
+  '/ranchos': typeof RanchosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compras': typeof ComprasRoute
+  '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
+  '/ranchos': typeof RanchosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compras': typeof ComprasRoute
+  '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
+  '/ranchos': typeof RanchosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/planeacion'
+  fullPaths: '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/planeacion'
-  id: '__root__' | '/' | '/planeacion'
+  to: '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
+  id: '__root__' | '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComprasRoute: typeof ComprasRoute
+  PaqueteRoute: typeof PaqueteRoute
   PlaneacionRoute: typeof PlaneacionRoute
+  RanchosRoute: typeof RanchosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +88,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compras': {
+      id: '/compras'
+      path: '/compras'
+      fullPath: '/compras'
+      preLoaderRoute: typeof ComprasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/paquete': {
+      id: '/paquete'
+      path: '/paquete'
+      fullPath: '/paquete'
+      preLoaderRoute: typeof PaqueteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/planeacion': {
       id: '/planeacion'
       path: '/planeacion'
@@ -65,12 +109,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaneacionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ranchos': {
+      id: '/ranchos'
+      path: '/ranchos'
+      fullPath: '/ranchos'
+      preLoaderRoute: typeof RanchosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComprasRoute: ComprasRoute,
+  PaqueteRoute: PaqueteRoute,
   PlaneacionRoute: PlaneacionRoute,
+  RanchosRoute: RanchosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
