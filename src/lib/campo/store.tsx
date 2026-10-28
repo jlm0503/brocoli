@@ -59,10 +59,10 @@ import type {
 const ROLE_KEY = "brocoli-rol";
 
 export interface OpcionesPlaneacion {
-  opcion?: OpcionTardia;
-  motivo?: string;
+  opcion?: OpcionTardia | undefined;
+  motivo?: string | undefined;
   /** Lotes pendientes cuyos insumos se reasignan al nuevo lote */
-  usarLoteIds?: string[];
+  usarLoteIds?: string[] | undefined;
 }
 
 export type ResolucionAlerta =

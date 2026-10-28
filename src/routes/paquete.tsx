@@ -282,11 +282,11 @@ function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null
   const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
 
   const guardar = () => {
-    if (tablaIds.length === 0) return toast.error("Elige al menos una tabla");
-    if (!productoId) return toast.error("Elige el producto");
-    if (semanas.length === 0) return toast.error("Elige al menos una semana de receta");
-    if (!(Number(dosis) > 0)) return toast.error("Indica la cantidad por hectárea");
-    if (!motivo.trim()) return toast.error("Escribe el motivo");
+    if (tablaIds.length === 0) return void toast.error("Elige al menos una tabla");
+    if (!productoId) return void toast.error("Elige el producto");
+    if (semanas.length === 0) return void toast.error("Elige al menos una semana de receta");
+    if (!(Number(dosis) > 0)) return void toast.error("Indica la cantidad por hectárea");
+    if (!motivo.trim()) return void toast.error("Escribe el motivo");
     guardarAdicional({
       id: inicial?.id ?? `ad-${Date.now()}`,
       ranchoId,

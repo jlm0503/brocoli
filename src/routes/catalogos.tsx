@@ -223,7 +223,7 @@ function NuevoProducto({ open, onClose }: { open: boolean; onClose: () => void }
 
   const guardar = () => {
     const err = agregarProducto({ codigo, nombre, familia, unidad, precio: Number(precio) || 0 });
-    if (err) return toast.error(err);
+    if (err) return void toast.error(err);
     toast.success(`${nombre} agregado al catálogo`);
     setCodigo("");
     setNombre("");

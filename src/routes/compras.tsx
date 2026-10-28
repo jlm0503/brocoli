@@ -247,7 +247,7 @@ function PedidosPlaneacion() {
   );
 }
 
-function FotoInput({ foto, setFoto }: { foto?: string; setFoto: (f: string) => void }) {
+function FotoInput({ foto, setFoto }: { foto?: string | undefined; setFoto: (f: string) => void }) {
   return (
     <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/50 p-4 text-sm text-muted-foreground transition-colors hover:border-primary">
       {foto ? (

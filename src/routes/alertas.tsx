@@ -242,7 +242,7 @@ function ResolverDialog({ alerta, onClose }: { alerta: AlertaInsumos | null; onC
       tipo === "reubicar"
         ? resolverAlerta(alerta.id, { tipo, loteId })
         : resolverAlerta(alerta.id, { tipo, quien, foto: foto ?? "" });
-    if (err) return toast.error(err);
+    if (err) return void toast.error(err);
     toast.success(tipo === "reubicar" ? "Insumos reubicados; el costo pasa a ese lote" : "Recolección registrada");
     onClose();
   };
