@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, CornerDownRight, Lock, Plus } from "lucide-react";
+import { AlertTriangle, CalendarClock, CornerDownRight, Lock, Package, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -25,45 +27,51 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ANTICIPACION_SEMANAS,
-  PRESIEMBRA_SEMANAS,
-  costoLineas,
+  ESTATUS_TABLA_LABEL,
+  esArrastrado,
+  esPlaneacionTardia,
   estatusTabla,
+  etapa,
   fechaCorta,
   fechaLimite,
-  formatoMXN,
   formatoNum,
-  hectareasPendientes,
+  hectareasDisponibles,
   hectareasPlaneadas,
   hectareasPlantadas,
-  hectareasSinPlanear,
-  lineasTabla,
-  pendientesPlan,
-  planArrastrado,
-  planesOrdenados,
-  planesPorPlantar,
-  plantadasPlan,
+  insumosEntregados,
+  lineasPlaneacion,
+  lotePorPlantar,
+  lotesDeTabla,
+  pendientesConInsumos,
+  pendientesLote,
+  plantadasLote,
+  semanaRecetaLote,
   semanaCultivoTabla,
-  semanaPendiente,
+  semanasAnticipacion,
+  semaforoPedido,
+  sumarPorProducto,
   validarApartado,
 } from "@/lib/campo/calc";
 import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { Tabla } from "@/lib/campo/types";
+import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/planeacion")({
   head: () => ({
     meta: [
-      { title: "Planeación y avance · Brócoli" },
+      { title: "Planeación por lotes y avance · Brócoli" },
       {
         name: "description",
-        content: "Aparta tablas completas o por partes en distintas semanas, con dos semanas de anticipación, y registra las hectáreas plantadas cada día.",
+        content:
+          "Planea lotes de una tabla en distintas semanas, registra lo plantado cada día y revisa los pendientes con sus insumos de planeación.",
       },
-      { property: "og:title", content: "Planeación y avance · Brócoli" },
+      { property: "og:title", content: "Planeación por lotes y avance · Brócoli" },
       {
         property: "og:description",
-        content: "Aparta tablas libres y captura el avance diario de siembra.",
+        content: "Lotes de plantación, avance diario y pendientes arrastrados por tabla.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -72,28 +80,39 @@ export const Route = createFileRoute("/planeacion")({
   component: Planeacion,
 });
 
+function listaInsumos(items: { productoId: string; cantidad: number }[], productos: Producto[]) {
+  const m = sumarPorProducto(items);
+  return [...m.entries()]
+    .map(([pid, c]) => {
+      const p = productos.find((x) => x.id === pid);
+      return `${p?.nombre ?? pid} ${formatoNum(c)} ${p?.unidad ?? ""}`;
+    })
+    .join(" · ");
+}
+
 function Planeacion() {
-  const { tablas, semanaActual } = useCampo();
+  const { tablas, lotes, semanaActual } = useCampo();
   const [rancho, setRancho] = useState(RANCHOS[0]!.id);
-  const [apartando, setApartando] = useState<Tabla | null>(null);
+  const [planeando, setPlaneando] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
-  const planes = delRancho.flatMap((t) => t.planes);
-  const plantadasSemana = planes
-    .flatMap((p) => p.avances)
+  const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado);
+  const plantadasSemana = lotesRancho
+    .flatMap((l) => l.avances)
     .filter((a) => a.semana === semanaActual)
     .reduce((s, a) => s + a.ha, 0);
-  const pendientesSemana = planes
-    .filter((p) => semanaPendiente(p, semanaActual) === semanaActual)
-    .reduce((s, p) => s + pendientesPlan(p), 0);
-  const conEspacio = delRancho.filter((t) => hectareasSinPlanear(t) > 0);
+  const porPlantar = lotesRancho
+    .filter((l) => lotePorPlantar(l, semanaActual))
+    .reduce((s, l) => s + pendientesLote(l), 0);
+  const disponibles = delRancho.reduce((s, t) => s + hectareasDisponibles(t, lotes), 0);
+  const pendientes = lotesRancho.filter((l) => esArrastrado(l, semanaActual));
 
   return (
     <AppShell
       path="/planeacion"
       eyebrow={`Ingenieros · semana ${semanaActual}`}
       title="Planeación y avance"
-      description={`Aparta la tabla completa o por partes en distintas semanas, con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana se arrastra a la siguiente.`}
+      description={`Planea la tabla completa o por lotes en distintas semanas, idealmente con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana pasa a un lote pendiente.`}
     >
       <Tabs value={rancho} onValueChange={setRancho} className="mb-6">
         <TabsList>
@@ -108,58 +127,134 @@ function Planeacion() {
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Stat label="Plantado esta semana" value={`${formatoNum(plantadasSemana)} ha`} tone="primary" />
         <Stat
-          label="Pendiente esta semana"
-          value={`${formatoNum(pendientesSemana)} ha`}
-          hint="Incluye lo arrastrado de semanas anteriores"
+          label="Por plantar esta semana"
+          value={`${formatoNum(porPlantar)} ha`}
+          hint="Incluye pendientes arrastrados"
           tone="soil"
         />
-        <Stat
-          label="Sin planear"
-          value={`${formatoNum(conEspacio.reduce((s, t) => s + hectareasSinPlanear(t), 0))} ha`}
-          hint={`En ${conEspacio.length} tabla(s)`}
-        />
+        <Stat label="Disponible para planear" value={`${formatoNum(disponibles)} ha`} />
       </div>
+
+      {pendientes.length > 0 && <Pendientes lotes={pendientes} />}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {delRancho.map((t) => (
-          <TablaCard key={t.id} tabla={t} onApartar={() => setApartando(t)} />
+          <TablaCard key={t.id} tabla={t} onPlanear={() => setPlaneando(t)} />
         ))}
       </div>
 
       <div className="mt-10 flex items-start gap-3 rounded-xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
         <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
         <p>
-          Aquí no se piden insumos a mano. Compras recibe automáticamente lo que marca la receta
-          para las hectáreas reales y planeadas de cada tabla, incluida la presiembra{" "}
-          {PRESIEMBRA_SEMANAS} semanas antes de plantar.
+          Aquí no se piden insumos a mano. Al planear un lote se genera de inmediato su pedido de
+          planeación (semana -2); lo demás sale de la receta según las hectáreas realmente
+          plantadas.
         </p>
       </div>
 
-      <ApartarDialog
-        key={apartando ? `${apartando.id}-${apartando.planes.length}` : "cerrado"}
-        tabla={apartando}
-        onClose={() => setApartando(null)}
+      <PlanearDialog
+        key={planeando ? `${planeando.id}-${lotes.length}` : "cerrado"}
+        tabla={planeando}
+        onClose={() => setPlaneando(null)}
       />
     </AppShell>
   );
 }
 
-function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }) {
-  const { semanaActual, receta, registrarAvance, liberarSiembra } = useCampo();
-  const [ha, setHa] = useState("");
-  const estatus = estatusTabla(tabla);
-  const siembras = planesOrdenados(tabla);
-  const planeadas = hectareasPlaneadas(tabla);
-  const plantadas = hectareasPlantadas(tabla);
-  const pendientes = hectareasPendientes(tabla);
-  const sinPlanear = hectareasSinPlanear(tabla);
-  const sc = semanaCultivoTabla(tabla, semanaActual);
-  const porPlantar = planesPorPlantar(tabla, semanaActual).reduce(
-    (s, p) => s + pendientesPlan(p),
-    0,
+function Pendientes({ lotes }: { lotes: Lote[] }) {
+  const { tablas, productos, pedidos, cancelarLote } = useCampo();
+  return (
+    <section className="mb-8 rounded-xl border border-soil/40 bg-soil-soft/50 p-5">
+      <h2 className="flex items-center gap-2 text-xl font-semibold">
+        <CornerDownRight className="size-5 text-soil" /> Pendientes arrastrados
+      </h2>
+      <ul className="mt-4 space-y-3">
+        {lotes.map((l) => {
+          const t = tablas.find((x) => x.id === l.tablaId);
+          const entregados = insumosEntregados(l, pedidos);
+          const porEntregar = l.insumos.filter((i) => !entregados.includes(i));
+          return (
+            <li key={l.id} className="rounded-lg bg-card p-4 text-sm shadow-card">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">
+                  {t?.nombre} · Lote {l.codigo} ·{" "}
+                  <span className="num">{formatoNum(pendientesLote(l))} ha</span>
+                </span>
+                {l.avances.length === 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      cancelarLote(l.id);
+                      toast(
+                        entregados.length > 0
+                          ? `Lote ${l.codigo} cancelado. Se avisó al administrador para reubicar o recolectar sus insumos.`
+                          : `Lote ${l.codigo} cancelado.`,
+                      );
+                    }}
+                  >
+                    <X /> Cancelar lote
+                  </Button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {l.sinInsumos ? (
+                  <span className="text-destructive">
+                    Sin insumos de planeación: se usaron en otro lote. Al plantarse se pide de nuevo.
+                  </span>
+                ) : (
+                  <>
+                    {entregados.length > 0 && (
+                      <>
+                        <span className="text-foreground">Insumos de planeación ya entregados:</span>{" "}
+                        {listaInsumos(entregados, productos)}
+                      </>
+                    )}
+                    {porEntregar.length > 0 && (
+                      <>
+                        {entregados.length > 0 && <br />}
+                        <span className="text-foreground">Por entregar:</span>{" "}
+                        {listaInsumos(porEntregar, productos)}
+                      </>
+                    )}
+                  </>
+                )}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
-  const avances = siembras
-    .flatMap((p) => p.avances)
+}
+
+function estadoLote(l: Lote, semanaActual: number): string {
+  const plantadas = plantadasLote(l);
+  if (plantadas > 0 && pendientesLote(l) === 0) {
+    const sr = semanaRecetaLote(l, semanaActual)!;
+    return `Plantado · sem ${sr} (${etapa(sr).toLowerCase()})`;
+  }
+  if (plantadas > 0) return `Plantando ${formatoNum(plantadas)}/${formatoNum(l.ha)}`;
+  if (esArrastrado(l, semanaActual)) return "Pendiente arrastrado";
+  if (l.semanaPlaneada === semanaActual) return "Toca plantar";
+  return "Planeado";
+}
+
+function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }) {
+  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote } = useCampo();
+  const [ha, setHa] = useState("");
+  const estatus = estatusTabla(tabla, lotes);
+  const deTabla = lotesDeTabla(lotes, tabla.id);
+  const planeadas = hectareasPlaneadas(lotes, tabla.id);
+  const plantadas = hectareasPlantadas(lotes, tabla.id);
+  const disponibles = hectareasDisponibles(tabla, lotes);
+  const sc = semanaCultivoTabla(lotes, tabla.id, semanaActual);
+  const porPlantar = deTabla
+    .filter((l) => lotePorPlantar(l, semanaActual))
+    .reduce((s, l) => s + pendientesLote(l), 0);
+  const avances = deTabla
+    .flatMap((l) => l.avances.map((a) => ({ ...a, codigo: l.codigo })))
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
     .slice(-3);
 
@@ -181,20 +276,10 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
           <h3 className="text-xl font-semibold">{tabla.nombre}</h3>
           <p className="num text-xs text-muted-foreground">{formatoNum(tabla.hectareas)} ha totales</p>
         </div>
-        <Badge variant={estatus} className="capitalize">
-          {estatus}
-        </Badge>
+        <Badge variant={estatus}>{ESTATUS_TABLA_LABEL[estatus]}</Badge>
       </div>
 
-      {siembras.length === 0 && (
-        <div className="mt-auto pt-6">
-          <Button onClick={onApartar} className="w-full">
-            <Plus /> Apartar tabla
-          </Button>
-        </div>
-      )}
-
-      {siembras.length > 0 && (
+      {deTabla.length > 0 && (
         <div className="mt-5 flex flex-1 flex-col gap-4">
           <div>
             <div className="flex items-baseline justify-between text-sm">
@@ -205,58 +290,60 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
                 de <span className="num">{formatoNum(planeadas)}</span> planeadas
               </span>
             </div>
-            <Progress value={(plantadas / planeadas) * 100} className="mt-2 h-2" />
+            <Progress value={(plantadas / tabla.hectareas) * 100} className="mt-2 h-2" />
             {sc !== null && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Cultivo en semana{" "}
-                <span className="num text-foreground">
-                  {sc}/{receta.semanas}
-                </span>
+                Primer lote en semana de receta <span className="num text-foreground">{sc}</span>
               </p>
             )}
           </div>
 
           <ul className="space-y-2">
-            {siembras.map((p) => {
-              const hechas = plantadasPlan(p);
-              const faltan = pendientesPlan(p);
-              const futura = p.semana > semanaActual;
+            {deTabla.map((l) => {
+              const pedido = pedidos.find((p) => p.loteId === l.id && p.status !== "cancelado");
+              const sem = pedido ? semaforoPedido(pedido, semanaActual) : null;
+              const arr = esArrastrado(l, semanaActual);
               return (
-                <li key={p.id} className="rounded-md bg-secondary/60 px-3 py-2 text-xs">
+                <li
+                  key={l.id}
+                  className={`rounded-md px-3 py-2 text-xs ${arr ? "bg-soil-soft" : "bg-secondary/60"}`}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 font-medium">
-                      <CalendarClock className="size-3.5" /> Semana {p.semana} ·{" "}
-                      <span className="num">{formatoNum(p.ha)} ha</span>
+                      <span className="num rounded bg-card px-1.5 py-0.5">{l.codigo}</span>
+                      <CalendarClock className="size-3.5" /> Sem {l.semanaPlaneada} ·{" "}
+                      <span className="num">{formatoNum(l.ha)} ha</span>
                     </span>
-                    {futura && p.avances.length === 0 ? (
+                    {l.avances.length === 0 ? (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-xs"
-                        onClick={() => liberarSiembra(tabla.id, p.id)}
+                        onClick={() => {
+                          const conInsumos = insumosEntregados(l, pedidos).length > 0;
+                          cancelarLote(l.id);
+                          toast(
+                            conInsumos
+                              ? `Lote ${l.codigo} cancelado. Sus insumos quedan por reubicar o recolectar.`
+                              : `Lote ${l.codigo} cancelado.`,
+                          );
+                        }}
                       >
-                        Liberar
+                        Cancelar
                       </Button>
-                    ) : faltan === 0 ? (
-                      <span className="text-primary">Completa</span>
-                    ) : (
-                      <span className="num text-muted-foreground">
-                        {formatoNum(hechas)}/{formatoNum(p.ha)}
-                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+                    <span className={arr ? "font-medium text-soil-foreground" : ""}>
+                      {estadoLote(l, semanaActual)}
+                    </span>
+                    {pedido && sem && plantadasLote(l) === 0 && (
+                      <Badge variant={sem} className="px-1.5 py-0 text-[0.65rem]">
+                        <Package className="mr-1 size-3" />
+                        {sem === "verde" ? "Planeación entregada" : `Planeación límite sem ${pedido.semanaPlantacion - 1}`}
+                      </Badge>
                     )}
                   </div>
-                  {futura && (
-                    <p className="mt-1 text-muted-foreground">
-                      Siembra en {p.semana - semanaActual} semana(s) · presiembra en semana{" "}
-                      {p.semana - PRESIEMBRA_SEMANAS}
-                    </p>
-                  )}
-                  {planArrastrado(p, semanaActual) && (
-                    <p className="mt-1 inline-flex items-center gap-1 text-soil-foreground">
-                      <CornerDownRight className="size-3.5" />
-                      {formatoNum(faltan)} ha arrastradas a la semana {semanaActual}
-                    </p>
-                  )}
                 </li>
               );
             })}
@@ -266,133 +353,142 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
             <ul className="space-y-1 border-t border-border pt-3 text-xs">
               {avances.map((a) => (
                 <li key={a.id} className="flex justify-between text-muted-foreground">
-                  <span>{fechaCorta(a.fecha)}</span>
+                  <span>
+                    {fechaCorta(a.fecha)} · lote {a.codigo}
+                  </span>
                   <span className="num text-foreground">+{formatoNum(a.ha)} ha</span>
                 </li>
               ))}
             </ul>
           )}
-
-          <div className="mt-auto space-y-2">
-            {porPlantar > 0 && (
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.5"
-                  min="0"
-                  max={porPlantar}
-                  placeholder="ha hoy"
-                  value={ha}
-                  onChange={(e) => setHa(e.target.value)}
-                  className="num"
-                  aria-label={`Hectáreas plantadas hoy en ${tabla.nombre}`}
-                />
-                <Button onClick={guardar} variant="soil">
-                  Registrar hoy
-                </Button>
-              </div>
-            )}
-            {sinPlanear > 0 ? (
-              <Button onClick={onApartar} variant="outline" className="w-full">
-                <Plus /> Apartar {formatoNum(sinPlanear)} ha restantes
-              </Button>
-            ) : (
-              pendientes === 0 && <p className="text-xs text-primary">Plantación completa</p>
-            )}
-          </div>
         </div>
       )}
+
+      <div className="mt-auto space-y-2 pt-4">
+        {porPlantar > 0 && (
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              max={porPlantar}
+              placeholder="ha hoy"
+              value={ha}
+              onChange={(e) => setHa(e.target.value)}
+              className="num"
+              aria-label={`Hectáreas plantadas hoy en ${tabla.nombre}`}
+            />
+            <Button onClick={guardar} variant="soil">
+              Registrar hoy
+            </Button>
+          </div>
+        )}
+        {disponibles > 0 ? (
+          <Button onClick={onPlanear} variant={deTabla.length === 0 ? "default" : "outline"} className="w-full">
+            <Plus />{" "}
+            {deTabla.length === 0
+              ? "Planear lote"
+              : `Planear ${formatoNum(disponibles)} ha disponibles`}
+          </Button>
+        ) : (
+          estatus === "plantada" && <p className="text-xs text-primary">Plantación completa</p>
+        )}
+      </div>
     </article>
   );
 }
 
-function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
-  const { semanaActual, receta, productos, apartarTabla } = useCampo();
-  const ocupadas = new Set(tabla?.planes.map((p) => p.semana) ?? []);
-  const opciones = Array.from({ length: 8 }, (_, i) => semanaActual + ANTICIPACION_SEMANAS + i)
-    .filter((w) => !ocupadas.has(w))
-    .slice(0, 6);
-  const [semana, setSemana] = useState(String(opciones[0]));
+function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
+  const { semanaActual, receta, adicionales, productos, lotes, pedidos, tablas, planearLote } =
+    useCampo();
+  const opciones = Array.from({ length: 9 }, (_, i) => semanaActual + i);
+  const [semana, setSemana] = useState(String(semanaActual + ANTICIPACION_SEMANAS));
   const [ha, setHa] = useState("");
-  const disponibles = tabla ? hectareasSinPlanear(tabla) : 0;
+  const [opcion, setOpcion] = useState<OpcionTardia | "">("");
+  const [motivo, setMotivo] = useState("");
+  const [usar, setUsar] = useState<string[]>([]);
+  const disponibles = tabla ? hectareasDisponibles(tabla, lotes) : 0;
 
   const haNum = Number(ha);
-  const error = tabla ? validarApartado(tabla, Number(semana), haNum, semanaActual) : null;
+  const w = Number(semana);
+  const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
+  const tardia = esPlaneacionTardia(w, semanaActual);
+  const candidatos = useMemo(
+    () => (tabla ? pendientesConInsumos(lotes, pedidos, tabla.ranchoId, semanaActual) : []),
+    [tabla, lotes, pedidos, semanaActual],
+  );
+  const opcionEfectiva: OpcionTardia | "" = tardia
+    ? candidatos.length === 0
+      ? opcion === "sin-pendientes"
+        ? "sin-pendientes"
+        : ""
+      : opcion
+    : "";
 
-  const preview = useMemo(() => {
-    if (!tabla || !(haNum > 0)) return null;
-    const hipotetica: Tabla = {
-      ...tabla,
-      planes: [
-        { id: "nuevo", semana: Number(semana), ha: haNum, ingeniero: "Israel", avances: [] },
-      ],
-    };
-    const inicio = Number(semana) - PRESIEMBRA_SEMANAS;
-    const sem = Array.from(
-      { length: receta.semanas + PRESIEMBRA_SEMANAS },
-      (_, i) => inicio + i,
-    );
-    const lineas = sem.flatMap((w) => lineasTabla(hipotetica, receta, w, semanaActual));
-    const presiembra = lineas.filter((l) => l.semana === inicio);
-    return {
-      costo: costoLineas(lineas, productos, {}),
-      presiembra: presiembra.length,
-      inicio,
-    };
-  }, [tabla, haNum, semana, receta, productos, semanaActual]);
+  const paquete = useMemo(
+    () => (tabla && haNum > 0 ? lineasPlaneacion(receta, adicionales, tabla.id, haNum) : []),
+    [tabla, haNum, receta, adicionales],
+  );
 
   const confirmar = () => {
     if (!tabla) return;
-    const err = apartarTabla(tabla.id, Number(semana), haNum);
+    const err = planearLote(tabla.id, w, haNum, {
+      opcion: opcionEfectiva || undefined,
+      motivo,
+      usarLoteIds: usar,
+    });
     if (err) {
       toast.error(err);
       return;
     }
-    toast.success(`${tabla.nombre}: ${formatoNum(haNum)} ha apartadas para la semana ${semana}`);
-    setHa("");
+    toast.success(
+      `${tabla.nombre}: lote de ${formatoNum(haNum)} ha para la semana ${w}. Pedido de planeación enviado a Compras.`,
+    );
     onClose();
   };
 
-  const parcial = tabla && tabla.planes.length > 0;
+  const faltaDecision =
+    tardia &&
+    (!opcionEfectiva ||
+      (opcionEfectiva === "pedir-nuevos" && !motivo.trim()) ||
+      (opcionEfectiva === "usar-pendientes" && usar.length === 0));
 
   return (
     <Dialog open={!!tabla} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Apartar {tabla?.nombre}</DialogTitle>
+          <DialogTitle className="font-display text-2xl">Planear lote · {tabla?.nombre}</DialogTitle>
           <DialogDescription>
             {tabla &&
-              (parcial
-                ? `Quedan ${formatoNum(disponibles)} de ${formatoNum(tabla.hectareas)} ha sin planear. `
-                : `${formatoNum(tabla.hectareas)} ha disponibles. `)}
-            Puedes apartar solo una parte y el resto en otra semana.
+              `${formatoNum(disponibles)} de ${formatoNum(tabla.hectareas)} ha disponibles. Puedes planear solo una parte; el resto queda libre para otro lote.`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Semana de siembra</Label>
+            <Label>Semana de plantación</Label>
             <Select value={semana} onValueChange={setSemana}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {opciones.map((w) => (
-                  <SelectItem key={w} value={String(w)}>
-                    Semana {w} · {fechaLimite(w)}
+                {opciones.map((o) => (
+                  <SelectItem key={o} value={String(o)}>
+                    Semana {o} · {fechaLimite(o)}
+                    {esPlaneacionTardia(o, semanaActual) ? " · tardía" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ha-apartar">Hectáreas a plantar</Label>
+            <Label htmlFor="ha-planear">Hectáreas del lote</Label>
             <Input
-              id="ha-apartar"
+              id="ha-planear"
               type="number"
               inputMode="decimal"
-              step="0.5"
+              step="0.1"
               min="0"
               max={disponibles}
               placeholder={`hasta ${formatoNum(disponibles)}`}
@@ -403,27 +499,94 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
           </div>
         </div>
 
-        {preview && !error && (
-          <div className="rounded-lg bg-primary-soft p-4 text-sm text-accent-foreground">
-            Inversión estimada en insumos de esta siembra:{" "}
-            <span className="num font-medium">{formatoMXN(preview.costo)}</span>
-            <br />
-            {preview.presiembra > 0 && (
-            <span className="text-xs">
-              Presiembra ({preview.presiembra} productos: suelo, agroquímicos y manguera) se surte
-              en la semana {preview.inicio}.
-            </span>
+        {ha && error && <p className="text-sm text-destructive">{error}</p>}
+
+        {tardia && (
+          <div className="space-y-3 rounded-lg border border-destructive/40 bg-destructive-soft p-4 text-sm">
+            <p className="flex items-center gap-2 font-medium text-destructive">
+              <AlertTriangle className="size-4" /> Planeación con menos de {ANTICIPACION_SEMANAS}{" "}
+              semanas de anticipación ({semanasAnticipacion(w, semanaActual)})
+            </p>
+            {candidatos.length > 0 ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  En este rancho hay lotes pendientes con insumos de planeación ya entregados:
+                </p>
+                <ul className="space-y-1.5">
+                  {candidatos.map((l) => {
+                    const t = tablas.find((x) => x.id === l.tablaId);
+                    const marcado = usar.includes(l.id);
+                    return (
+                      <li key={l.id} className="flex items-start gap-2 text-xs">
+                        <Checkbox
+                          id={`usar-${l.id}`}
+                          checked={marcado}
+                          disabled={opcion !== "usar-pendientes"}
+                          onCheckedChange={(c) =>
+                            setUsar((u) => (c ? [...u, l.id] : u.filter((x) => x !== l.id)))
+                          }
+                        />
+                        <label htmlFor={`usar-${l.id}`}>
+                          <span className="font-medium">
+                            {t?.nombre} · {l.codigo}
+                          </span>{" "}
+                          — {listaInsumos(insumosEntregados(l, pedidos), productos)}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <RadioGroup value={opcion} onValueChange={(v) => setOpcion(v as OpcionTardia)}>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="usar-pendientes" id="op-usar" />
+                    <Label htmlFor="op-usar">Usar insumos de pendientes</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="pedir-nuevos" id="op-nuevos" />
+                    <Label htmlFor="op-nuevos">Pedir nuevos</Label>
+                  </div>
+                </RadioGroup>
+                {opcion === "pedir-nuevos" && (
+                  <Textarea
+                    placeholder="Motivo (obligatorio)"
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                  />
+                )}
+              </>
+            ) : (
+              <label className="flex items-start gap-2 text-xs">
+                <Checkbox
+                  checked={opcion === "sin-pendientes"}
+                  onCheckedChange={(c) => setOpcion(c ? "sin-pendientes" : "")}
+                />
+                <span>
+                  Confirmo: no hay tablas pendientes con insumos disponibles. El pedido se marca{" "}
+                  <strong>Urgente</strong>.
+                </span>
+              </label>
             )}
           </div>
         )}
-        {ha && error && <p className="text-sm text-destructive">{error}</p>}
+
+        {paquete.length > 0 && !error && (
+          <div className="rounded-lg bg-primary-soft p-4 text-sm text-accent-foreground">
+            <p className="font-medium">Pedido de planeación (semana -2) que se genera:</p>
+            <p className="mt-1 text-xs">{listaInsumos(paquete, productos)}</p>
+            <p className="mt-2 text-xs">
+              Entrega ideal semana {w - 2} · fecha límite semana {w - 1} ({fechaLimite(w - 1)}).
+              {opcionEfectiva === "usar-pendientes" &&
+                " Se descuenta lo que ya cubren los pendientes elegidos."}
+            </p>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={confirmar} disabled={!!error}>
-            Apartar
+          <Button onClick={confirmar} disabled={!!error || faltaDecision}>
+            Planear lote
           </Button>
         </DialogFooter>
       </DialogContent>
