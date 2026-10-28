@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Context, type ReactNode } from "react";
 
 import {
   CICLO_MAX,
@@ -42,8 +42,8 @@ interface CampoContextValue {
 // Keep one context instance across hot reloads; otherwise editing this file creates a
 // new context and screens lose the provider mounted in __root ("debe usarse dentro de CampoProvider").
 const CTX_KEY = "__campoContext__";
-const globalCtx = globalThis as unknown as Record<string, React.Context<CampoContextValue | null>>;
-const CampoContext: React.Context<CampoContextValue | null> =
+const globalCtx = globalThis as unknown as Record<string, Context<CampoContextValue | null>>;
+const CampoContext: Context<CampoContextValue | null> =
   globalCtx[CTX_KEY] ?? (globalCtx[CTX_KEY] = createContext<CampoContextValue | null>(null));
 
 function recepcionesIniciales(): Record<string, Recepcion> {
@@ -253,3 +253,4 @@ export function useCampo() {
   if (!ctx) throw new Error("useCampo debe usarse dentro de CampoProvider");
   return ctx;
 }
+
