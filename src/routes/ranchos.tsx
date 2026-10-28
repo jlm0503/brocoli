@@ -210,10 +210,12 @@ function ResumenTabla({
       <SheetHeader>
         <span className="eyebrow">{rancho?.nombre}</span>
         <SheetTitle className="font-display text-3xl">{tabla.nombre}</SheetTitle>
-        <SheetDescription>
-          <Badge variant={est} className="capitalize">
-            {est}
-          </Badge>
+        <SheetDescription asChild>
+          <div>
+            <Badge variant={est} className="capitalize">
+              {est}
+            </Badge>
+          </div>
         </SheetDescription>
       </SheetHeader>
 
