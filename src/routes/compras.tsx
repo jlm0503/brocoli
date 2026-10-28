@@ -253,8 +253,14 @@ function RecibirDialog({
   const confirmar = () => {
     if (!fila || !p) return;
     const n = Number(valor);
-    if (!(n >= 0)) return toast.error("Cantidad inválida");
-    if (!foto) return toast.error("Agrega la foto de evidencia de la entrada");
+    if (!(n >= 0)) {
+      toast.error("Cantidad inválida");
+      return;
+    }
+    if (!foto) {
+      toast.error("Agrega la foto de evidencia de la entrada");
+      return;
+    }
     recibir(
       subLineas.map((l) => ({ key: l.key, cantidad: l.cantidad })),
       { cantidadTotal: n, foto },

@@ -49,7 +49,7 @@ export interface Tabla {
   ranchoId: string;
   nombre: string;
   hectareas: number;
-  plan?: Plan;
+  plan?: Plan | undefined;
 }
 
 export interface Rancho {
@@ -64,9 +64,9 @@ export type EstatusRecepcion = "pendiente" | "recibido" | "cancelado";
 
 export interface Recepcion {
   status: EstatusRecepcion;
-  cantidadRecibida?: number;
-  foto?: string;
-  fecha?: string;
+  cantidadRecibida?: number | undefined;
+  foto?: string | undefined;
+  fecha?: string | undefined;
 }
 
 export interface Cohorte {

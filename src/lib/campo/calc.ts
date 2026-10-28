@@ -193,10 +193,10 @@ export function consolidar(
     cur.statuses.add(estatusLinea(l, recepciones, semanaActual));
     map.set(k, cur);
   }
-  return [...map.values()].map(({ statuses, ...c }) => ({
-    ...c,
-    status: statuses.size === 1 ? [...statuses][0] : "parcial",
-  }));
+  return [...map.values()].map(({ statuses, ...c }) => {
+    const unico = statuses.size === 1 ? [...statuses][0] : undefined;
+    return { ...c, status: unico ?? "parcial" };
+  });
 }
 
 /** Errores de validación al apartar una tabla. `null` si es válido. */

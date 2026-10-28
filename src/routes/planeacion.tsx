@@ -67,7 +67,7 @@ export const Route = createFileRoute("/planeacion")({
 
 function Planeacion() {
   const { tablas, semanaActual } = useCampo();
-  const [rancho, setRancho] = useState(RANCHOS[0].id);
+  const [rancho, setRancho] = useState(RANCHOS[0]!.id);
   const [apartando, setApartando] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
@@ -145,7 +145,10 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
   const guardar = () => {
     const n = Number(ha);
     const err = registrarAvance(tabla.id, n);
-    if (err) return toast.error(err);
+    if (err) {
+      toast.error(err);
+      return;
+    }
     toast.success(`${tabla.nombre}: ${formatoNum(n)} ha registradas hoy`);
     setHa("");
   };
@@ -278,7 +281,10 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const confirmar = () => {
     if (!tabla) return;
     const err = apartarTabla(tabla.id, Number(semana), haNum);
-    if (err) return toast.error(err);
+    if (err) {
+      toast.error(err);
+      return;
+    }
     toast.success(`${tabla.nombre} apartada para la semana ${semana}`);
     setHa("");
     onClose();
