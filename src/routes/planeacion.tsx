@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ANTICIPACION_SEMANAS,
+  PRESIEMBRA_SEMANAS,
   costoLineas,
   estatusTabla,
   fechaCorta,
@@ -34,9 +35,15 @@ import {
   formatoMXN,
   formatoNum,
   hectareasPendientes,
+  hectareasPlaneadas,
   hectareasPlantadas,
+  hectareasSinPlanear,
   lineasTabla,
-  pendienteArrastrado,
+  pendientesPlan,
+  planArrastrado,
+  planesOrdenados,
+  planesPorPlantar,
+  plantadasPlan,
   semanaCultivoTabla,
   semanaPendiente,
   validarApartado,
@@ -51,7 +58,7 @@ export const Route = createFileRoute("/planeacion")({
       { title: "Planeación y avance · Brócoli" },
       {
         name: "description",
-        content: "Aparta tablas libres con dos semanas de anticipación y registra las hectáreas plantadas cada día.",
+        content: "Aparta tablas completas o por partes en distintas semanas, con dos semanas de anticipación, y registra las hectáreas plantadas cada día.",
       },
       { property: "og:title", content: "Planeación y avance · Brócoli" },
       {
@@ -71,21 +78,22 @@ function Planeacion() {
   const [apartando, setApartando] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
-  const plantadasHoy = delRancho
-    .flatMap((t) => t.plan?.avances ?? [])
+  const planes = delRancho.flatMap((t) => t.planes);
+  const plantadasSemana = planes
+    .flatMap((p) => p.avances)
     .filter((a) => a.semana === semanaActual)
     .reduce((s, a) => s + a.ha, 0);
-  const pendientesSemana = delRancho
-    .filter((t) => t.plan && semanaPendiente(t.plan, semanaActual) === semanaActual)
-    .reduce((s, t) => s + hectareasPendientes(t.plan), 0);
-  const libres = delRancho.filter((t) => estatusTabla(t) === "libre");
+  const pendientesSemana = planes
+    .filter((p) => semanaPendiente(p, semanaActual) === semanaActual)
+    .reduce((s, p) => s + pendientesPlan(p), 0);
+  const conEspacio = delRancho.filter((t) => hectareasSinPlanear(t) > 0);
 
   return (
     <AppShell
       path="/planeacion"
       eyebrow={`Ingenieros · semana ${semanaActual}`}
       title="Planeación y avance"
-      description={`Aparta solo tablas libres, con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana se arrastra a la siguiente.`}
+      description={`Aparta la tabla completa o por partes en distintas semanas, con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana se arrastra a la siguiente.`}
     >
       <Tabs value={rancho} onValueChange={setRancho} className="mb-6">
         <TabsList>
@@ -98,7 +106,7 @@ function Planeacion() {
       </Tabs>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Plantado esta semana" value={`${formatoNum(plantadasHoy)} ha`} tone="primary" />
+        <Stat label="Plantado esta semana" value={`${formatoNum(plantadasSemana)} ha`} tone="primary" />
         <Stat
           label="Pendiente esta semana"
           value={`${formatoNum(pendientesSemana)} ha`}
@@ -106,9 +114,9 @@ function Planeacion() {
           tone="soil"
         />
         <Stat
-          label="Tablas libres"
-          value={libres.length}
-          hint={`${formatoNum(libres.reduce((s, t) => s + t.hectareas, 0))} ha disponibles`}
+          label="Sin planear"
+          value={`${formatoNum(conEspacio.reduce((s, t) => s + hectareasSinPlanear(t), 0))} ha`}
+          hint={`En ${conEspacio.length} tabla(s)`}
         />
       </div>
 
@@ -122,25 +130,38 @@ function Planeacion() {
         <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
         <p>
           Aquí no se piden insumos a mano. Compras recibe automáticamente lo que marca la receta
-          para las hectáreas reales y planeadas de cada tabla.
+          para las hectáreas reales y planeadas de cada tabla, incluida la presiembra{" "}
+          {PRESIEMBRA_SEMANAS} semanas antes de plantar.
         </p>
       </div>
 
-      <ApartarDialog tabla={apartando} onClose={() => setApartando(null)} />
+      <ApartarDialog
+        key={apartando ? `${apartando.id}-${apartando.planes.length}` : "cerrado"}
+        tabla={apartando}
+        onClose={() => setApartando(null)}
+      />
     </AppShell>
   );
 }
 
 function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }) {
-  const { semanaActual, receta, registrarAvance, liberarTabla } = useCampo();
+  const { semanaActual, receta, registrarAvance, liberarSiembra } = useCampo();
   const [ha, setHa] = useState("");
   const estatus = estatusTabla(tabla);
-  const plan = tabla.plan;
-  const plantadas = hectareasPlantadas(plan);
-  const pendientes = hectareasPendientes(plan);
+  const siembras = planesOrdenados(tabla);
+  const planeadas = hectareasPlaneadas(tabla);
+  const plantadas = hectareasPlantadas(tabla);
+  const pendientes = hectareasPendientes(tabla);
+  const sinPlanear = hectareasSinPlanear(tabla);
   const sc = semanaCultivoTabla(tabla, semanaActual);
-  const arrastrado = pendienteArrastrado(plan, semanaActual);
-  const puedeAvanzar = plan && plan.semana <= semanaActual && pendientes > 0;
+  const porPlantar = planesPorPlantar(tabla, semanaActual).reduce(
+    (s, p) => s + pendientesPlan(p),
+    0,
+  );
+  const avances = siembras
+    .flatMap((p) => p.avances)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .slice(-3);
 
   const guardar = () => {
     const n = Number(ha);
@@ -165,7 +186,7 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
         </Badge>
       </div>
 
-      {estatus === "libre" && (
+      {siembras.length === 0 && (
         <div className="mt-auto pt-6">
           <Button onClick={onApartar} className="w-full">
             <Plus /> Apartar tabla
@@ -173,7 +194,7 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
         </div>
       )}
 
-      {plan && (
+      {siembras.length > 0 && (
         <div className="mt-5 flex flex-1 flex-col gap-4">
           <div>
             <div className="flex items-baseline justify-between text-sm">
@@ -181,36 +202,69 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
                 <span className="num font-medium">{formatoNum(plantadas)} ha</span> plantadas
               </span>
               <span className="text-muted-foreground">
-                <span className="num">{formatoNum(pendientes)}</span> restantes
+                de <span className="num">{formatoNum(planeadas)}</span> planeadas
               </span>
             </div>
-            <Progress value={(plantadas / plan.ha) * 100} className="mt-2 h-2" />
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <CalendarClock className="size-3.5" /> Planeada sem {plan.semana} ·{" "}
-                {formatoNum(plan.ha)} ha
-              </span>
-              {sc !== null && (
-                <span>
-                  Cultivo en semana{" "}
-                  <span className="num text-foreground">
-                    {sc}/{receta.semanas}
-                  </span>
+            <Progress value={(plantadas / planeadas) * 100} className="mt-2 h-2" />
+            {sc !== null && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Cultivo en semana{" "}
+                <span className="num text-foreground">
+                  {sc}/{receta.semanas}
                 </span>
-              )}
-            </div>
+              </p>
+            )}
           </div>
 
-          {arrastrado && (
-            <div className="flex items-center gap-2 rounded-md bg-soil-soft px-3 py-2 text-xs text-soil-foreground">
-              <CornerDownRight className="size-3.5" />
-              {formatoNum(pendientes)} ha arrastradas de la semana {plan.semana} a la {semanaActual}
-            </div>
-          )}
+          <ul className="space-y-2">
+            {siembras.map((p) => {
+              const hechas = plantadasPlan(p);
+              const faltan = pendientesPlan(p);
+              const futura = p.semana > semanaActual;
+              return (
+                <li key={p.id} className="rounded-md bg-secondary/60 px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      <CalendarClock className="size-3.5" /> Semana {p.semana} ·{" "}
+                      <span className="num">{formatoNum(p.ha)} ha</span>
+                    </span>
+                    {futura && p.avances.length === 0 ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => liberarSiembra(tabla.id, p.id)}
+                      >
+                        Liberar
+                      </Button>
+                    ) : faltan === 0 ? (
+                      <span className="text-primary">Completa</span>
+                    ) : (
+                      <span className="num text-muted-foreground">
+                        {formatoNum(hechas)}/{formatoNum(p.ha)}
+                      </span>
+                    )}
+                  </div>
+                  {futura && (
+                    <p className="mt-1 text-muted-foreground">
+                      Siembra en {p.semana - semanaActual} semana(s) · presiembra en semana{" "}
+                      {p.semana - PRESIEMBRA_SEMANAS}
+                    </p>
+                  )}
+                  {planArrastrado(p, semanaActual) && (
+                    <p className="mt-1 inline-flex items-center gap-1 text-soil-foreground">
+                      <CornerDownRight className="size-3.5" />
+                      {formatoNum(faltan)} ha arrastradas a la semana {semanaActual}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
-          {plan.avances.length > 0 && (
+          {avances.length > 0 && (
             <ul className="space-y-1 border-t border-border pt-3 text-xs">
-              {plan.avances.slice(-3).map((a) => (
+              {avances.map((a) => (
                 <li key={a.id} className="flex justify-between text-muted-foreground">
                   <span>{fechaCorta(a.fecha)}</span>
                   <span className="num text-foreground">+{formatoNum(a.ha)} ha</span>
@@ -219,15 +273,15 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
             </ul>
           )}
 
-          <div className="mt-auto">
-            {puedeAvanzar ? (
+          <div className="mt-auto space-y-2">
+            {porPlantar > 0 && (
               <div className="flex gap-2">
                 <Input
                   type="number"
                   inputMode="decimal"
                   step="0.5"
                   min="0"
-                  max={pendientes}
+                  max={porPlantar}
                   placeholder="ha hoy"
                   value={ha}
                   onChange={(e) => setHa(e.target.value)}
@@ -238,17 +292,13 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
                   Registrar hoy
                 </Button>
               </div>
-            ) : pendientes > 0 && plan.avances.length === 0 ? (
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>Siembra en {plan.semana - semanaActual} semana(s)</span>
-                <Button size="sm" variant="ghost" onClick={() => liberarTabla(tabla.id)}>
-                  Liberar
-                </Button>
-              </div>
+            )}
+            {sinPlanear > 0 ? (
+              <Button onClick={onApartar} variant="outline" className="w-full">
+                <Plus /> Apartar {formatoNum(sinPlanear)} ha restantes
+              </Button>
             ) : (
-              pendientes === 0 && (
-                <p className="text-xs text-primary">Plantación completa</p>
-              )
+              pendientes === 0 && <p className="text-xs text-primary">Plantación completa</p>
             )}
           </div>
         </div>
@@ -259,9 +309,13 @@ function TablaCard({ tabla, onApartar }: { tabla: Tabla; onApartar: () => void }
 
 function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
   const { semanaActual, receta, productos, apartarTabla } = useCampo();
-  const opciones = Array.from({ length: 5 }, (_, i) => semanaActual + ANTICIPACION_SEMANAS + i);
+  const ocupadas = new Set(tabla?.planes.map((p) => p.semana) ?? []);
+  const opciones = Array.from({ length: 8 }, (_, i) => semanaActual + ANTICIPACION_SEMANAS + i)
+    .filter((w) => !ocupadas.has(w))
+    .slice(0, 6);
   const [semana, setSemana] = useState(String(opciones[0]));
   const [ha, setHa] = useState("");
+  const disponibles = tabla ? hectareasSinPlanear(tabla) : 0;
 
   const haNum = Number(ha);
   const error = tabla ? validarApartado(tabla, Number(semana), haNum, semanaActual) : null;
@@ -270,12 +324,22 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
     if (!tabla || !(haNum > 0)) return null;
     const hipotetica: Tabla = {
       ...tabla,
-      plan: { semana: Number(semana), ha: haNum, ingeniero: "Israel", avances: [] },
+      planes: [
+        { id: "nuevo", semana: Number(semana), ha: haNum, ingeniero: "Israel", avances: [] },
+      ],
     };
-    const sem = Array.from({ length: receta.semanas }, (_, i) => Number(semana) + i);
+    const inicio = Number(semana) - PRESIEMBRA_SEMANAS;
+    const sem = Array.from(
+      { length: receta.semanas + PRESIEMBRA_SEMANAS },
+      (_, i) => inicio + i,
+    );
     const lineas = sem.flatMap((w) => lineasTabla(hipotetica, receta, w, semanaActual));
-    const primeras = lineas.filter((l) => l.semana === Number(semana));
-    return { costo: costoLineas(lineas, productos, {}), primeras: primeras.length };
+    const presiembra = lineas.filter((l) => l.semana === inicio);
+    return {
+      costo: costoLineas(lineas, productos, {}),
+      presiembra: presiembra.length,
+      inicio,
+    };
   }, [tabla, haNum, semana, receta, productos, semanaActual]);
 
   const confirmar = () => {
@@ -285,10 +349,12 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
       toast.error(err);
       return;
     }
-    toast.success(`${tabla.nombre} apartada para la semana ${semana}`);
+    toast.success(`${tabla.nombre}: ${formatoNum(haNum)} ha apartadas para la semana ${semana}`);
     setHa("");
     onClose();
   };
+
+  const parcial = tabla && tabla.planes.length > 0;
 
   return (
     <Dialog open={!!tabla} onOpenChange={(o) => !o && onClose()}>
@@ -296,8 +362,11 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Apartar {tabla?.nombre}</DialogTitle>
           <DialogDescription>
-            {tabla && `${formatoNum(tabla.hectareas)} ha disponibles. `}
-            Compras verá la demanda calculada desde ahora.
+            {tabla &&
+              (parcial
+                ? `Quedan ${formatoNum(disponibles)} de ${formatoNum(tabla.hectareas)} ha sin planear. `
+                : `${formatoNum(tabla.hectareas)} ha disponibles. `)}
+            Puedes apartar solo una parte y el resto en otra semana.
           </DialogDescription>
         </DialogHeader>
 
@@ -325,7 +394,8 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
               inputMode="decimal"
               step="0.5"
               min="0"
-              max={tabla?.hectareas}
+              max={disponibles}
+              placeholder={`hasta ${formatoNum(disponibles)}`}
               value={ha}
               onChange={(e) => setHa(e.target.value)}
               className="num"
@@ -335,11 +405,12 @@ function ApartarDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
 
         {preview && !error && (
           <div className="rounded-lg bg-primary-soft p-4 text-sm text-accent-foreground">
-            Inversión estimada en insumos del ciclo:{" "}
+            Inversión estimada en insumos de esta siembra:{" "}
             <span className="num font-medium">{formatoMXN(preview.costo)}</span>
             <br />
             <span className="text-xs">
-              {preview.primeras} productos se surtirán para la semana {semana}.
+              Presiembra ({preview.presiembra} productos: suelo, agroquímicos y manguera) se surte
+              en la semana {preview.inicio}.
             </span>
           </div>
         )}
