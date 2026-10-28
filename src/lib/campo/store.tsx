@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { CICLO_MAX, CICLO_MIN, lineasSemanas, redondear, validarApartado, validarAvance } from "./calc";
+import {
+  CICLO_MAX,
+  CICLO_MIN,
+  lineasSemanas,
+  redondear,
+  repartirAvance,
+  validarApartado,
+  validarAvance,
+} from "./calc";
 import { HOY, PRODUCTOS_INICIALES, RECETA_INICIAL, SEMANA_ACTUAL, TABLAS_INICIALES } from "./seed";
 import type { Producto, Receta, Recepcion, Role, Tabla } from "./types";
 
@@ -18,9 +26,11 @@ interface CampoContextValue {
   recepciones: Record<string, Recepcion>;
   setCiclo: (semanas: number) => void;
   setDosis: (productoId: string, semanaIdx: number, valor: number) => void;
+  setPresiembra: (productoId: string, valor: number) => void;
   setPrecio: (productoId: string, precio: number) => void;
   apartarTabla: (tablaId: string, semana: number, ha: number) => string | null;
-  liberarTabla: (tablaId: string) => void;
+  /** Quita una siembra planeada que aún no tiene avances. */
+  liberarSiembra: (tablaId: string, planId: string) => void;
   registrarAvance: (tablaId: string, ha: number) => string | null;
   recibir: (
     keys: { key: string; cantidad: number }[],
@@ -76,6 +86,16 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setPresiembra = useCallback((productoId: string, valor: number) => {
+    setReceta((r) => ({
+      ...r,
+      presiembra: {
+        ...r.presiembra,
+        [productoId]: Math.max(0, Number.isFinite(valor) ? valor : 0),
+      },
+    }));
+  }, []);
+
   const setPrecio = useCallback((productoId: string, precio: number) => {
     setProductos((ps) =>
       ps.map((p) => (p.id === productoId ? { ...p, precio: Math.max(0, precio || 0) } : p)),
@@ -91,7 +111,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       setTablas((ts) =>
         ts.map((x) =>
           x.id === tablaId
-            ? { ...x, plan: { semana, ha: redondear(ha), ingeniero: "Israel", avances: [] } }
+            ? {
+                ...x,
+                planes: [
+                  ...x.planes,
+                  {
+                    id: `pl-${Date.now()}`,
+                    semana,
+                    ha: redondear(ha),
+                    ingeniero: "Israel",
+                    avances: [],
+                  },
+                ],
+              }
             : x,
         ),
       );
@@ -100,10 +132,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [tablas],
   );
 
-  const liberarTabla = useCallback((tablaId: string) => {
+  const liberarSiembra = useCallback((tablaId: string, planId: string) => {
     setTablas((ts) =>
       ts.map((x) =>
-        x.id === tablaId && x.plan && x.plan.avances.length === 0 ? { ...x, plan: undefined } : x,
+        x.id === tablaId
+          ? { ...x, planes: x.planes.filter((p) => p.id !== planId || p.avances.length > 0) }
+          : x,
       ),
     );
   }, []);
@@ -114,18 +148,24 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!t) return "Tabla no encontrada.";
       const err = validarAvance(t, ha, SEMANA_ACTUAL);
       if (err) return err;
+      const reparto = new Map(repartirAvance(t, ha, SEMANA_ACTUAL).map((r) => [r.planId, r.ha]));
+      const stamp = Date.now();
       setTablas((ts) =>
         ts.map((x) =>
-          x.id === tablaId && x.plan
+          x.id === tablaId
             ? {
                 ...x,
-                plan: {
-                  ...x.plan,
-                  avances: [
-                    ...x.plan.avances,
-                    { id: `av-${Date.now()}`, fecha: HOY, semana: SEMANA_ACTUAL, ha: redondear(ha) },
-                  ],
-                },
+                planes: x.planes.map((p) => {
+                  const h = reparto.get(p.id);
+                  if (!h) return p;
+                  return {
+                    ...p,
+                    avances: [
+                      ...p.avances,
+                      { id: `av-${stamp}-${p.id}`, fecha: HOY, semana: SEMANA_ACTUAL, ha: h },
+                    ],
+                  };
+                }),
               }
             : x,
         ),
@@ -172,9 +212,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       recepciones,
       setCiclo,
       setDosis,
+      setPresiembra,
       setPrecio,
       apartarTabla,
-      liberarTabla,
+      liberarSiembra,
       registrarAvance,
       recibir,
       marcar,
@@ -189,9 +230,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       recepciones,
       setCiclo,
       setDosis,
+      setPresiembra,
       setPrecio,
       apartarTabla,
-      liberarTabla,
+      liberarSiembra,
       registrarAvance,
       recibir,
       marcar,
