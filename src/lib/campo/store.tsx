@@ -253,4 +253,3 @@ export function useCampo() {
   if (!ctx) throw new Error("useCampo debe usarse dentro de CampoProvider");
   return ctx;
 }
-
