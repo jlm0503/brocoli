@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlertasRouteImport } from './routes/alertas'
+import { Route as CatalogosRouteImport } from './routes/catalogos'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as PaqueteRouteImport } from './routes/paquete'
 import { Route as PlaneacionRouteImport } from './routes/planeacion'
@@ -18,6 +20,16 @@ import { Route as RanchosRouteImport } from './routes/ranchos'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertasRoute = AlertasRouteImport.update({
+  id: '/alertas',
+  path: '/alertas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogosRoute = CatalogosRouteImport.update({
+  id: '/catalogos',
+  path: '/catalogos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComprasRoute = ComprasRouteImport.update({
@@ -43,6 +55,8 @@ const RanchosRoute = RanchosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alertas': typeof AlertasRoute
+  '/catalogos': typeof CatalogosRoute
   '/compras': typeof ComprasRoute
   '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
@@ -50,6 +64,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alertas': typeof AlertasRoute
+  '/catalogos': typeof CatalogosRoute
   '/compras': typeof ComprasRoute
   '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
@@ -58,6 +74,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alertas': typeof AlertasRoute
+  '/catalogos': typeof CatalogosRoute
   '/compras': typeof ComprasRoute
   '/paquete': typeof PaqueteRoute
   '/planeacion': typeof PlaneacionRoute
@@ -65,14 +83,38 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
+  fullPaths:
+    | '/'
+    | '/alertas'
+    | '/catalogos'
+    | '/compras'
+    | '/paquete'
+    | '/planeacion'
+    | '/ranchos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
-  id: '__root__' | '/' | '/compras' | '/paquete' | '/planeacion' | '/ranchos'
+  to:
+    | '/'
+    | '/alertas'
+    | '/catalogos'
+    | '/compras'
+    | '/paquete'
+    | '/planeacion'
+    | '/ranchos'
+  id:
+    | '__root__'
+    | '/'
+    | '/alertas'
+    | '/catalogos'
+    | '/compras'
+    | '/paquete'
+    | '/planeacion'
+    | '/ranchos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlertasRoute: typeof AlertasRoute
+  CatalogosRoute: typeof CatalogosRoute
   ComprasRoute: typeof ComprasRoute
   PaqueteRoute: typeof PaqueteRoute
   PlaneacionRoute: typeof PlaneacionRoute
@@ -86,6 +128,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alertas': {
+      id: '/alertas'
+      path: '/alertas'
+      fullPath: '/alertas'
+      preLoaderRoute: typeof AlertasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalogos': {
+      id: '/catalogos'
+      path: '/catalogos'
+      fullPath: '/catalogos'
+      preLoaderRoute: typeof CatalogosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compras': {
@@ -121,6 +177,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlertasRoute: AlertasRoute,
+  CatalogosRoute: CatalogosRoute,
   ComprasRoute: ComprasRoute,
   PaqueteRoute: PaqueteRoute,
   PlaneacionRoute: PlaneacionRoute,

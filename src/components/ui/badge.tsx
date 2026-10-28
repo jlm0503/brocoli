@@ -17,6 +17,16 @@ const badgeVariants = cva(
         libre: "border-transparent bg-status-libre text-status-libre-foreground",
         planeada: "border-transparent bg-status-planeada text-status-planeada-foreground",
         plantada: "border-transparent bg-status-plantada text-status-plantada-foreground",
+        "parcial-planeada":
+          "border-dashed border-status-planeada-foreground/50 bg-status-planeada/60 text-status-planeada-foreground",
+        "plantada-parcial":
+          "border-dashed border-status-plantada-foreground/50 bg-status-plantada/60 text-status-plantada-foreground",
+        comprado: "border-transparent bg-secondary text-secondary-foreground",
+        verde: "border-transparent bg-primary-soft text-primary",
+        amarillo: "border-transparent bg-soil-soft text-soil-foreground",
+        rojo: "border-transparent bg-destructive text-destructive-foreground",
+        gris: "border-transparent bg-muted text-muted-foreground",
+        urgente: "border-destructive bg-destructive-soft text-destructive",
         recibido: "border-transparent bg-primary-soft text-primary",
         pendiente: "border-transparent bg-soil-soft text-soil-foreground",
         cancelado: "border-transparent bg-destructive-soft text-destructive",

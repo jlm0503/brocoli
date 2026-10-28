@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
 const ORDEN: Role[] = ["admin", "ingeniero", "compras"];
 
 function Index() {
-  const { setRole } = useCampo();
+  const { setRole, semanaActual } = useCampo();
   const navigate = useNavigate();
 
   const entrar = (r: Role) => {
@@ -50,7 +50,7 @@ function Index() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
         <div className="relative flex h-full flex-col justify-end p-8 text-ink-foreground sm:p-12">
-          <span className="eyebrow !text-sidebar-primary">Ciclo 2026 · Semana 44</span>
+          <span className="eyebrow !text-sidebar-primary">Ciclo 2026 · Semana {semanaActual}</span>
           <h1 className="mt-3 max-w-xl text-5xl leading-[0.95] font-medium sm:text-7xl">
             Ni un kilo de más.
           </h1>
