@@ -1,5 +1,14 @@
 import { Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { ClipboardList, FlaskConical, LayoutGrid, ShieldAlert, Sprout } from "lucide-react";
+import {
+  BellRing,
+  BookOpen,
+  ClipboardList,
+  FastForward,
+  FlaskConical,
+  LayoutGrid,
+  ShieldAlert,
+  Sprout,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +29,8 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/planeacion": Sprout,
   "/compras": ClipboardList,
   "/paquete": FlaskConical,
+  "/catalogos": BookOpen,
+  "/alertas": BellRing,
 };
 
 interface AppShellProps {
@@ -32,7 +43,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
-  const { ready, role, setRole, semanaActual, hoy } = useCampo();
+  const { ready, role, setRole, semanaActual, hoy, avanzarSemana } = useCampo();
   const navigate = useNavigate();
 
   if (!ready) return <div className="min-h-screen bg-background" />;
@@ -96,6 +107,15 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
           <p className="mt-3 text-xs leading-relaxed text-ink-foreground/55">
             Prototipo con datos de ejemplo. Los cambios no se guardan.
           </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-2 w-full justify-start px-2 text-xs text-ink-foreground/75 hover:bg-sidebar-accent hover:text-ink-foreground"
+            onClick={avanzarSemana}
+            title="Cierra la semana: lo no plantado pasa a un lote pendiente nuevo"
+          >
+            <FastForward /> Simular: pasar a semana {semanaActual + 1}
+          </Button>
         </div>
       </aside>
 

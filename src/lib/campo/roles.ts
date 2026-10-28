@@ -4,30 +4,38 @@ export const ROLES: Record<Role, { nombre: string; persona: string; descripcion:
   admin: {
     nombre: "Administrador",
     persona: "Dueño",
-    descripcion: "Define la receta maestra y ve la inversión de cada tabla.",
+    descripcion: "Define la receta, los adicionales por tabla y ve la inversión de cada lote.",
     home: "/ranchos",
   },
   ingeniero: {
     nombre: "Ingeniero de campo",
     persona: "Israel",
-    descripcion: "Aparta tablas libres y registra lo plantado cada día.",
+    descripcion: "Planea lotes, registra lo plantado cada día y ve sus pendientes.",
     home: "/planeacion",
   },
   compras: {
     nombre: "Compras",
     persona: "Vicky",
-    descripcion: "Surte lo calculado para las próximas 2 semanas y registra entradas.",
+    descripcion: "Surte pedidos de planeación, lo de esta semana y compra para dentro de 2 semanas.",
     home: "/compras",
   },
 };
 
-export type NavPath = "/planeacion" | "/compras" | "/paquete" | "/ranchos";
+export type NavPath =
+  | "/planeacion"
+  | "/compras"
+  | "/paquete"
+  | "/ranchos"
+  | "/catalogos"
+  | "/alertas";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin"] },
   { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero"] },
-  { to: "/compras", label: "Consolidado de compras", roles: ["admin", "compras"] },
+  { to: "/compras", label: "Compras y entregas", roles: ["admin", "compras"] },
+  { to: "/alertas", label: "Alertas y reportes", roles: ["admin"] },
   { to: "/paquete", label: "Paquete tecnológico", roles: ["admin"] },
+  { to: "/catalogos", label: "Catálogos", roles: ["admin"] },
 ];
 
 export function puedeVer(role: Role | null, path: NavPath): boolean {
