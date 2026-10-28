@@ -79,7 +79,7 @@ describe("Pedido automático", () => {
     };
     // Semana 45: 3 ha en semana de cultivo 3 (30/ha) + 2 ha en semana 2 (20/ha) = 130
     const [linea] = lineasTabla(t, receta, 45, 44);
-    expect(linea.cantidad).toBe(130);
+    expect(linea?.cantidad).toBe(130);
   });
 
   it("no pide insumos fuera del ciclo configurado", () => {
@@ -94,6 +94,6 @@ describe("Pedido automático", () => {
     };
     // Semana de cultivo 12 tiene dosis 5, pero con ciclo de 10 semanas no se pide
     expect(lineasTabla(t, { ...receta, semanas: 10 }, 41, 44)).toEqual([]);
-    expect(lineasTabla(t, receta, 41, 44)[0].cantidad).toBe(10);
+    expect(lineasTabla(t, receta, 41, 44)[0]?.cantidad).toBe(10);
   });
 });

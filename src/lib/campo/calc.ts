@@ -90,7 +90,7 @@ export function semanaCultivo(semanaPlantacion: number, semana: number): number 
 export function semanaCultivoTabla(t: Tabla, semanaActual: number): number | null {
   const reales = cohortes(t, semanaActual).filter((c) => c.real);
   if (reales.length === 0) return null;
-  return semanaCultivo(reales[0].semana, semanaActual);
+  return semanaCultivo(reales[0]!.semana, semanaActual);
 }
 
 /** Hectáreas activas: plantadas y aún dentro del ciclo. */
