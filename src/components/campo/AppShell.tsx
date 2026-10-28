@@ -125,6 +125,15 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
             <span className="text-xs text-muted-foreground">
               {ROLES[role].persona} · {ROLES[role].nombre}
             </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto h-8 text-xs"
+              onClick={avanzarSemana}
+              title="Prototipo: cierra la semana y pasa a la siguiente"
+            >
+              <FastForward /> Sem {semanaActual + 1}
+            </Button>
             <Select value={role} onValueChange={cambiarRol}>
               <SelectTrigger className="h-8 w-auto text-xs">
                 <SelectValue placeholder="Cambiar" />
