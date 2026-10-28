@@ -108,7 +108,7 @@ function Paquete() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
-        <table className="w-full min-w-[940px] border-collapse text-sm">
+        <table className="w-full min-w-[1010px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-left">
               <th className="sticky left-0 z-10 bg-secondary px-4 py-3 font-medium">Producto</th>
