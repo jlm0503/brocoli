@@ -11,5 +11,5 @@
 
 ## Architecture rules
 - Business rules (demand calc, plan/advance validation) live as pure functions in `src/lib/campo/calc.ts`, covered by `src/test/campo-reglas.test.ts`; screens never re-implement them. Why: keeps the recipe math testable and identical across screens.
-- Prototype state lives in a single React context (`src/lib/campo/store.tsx`) seeded from `src/lib/campo/seed.ts`; only the chosen role persists in localStorage. Why: the app is a clickable prototype without a backend yet; swap the store for real persistence later.
+- Prototype state lives in a single React context (`src/lib/campo/store.tsx`) seeded from `src/lib/campo/seed.ts`; only the chosen role persists in localStorage. Lotes, planning orders, alerts and late-planning records are flat lists keyed by id (lote → tabla → rancho), and the current week is state advanced by a prototype "simular semana" action that runs `cerrarSemana`. Why: clickable prototype without a backend; flat id-keyed lists map 1:1 to future tables.
 - Role-based screen access is declared once in `src/lib/campo/roles.ts` (NAV) and enforced by `AppShell`. Why: one source of truth for who sees what.
