@@ -18,6 +18,9 @@ import {
   estatusLinea,
   estatusTabla,
   etapa,
+  fechaCorta,
+  fechaCosechaLote,
+  fechaPlantacionLote,
   formatoMXN,
   formatoNum,
   hectareasActivas,
@@ -26,11 +29,12 @@ import {
   lotesDeTabla,
   pendientesLote,
   plantadasLote,
+  semanaCosechaLote,
   semanaCultivoTabla,
   semanaRealLote,
   semanaRecetaLote,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
+import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { EstatusTabla, LineaDemanda, Tabla } from "@/lib/campo/types";
 
@@ -55,6 +59,8 @@ export const Route = createFileRoute("/ranchos")({
   component: Ranchos,
 });
 
+const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
+
 const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",
   "parcial-planeada":
@@ -66,11 +72,13 @@ const TILE: Record<EstatusTabla, string> = {
 };
 
 function useCostos() {
-  const { lotes, receta, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
+  const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
   return useMemo(() => {
     const precio = new Map(productos.map((p) => [p.id, p.precio]));
-    const semanas = Array.from({ length: 17 }, (_, i) => semanaActual - 16 + i);
-    const recibidas = lineasSemana(lotes, receta, adicionales, semanas).filter(
+    // Desde la primera plantación registrada hasta hoy.
+    const desde = Math.min(semanaActual, ...lotes.flatMap((l) => l.avances.map((a) => a.semana)));
+    const semanas = Array.from({ length: semanaActual - desde + 1 }, (_, i) => desde + i);
+    const recibidas = lineasSemana(lotes, recetas, adicionales, semanas).filter(
       (l) => estatusLinea(l, recepciones, semanaActual) === "recibido",
     );
     const porLote = new Map<string, LineaDemanda[]>();
@@ -86,7 +94,7 @@ function useCostos() {
     const costoTabla = (tablaId: string) =>
       lotes.filter((l) => l.tablaId === tablaId).reduce((s, l) => s + costoLote(l.id), 0);
     return { porLote, costoLote, costoTabla };
-  }, [lotes, receta, adicionales, productos, recepciones, pedidos, semanaActual]);
+  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual]);
 }
 
 function Ranchos() {
@@ -107,7 +115,7 @@ function Ranchos() {
     >
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
-        <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} hint="Plantadas, semana 0 a 12" />
+        <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} hint="Plantadas, de la siembra a la cosecha" />
         <Stat label="Tablas ocupadas" value={`${ocupadas}/${tablas.length}`} hint="Planeadas o plantadas" tone="soil" />
       </div>
 
@@ -140,6 +148,8 @@ function Ranchos() {
                   const est = estatusTabla(t, lotes);
                   const sc = semanaCultivoTabla(lotes, t.id, semanaActual);
                   const ls = lotesDeTabla(lotes, t.id);
+                  const primero = ls.find((l) => l.avances.length > 0);
+                  const variedadesTabla = [...new Set(ls.map((l) => nombreVariedad(l.variedadId)))].join(" · ");
                   return (
                     <button
                       key={t.id}
@@ -157,7 +167,9 @@ function Ranchos() {
                         {sc !== null ? (
                           <div className="font-display text-3xl leading-none">
                             S{sc}
-                            <span className="text-base opacity-60">/12</span>
+                            <span className="text-base opacity-60">
+                              /{primero ? semanaCosechaLote(primero) : 12}
+                            </span>
                           </div>
                         ) : (
                           <div className="text-xs opacity-80">
@@ -165,8 +177,9 @@ function Ranchos() {
                           </div>
                         )}
                         {ls.length > 0 && (
-                          <div className="num mt-1 text-[0.7rem] opacity-70">
-                            {ls.map((l) => l.codigo).join(" · ")}
+                          <div className="mt-1 text-[0.7rem] leading-tight opacity-70">
+                            {variedadesTabla}
+                            <div className="num">{ls.map((l) => l.codigo).join(" · ")}</div>
                           </div>
                         )}
                         <div className="num mt-2 text-sm font-medium">{formatoMXN(costoTabla(t.id))}</div>
@@ -195,10 +208,11 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
   const rancho = RANCHOS.find((r) => r.id === tabla.ranchoId);
   const est = estatusTabla(tabla, lotes);
   const ls = lotesDeTabla(lotes, tabla.id);
+  const cosechados = lotes.filter((l) => l.tablaId === tabla.id && l.finalizado);
 
-  // Productos entregados a la fecha: planeación + semanal
+  // Productos entregados a la fecha (todos los ciclos): planeación + semanal
   const entregados = new Map<string, number>();
-  for (const l of ls) {
+  for (const l of [...ls, ...cosechados]) {
     for (const i of insumosEntregados(l, pedidos))
       entregados.set(i.productoId, (entregados.get(i.productoId) ?? 0) + i.cantidad);
     for (const x of porLote.get(l.id) ?? [])
@@ -253,11 +267,15 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                     <span className="num">{formatoMXN(costoLote(l.id))}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
+                    {nombreVariedad(l.variedadId)} ·{" "}
                     {real !== null
-                      ? `Plantado sem ${real} · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!).toLowerCase()})`
+                      ? `Plantado ${fechaCorta(fechaPlantacionLote(l))} (sem ${real}) · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!, semanaCosechaLote(l)).toLowerCase()})`
                       : esArrastrado(l, semanaActual)
                         ? `Pendiente arrastrado · ${formatoNum(pendientesLote(l))} ha`
                         : `Planeado para sem ${l.semanaPlaneada}`}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Cosecha estimada {fechaCorta(fechaCosechaLote(l))}
                   </p>
                 </li>
               );
@@ -265,6 +283,26 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
           </ul>
         )}
       </div>
+
+      {cosechados.length > 0 && (
+        <div className="mt-6 px-4">
+          <h3 className="mb-2 text-lg font-semibold">Ciclos ya cosechados</h3>
+          <ul className="space-y-2 text-sm">
+            {cosechados.map((l) => (
+              <li key={l.id} className="flex justify-between rounded-lg bg-secondary/60 p-3">
+                <span>
+                  Lote {l.codigo} · {nombreVariedad(l.variedadId)} ·{" "}
+                  <span className="num">{formatoNum(l.ha)} ha</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {fechaCorta(fechaPlantacionLote(l))} → {fechaCorta(fechaCosechaLote(l))}
+                  </span>
+                </span>
+                <span className="num">{formatoMXN(costoLote(l.id))}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-6 px-4 pb-6">
         <h3 className="mb-2 text-lg font-semibold">Productos entregados a la fecha</h3>

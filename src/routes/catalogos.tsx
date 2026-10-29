@@ -34,6 +34,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ESTATUS_TABLA_LABEL,
+  FAMILIAS,
   estatusTabla,
   fechaCorta,
   fechaEnSemana,
@@ -64,17 +65,6 @@ export const Route = createFileRoute("/catalogos")({
   component: Catalogos,
 });
 
-const FAMILIAS: Familia[] = [
-  "Suelo",
-  "Agroquímico",
-  "Riego",
-  "Fertilizante",
-  "Bioestimulante",
-  "Micronutriente",
-  "Fungicida",
-  "Insecticida",
-  "Herbicida",
-];
 const UNIDADES: Unidad[] = ["kg", "L", "rollo"];
 
 function Catalogos() {

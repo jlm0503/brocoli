@@ -1,107 +1,183 @@
-import { cerrarSemana, fechaEnSemana, lineasPlaneacion, recetaEfectiva } from "./calc";
+import {
+  fechaDeHoja,
+  fechaEnSemana,
+  finalizarCosechados,
+  lineasPlaneacion,
+  recetaEfectiva,
+  semanaDeFecha,
+} from "./calc";
 import type {
   Adicional,
   AlertaInsumos,
-  Avance,
   Lote,
   PedidoPlaneacion,
   PlaneacionTardia,
   Producto,
   Rancho,
-  Receta,
+  Recetas,
   Tabla,
+  Variedad,
 } from "./types";
 
-/** "Hoy" en el prototipo al abrir: miércoles 28 de octubre de 2026, semana 44. */
+/**
+ * Datos reales compartidos por el usuario (hojas "BROCOLI", "COLIFLOR" y "Paquete Tecnologico"
+ * de BROCOLI_DASHBOARD_CON_DETALLES, 28 oct 2026). Los códigos de producto y la familia de cada
+ * producto son provisionales; el precio unitario = costo por ha de la hoja ÷ dosis.
+ */
+
+/** "Hoy" en el prototipo al abrir: jueves 29 de octubre de 2026, semana 44. */
 export const SEMANA_INICIAL = 44;
-export const HOY_INICIAL = "2026-10-28";
+export const HOY_INICIAL = "2026-10-29";
+
+export const VARIEDADES: Variedad[] = [
+  { id: "diamante", nombre: "Diamante", cultivo: "brocoli", cicloDias: 70 },
+  { id: "tlaloc", nombre: "Tlaloc", cultivo: "brocoli", cicloDias: 84 },
+  { id: "altamira", nombre: "Altamira", cultivo: "coliflor", cicloDias: 95 },
+];
 
 export const PRODUCTOS_INICIALES: Producto[] = [
-  { id: "yeso", codigo: "SUE-001", nombre: "Yeso agrícola", familia: "Suelo", unidad: "kg", precio: 4.5 },
-  { id: "starkop", codigo: "SUE-002", nombre: "Starkop (corrector de pH)", familia: "Suelo", unidad: "L", precio: 180 },
-  { id: "metam", codigo: "AGQ-001", nombre: "Metam sodio", familia: "Agroquímico", unidad: "L", precio: 95 },
-  { id: "trif", codigo: "AGQ-002", nombre: "Trifluralina", familia: "Agroquímico", unidad: "L", precio: 260 },
-  { id: "cinta", codigo: "RIE-001", nombre: "Cinta de riego (rollo)", familia: "Riego", unidad: "rollo", precio: 1850 },
-  { id: "map", codigo: "FER-001", nombre: "MAP 11-52-00", familia: "Fertilizante", unidad: "kg", precio: 18 },
-  { id: "urea", codigo: "FER-002", nombre: "Urea 46%", familia: "Fertilizante", unidad: "kg", precio: 9.5 },
-  { id: "nca", codigo: "FER-003", nombre: "Nitrato de calcio", familia: "Fertilizante", unidad: "kg", precio: 14 },
-  { id: "sk", codigo: "FER-004", nombre: "Sulfato de potasio", familia: "Fertilizante", unidad: "kg", precio: 22 },
-  { id: "hum", codigo: "BIO-001", nombre: "Ácido húmico", familia: "Bioestimulante", unidad: "L", precio: 85 },
-  { id: "boro", codigo: "MIC-001", nombre: "Boro 10%", familia: "Micronutriente", unidad: "L", precio: 120 },
-  { id: "clo", codigo: "FUN-001", nombre: "Clorotalonil 720", familia: "Fungicida", unidad: "L", precio: 210 },
-  { id: "man", codigo: "FUN-002", nombre: "Mancozeb 80%", familia: "Fungicida", unidad: "kg", precio: 95 },
-  { id: "spi", codigo: "INS-001", nombre: "Spinosad", familia: "Insecticida", unidad: "L", precio: 1450 },
-  { id: "imi", codigo: "INS-002", nombre: "Imidacloprid", familia: "Insecticida", unidad: "L", precio: 680 },
-  { id: "pen", codigo: "HER-001", nombre: "Pendimetalina", familia: "Herbicida", unidad: "L", precio: 240 },
+  { id: "goal", codigo: "HER-001", nombre: "GOAL 2XL", familia: "Herbicida", unidad: "L", precio: 580 },
+  { id: "dualgold", codigo: "HER-002", nombre: "Dual Gold", familia: "Herbicida", unidad: "L", precio: 1250 },
+  { id: "cintilla", codigo: "RIE-001", nombre: "Cintilla", familia: "Riego", unidad: "rollo", precio: 3461.54 },
+  { id: "silifosca", codigo: "SUE-001", nombre: "Silifosca", familia: "Suelo", unidad: "kg", precio: 21.78 },
+  { id: "oneact", codigo: "BIO-001", nombre: "ONE Activation", familia: "Bioestimulante", unidad: "L", precio: 270 },
+  { id: "onedef", codigo: "BIO-002", nombre: "ONE Defesne", familia: "Bioestimulante", unidad: "L", precio: 560 },
+  { id: "map", codigo: "FER-001", nombre: "MAP", familia: "Fertilizante", unidad: "kg", precio: 28.17 },
+  { id: "fosfo", codigo: "FER-002", nombre: "Fosfonitrato", familia: "Fertilizante", unidad: "kg", precio: 13.13 },
+  { id: "sulmag", codigo: "FER-003", nombre: "Sulmag", familia: "Fertilizante", unidad: "kg", precio: 0 },
+  { id: "nca", codigo: "FER-004", nombre: "N CA", familia: "Fertilizante", unidad: "kg", precio: 10.5 },
+  { id: "nk", codigo: "FER-005", nombre: "N K", familia: "Fertilizante", unidad: "kg", precio: 26 },
+  { id: "sferroso", codigo: "MIC-001", nombre: "Sulfato Ferroso", familia: "Micronutriente", unidad: "kg", precio: 0 },
+  { id: "szinc", codigo: "MIC-002", nombre: "Sulfato de Zinc", familia: "Micronutriente", unidad: "kg", precio: 0 },
+  { id: "starkop", codigo: "FUN-001", nombre: "Starkop (Plasmodiofora)", familia: "Fungicida", unidad: "L", precio: 180 },
+  { id: "oneneem", codigo: "INS-001", nombre: "ONE Neem", familia: "Insecticida", unidad: "L", precio: 120 },
+  { id: "xentari", codigo: "INS-002", nombre: "Xentari (BT)", familia: "Insecticida", unidad: "kg", precio: 1188.26 },
+  { id: "massada", codigo: "INS-003", nombre: "Massada 1000 (Novaluron)", familia: "Insecticida", unidad: "L", precio: 1040 },
+  { id: "obug1", codigo: "INS-004", nombre: "O. Bug 1", familia: "Insecticida", unidad: "L", precio: 270 },
+  { id: "obug2", codigo: "INS-005", nombre: "O. Bug 2", familia: "Insecticida", unidad: "L", precio: 270 },
+  { id: "tracer", codigo: "INS-006", nombre: "Tracer", familia: "Insecticida", unidad: "kg", precio: 8620 },
+  { id: "avaunt", codigo: "INS-007", nombre: "Avaunt", familia: "Insecticida", unidad: "L", precio: 2088 },
+  { id: "incipio", codigo: "INS-008", nombre: "Incipio", familia: "Insecticida", unidad: "L", precio: 7480 },
+  { id: "toretto", codigo: "INS-009", nombre: "Toretto", familia: "Insecticida", unidad: "L", precio: 3392.25 },
+  { id: "proclaim", codigo: "INS-010", nombre: "Proclaim Opti", familia: "Insecticida", unidad: "kg", precio: 3498 },
+  { id: "movento", codigo: "INS-011", nombre: "Movento", familia: "Insecticida", unidad: "L", precio: 3652 },
+  { id: "exalt", codigo: "INS-012", nombre: "Exalt", familia: "Insecticida", unidad: "L", precio: 2685.84 },
+  { id: "breakthru", codigo: "COA-001", nombre: "Break Thru", familia: "Coadyuvante", unidad: "L", precio: 743.2 },
+  { id: "inexa", codigo: "COA-002", nombre: "IneX-A", familia: "Coadyuvante", unidad: "L", precio: 120 },
 ];
 
-export const RECETA_INICIAL: Receta = {
-  dosis: {
-    [-2]: { yeso: 500, metam: 60, trif: 1.5, cinta: 2.1 },
-    [-1]: {},
-    0: { map: 50, hum: 3, imi: 0.5, pen: 2 },
-    1: { map: 40, urea: 30, hum: 3, man: 2 },
-    2: { map: 25, urea: 40, nca: 20, hum: 2, clo: 1.5 },
-    3: { urea: 50, nca: 25, hum: 2, man: 2, spi: 0.2 },
-    4: { urea: 50, nca: 30, sk: 20, boro: 1, clo: 1.5 },
-    5: { urea: 40, nca: 30, sk: 30, boro: 1, man: 2, imi: 0.5 },
-    6: { urea: 30, nca: 30, sk: 40, boro: 1.5, clo: 1.5, spi: 0.2 },
-    7: { urea: 20, nca: 25, sk: 40, boro: 1.5, man: 2 },
-    8: { nca: 20, sk: 35, boro: 1, clo: 1.5 },
-    9: { nca: 15, sk: 30, man: 2, spi: 0.2 },
-    10: { sk: 20, clo: 1.5 },
-    11: {},
-    12: {},
+/** Paquete tecnológico de brócoli por ha. La hoja marca la presiembra como semana -1; aquí va en el pedido de planeación (2 semanas antes). */
+export const RECETAS_INICIALES: Recetas = {
+  brocoli: {
+    dosis: {
+      [-2]: { goal: 1, dualgold: 1, cintilla: 2, silifosca: 300 },
+      [-1]: {},
+      0: { oneact: 20, onedef: 2, oneneem: 6, map: 10, fosfo: 52 },
+      1: { onedef: 2, oneneem: 6, map: 10, fosfo: 52 },
+      2: { onedef: 2, oneneem: 6, map: 10, sulmag: 15, fosfo: 52 },
+      3: { xentari: 0.5, breakthru: 0.25, massada: 0.2, obug1: 2, obug2: 2, sferroso: 5, szinc: 5, sulmag: 15, fosfo: 52 },
+      4: { obug1: 2, obug2: 2, breakthru: 0.3, tracer: 0.05, sferroso: 5, szinc: 5, sulmag: 15, fosfo: 52, starkop: 5 },
+      5: { obug1: 2, obug2: 2, breakthru: 0.55, avaunt: 0.3, sferroso: 5, szinc: 5, sulmag: 15, fosfo: 52 },
+      6: { obug1: 2, obug2: 2, breakthru: 0.55, incipio: 0.2, toretto: 0.08, sulmag: 15, fosfo: 52, nca: 20, nk: 30, starkop: 2 },
+      7: { proclaim: 0.2, movento: 0.3, breakthru: 0.25, sulmag: 15, fosfo: 52, nca: 20, nk: 30, starkop: 2 },
+      8: { avaunt: 0.25, toretto: 0.08, breakthru: 0.25, sferroso: 5, szinc: 5, sulmag: 15, fosfo: 52, nca: 20, nk: 30 },
+      9: { exalt: 0.25, inexa: 0.35, movento: 0.3, fosfo: 52, nca: 20, nk: 30, starkop: 2 },
+      10: { tracer: 0.07, breakthru: 0.25, nca: 20, nk: 30, starkop: 2 },
+      11: { exalt: 0.25, breakthru: 0.25, starkop: 2 },
+      12: {},
+    },
   },
+  // Pendiente: el usuario lo va a calcular.
+  coliflor: { dosis: {} },
 };
 
-export const ADICIONALES_INICIALES: Adicional[] = [
-  {
-    id: "ad-1",
-    ranchoId: "isidro",
-    tablaIds: ["s01", "s02"],
-    productoId: "starkop",
-    semanas: [2, 3, 4],
-    dosis: 3,
-    motivo: "Corrección de pH",
-  },
-  {
-    id: "ad-2",
-    ranchoId: "loma",
-    tablaIds: ["l03"],
-    productoId: "yeso",
-    semanas: [-2],
-    dosis: 200,
-    motivo: "Suelo salino",
-  },
-];
+export const ADICIONALES_INICIALES: Adicional[] = [];
 
 export const RANCHOS: Rancho[] = [
-  { id: "mirador", nombre: "El Mirador", zona: "Valle de Zamora" },
-  { id: "isidro", nombre: "San Isidro", zona: "Tanhuato" },
-  { id: "loma", nombre: "La Loma", zona: "Yurécuaro" },
+  { id: "smonica", nombre: "Santa Mónica", zona: "Dolores" },
+  { id: "dolores", nombre: "Dolores", zona: "Dolores" },
+  { id: "trejo", nombre: "Trejo", zona: "Trejo" },
 ];
+
+const T = (ranchoId: string, id: string, nombre: string, hectareas: number): Tabla => ({
+  id,
+  ranchoId,
+  nombre,
+  hectareas,
+});
 
 export const TABLAS_INICIALES: Tabla[] = [
-  { id: "m01", ranchoId: "mirador", nombre: "Tabla 1", hectareas: 6, gps: { lat: 19.9862, lng: -102.2834 } },
-  { id: "m02", ranchoId: "mirador", nombre: "Tabla 2", hectareas: 5, gps: { lat: 19.9841, lng: -102.2801 } },
-  { id: "m03", ranchoId: "mirador", nombre: "Tabla 3", hectareas: 4 },
-  { id: "m04", ranchoId: "mirador", nombre: "Tabla 4", hectareas: 5 },
-  { id: "m05", ranchoId: "mirador", nombre: "Tabla 5", hectareas: 4.5 },
-  { id: "m06", ranchoId: "mirador", nombre: "Tabla 6", hectareas: 3 },
-  { id: "s01", ranchoId: "isidro", nombre: "Tabla 1", hectareas: 7 },
-  { id: "s02", ranchoId: "isidro", nombre: "Tabla 2", hectareas: 6 },
-  { id: "s03", ranchoId: "isidro", nombre: "Tabla 3", hectareas: 5 },
-  { id: "s04", ranchoId: "isidro", nombre: "Tabla 4", hectareas: 4 },
-  { id: "s05", ranchoId: "isidro", nombre: "Tabla 5", hectareas: 12, radio: 250 },
-  { id: "l01", ranchoId: "loma", nombre: "Tabla 1", hectareas: 8 },
-  { id: "l02", ranchoId: "loma", nombre: "Tabla 2", hectareas: 6 },
-  { id: "l03", ranchoId: "loma", nombre: "Tabla 3", hectareas: 10 },
-  { id: "l04", ranchoId: "loma", nombre: "Tabla 4", hectareas: 4 },
-  { id: "l05", ranchoId: "loma", nombre: "Tabla 5", hectareas: 5 },
+  T("smonica", "sm-1", "Tabla 1", 4),
+  T("smonica", "sm-2", "Tabla 2", 4),
+  T("smonica", "sm-6", "Tabla 6", 6.5),
+  T("smonica", "sm-7", "Tabla 7", 6.5),
+  T("smonica", "sm-9-10", "Tabla 9-10", 9),
+  T("smonica", "sm-11", "Tabla 11", 4),
+  T("smonica", "sm-12", "Tabla 12", 4),
+  T("dolores", "do-1", "Tabla 1", 3.2),
+  T("dolores", "do-2", "Tabla 2", 4),
+  T("dolores", "do-3", "Tabla 3", 5.5),
+  T("dolores", "do-4", "Tabla 4", 6.3),
+  T("dolores", "do-5-6", "Tabla 5-6", 6.3),
+  T("dolores", "do-7", "Tabla 7", 2.6),
+  T("dolores", "do-9-10-11", "Tabla 9-10-11", 7.5),
+  T("dolores", "do-12-13", "Tabla 12-13", 3.8),
+  T("dolores", "do-14-16", "Tabla 14-16", 4.3),
+  T("dolores", "do-15", "Tabla 15", 2.5),
+  T("dolores", "do-17", "Tabla 17", 1.6),
+  T("dolores", "do-18", "Tabla 18", 5.2),
+  T("trejo", "tr-r1", "Ríos 1", 12.5),
+  T("trejo", "tr-r2", "Ríos 2", 7.4),
+  T("trejo", "tr-r3", "Ríos 3", 9),
+  T("trejo", "tr-r4", "Ríos 4", 6.2),
+  T("trejo", "tr-t3", "Torres 3", 7),
+  T("trejo", "tr-t4", "Torres 4", 6.5),
+  T("trejo", "tr-t5", "Torres 5", 6),
+  T("trejo", "tr-t6", "Torres 6", 7),
+  T("trejo", "tr-t7", "Torres 7", 6.5),
+  T("trejo", "tr-pa", "Por asignar", 6),
 ];
 
-/* ── Lotes y pedidos de ejemplo ── */
+/* ── Plantaciones de las hojas BROCOLI y COLIFLOR ── */
+
+/** [tablaId, ha, variedad, fecha de plantación, fecha estimada de cosecha] */
+const PLANTACIONES: [string, number, string, string, string][] = [
+  // Brócoli
+  ["sm-7", 6.5, "tlaloc", "20/06/26", "15/09/26"],
+  ["sm-1", 4, "tlaloc", "27/06/26", "15/09/26"],
+  ["tr-r3", 4.5, "tlaloc", "15/07/26", "29/09/26"],
+  ["tr-r3", 4.5, "tlaloc", "23/07/26", "29/09/26"],
+  ["do-9-10-11", 7.5, "tlaloc", "31/07/26", "26/10/26"],
+  ["tr-r2", 3.7, "tlaloc", "04/08/26", "21/10/26"],
+  ["tr-r2", 2.7, "tlaloc", "04/08/26", "21/10/26"],
+  ["tr-r4", 3.8, "tlaloc", "13/08/26", "30/10/26"],
+  ["do-15", 2.5, "diamante", "14/08/26", "31/10/26"],
+  ["tr-r2", 1, "tlaloc", "14/08/26", "31/10/26"],
+  ["do-7", 2.6, "diamante", "19/08/26", "09/11/26"],
+  ["tr-r4", 2.4, "tlaloc", "25/08/26", "11/11/26"],
+  ["do-1", 3.2, "diamante", "31/08/26", "21/11/26"],
+  ["do-2", 4, "diamante", "06/09/26", "27/11/26"],
+  ["do-3", 5.5, "diamante", "12/09/26", "03/12/26"],
+  ["do-4", 6.3, "diamante", "25/09/26", "16/12/26"],
+  ["do-5-6", 6.3, "diamante", "01/10/26", "22/12/26"],
+  ["do-12-13", 3.8, "diamante", "09/10/26", "30/12/26"],
+  // Coliflor
+  ["sm-9-10", 4, "altamira", "20/08/26", "23/11/26"],
+  ["tr-t4", 6.5, "altamira", "25/08/26", "28/11/26"],
+  ["sm-9-10", 5, "altamira", "26/08/26", "29/11/26"],
+  ["sm-11", 4, "altamira", "03/09/26", "07/12/26"],
+  ["tr-t3", 7, "altamira", "04/09/26", "08/12/26"],
+  ["tr-r1", 6, "altamira", "10/09/26", "14/12/26"],
+  ["tr-r1", 6.5, "altamira", "20/09/26", "24/12/26"],
+  ["sm-2", 4, "altamira", "21/09/26", "25/12/26"],
+  ["tr-t5", 6, "altamira", "02/10/26", "05/01/27"],
+  ["sm-7", 6.5, "altamira", "12/10/26", "15/01/27"],
+  ["sm-1", 4, "altamira", "15/10/26", "18/01/27"],
+  ["tr-t6", 7, "altamira", "17/10/26", "20/01/27"],
+  ["sm-6", 6.5, "altamira", "27/10/26", "30/01/27"],
+  ["tr-t7", 6.5, "altamira", "29/10/26", "31/01/27"],
+  ["sm-12", 4, "altamira", "29/10/26", "01/02/27"],
+];
 
 let n = 0;
 const sid = (p: string) => `${p}-s${++n}`;
@@ -109,112 +185,53 @@ const sid = (p: string) => `${p}-s${++n}`;
 const lotes: Lote[] = [];
 const pedidos: PedidoPlaneacion[] = [];
 
-interface OpcLote {
-  ingeniero?: string;
-  /** [semana, ha, día de la semana] */
-  avances?: [number, number, number][];
-  entregado?: boolean;
-  urgente?: boolean;
-}
-
-function lote(tablaId: string, codigo: string, semana: number, ha: number, o: OpcLote = {}): Lote {
+for (const [tablaId, ha, variedadId, fp, fc] of [...PLANTACIONES].sort(
+  (a, b) => fechaDeHoja(a[3]).localeCompare(fechaDeHoja(b[3])),
+)) {
   const t = TABLAS_INICIALES.find((x) => x.id === tablaId)!;
-  const ingeniero = o.ingeniero ?? (t.ranchoId === "loma" ? "Ramiro" : "Israel");
+  const v = VARIEDADES.find((x) => x.id === variedadId)!;
+  const fecha = fechaDeHoja(fp);
+  const semana = semanaDeFecha(fecha);
+  const previos = lotes.filter((l) => l.tablaId === tablaId).length;
   const loteId = sid("lt");
-  const pedido: PedidoPlaneacion = {
-    id: sid("pp"),
-    loteId,
-    tablaId,
-    ranchoId: t.ranchoId,
-    semanaPlantacion: semana,
-    ha,
-    lineas: lineasPlaneacion(RECETA_INICIAL, ADICIONALES_INICIALES, tablaId, ha),
-    fecha: fechaEnSemana(semana - 3, 1),
-    ingeniero,
-    urgente: !!o.urgente,
-    status: o.entregado ? "entregado" : "pendiente",
-    fechaEntrega: o.entregado ? fechaEnSemana(semana - 2, 2) : undefined,
-  };
-  pedidos.push(pedido);
-  const avances: Avance[] = (o.avances ?? []).map(([w, h, d]) => ({
-    id: sid("av"),
-    semana: w,
-    ha: h,
-    fecha: fechaEnSemana(w, d),
-  }));
-  const l: Lote = {
+  const lineas = lineasPlaneacion(RECETAS_INICIALES[v.cultivo], ADICIONALES_INICIALES, tablaId, ha);
+  const pedido: PedidoPlaneacion | null =
+    lineas.length > 0
+      ? {
+          id: sid("pp"),
+          loteId,
+          tablaId,
+          ranchoId: t.ranchoId,
+          semanaPlantacion: semana,
+          ha,
+          lineas,
+          fecha: fechaEnSemana(semana - 3, 1),
+          ingeniero: "Israel",
+          urgente: false,
+          status: "entregado",
+          fechaEntrega: fechaEnSemana(semana - 2, 2),
+        }
+      : null;
+  if (pedido) pedidos.push(pedido);
+  lotes.push({
     id: loteId,
-    codigo,
+    codigo: `${t.nombre.replace(/^Tabla\s*/i, "")}-${String.fromCharCode(65 + previos)}`,
     tablaId,
     ranchoId: t.ranchoId,
     ha,
     semanaPlaneada: semana,
-    ingeniero,
-    avances,
-    insumos: pedido.lineas.map((x) => ({ ...x, pedidoId: pedido.id })),
-    receta: avances.length > 0 ? recetaEfectiva(RECETA_INICIAL, ADICIONALES_INICIALES, tablaId) : undefined,
-  };
-  lotes.push(l);
-  return l;
+    ingeniero: "Israel",
+    avances: [{ id: sid("av"), fecha, semana, ha }],
+    insumos: pedido ? pedido.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) : [],
+    receta: recetaEfectiva(RECETAS_INICIALES[v.cultivo], ADICIONALES_INICIALES, tablaId),
+    variedadId,
+    cultivo: v.cultivo,
+    cicloDias: v.cicloDias,
+    fechaCosecha: fechaDeHoja(fc),
+  });
 }
 
-const completa = (w: number, ha: number): [number, number, number][] => {
-  const a = Math.round(ha * 0.6 * 2) / 2;
-  return [
-    [w, a, 0],
-    [w, ha - a, 2],
-  ];
-};
-
-// El Mirador
-lote("m01", "1-A", 36, 6, { entregado: true, avances: completa(36, 6) });
-lote("m02", "2-A", 39, 5, { entregado: true, avances: completa(39, 5) });
-lote("m03", "3-A", 44, 4, { entregado: true, avances: [[44, 1, 0], [44, 1.5, 1]] });
-lote("m04", "4-A", 43, 5, { entregado: true, avances: [[43, 2, 1], [43, 1, 3]] }); // 2 ha se arrastran → 4-A2
-lote("m05", "5-A", 46, 4.5);
-const cancelado = lote("m06", "6-A", 43, 3, { entregado: true });
-// San Isidro
-lote("s01", "1-A", 34, 7, { entregado: true, avances: completa(34, 7) });
-lote("s02", "2-A", 38, 6, { entregado: true, avances: completa(38, 6) });
-const tardio = lote("s03", "3-A", 45, 5, { urgente: true });
-pedidos.find((p) => p.loteId === tardio.id)!.fecha = "2026-10-26"; // se planeó tarde, esta semana
-// La Loma
-lote("l01", "1-A", 41, 8, { entregado: true, avances: completa(41, 8) });
-lote("l02", "2-A", 46, 6, { entregado: true });
-lote("l03", "3-A", 46, 5);
-lote("l03", "3-B", 47, 5);
-lote("l04", "4-A", 37, 4, { entregado: true, avances: completa(37, 4) });
-lote("l05", "5-A", 42, 5, { entregado: true }); // no se plantó: pendiente arrastrado con insumos
-
-// La Tabla 6 de El Mirador se canceló con sus insumos ya entregados.
-const alertaItems = cancelado.insumos;
-cancelado.cancelado = true;
-cancelado.insumos = [];
-
-export const LOTES_INICIALES: Lote[] = cerrarSemana(lotes, 43, () => sid("lt"));
+export const LOTES_INICIALES: Lote[] = finalizarCosechados(lotes, SEMANA_INICIAL);
 export const PEDIDOS_INICIALES: PedidoPlaneacion[] = pedidos;
-
-export const ALERTAS_INICIALES: AlertaInsumos[] = [
-  {
-    id: "al-1",
-    fecha: "2026-10-19",
-    ranchoId: "mirador",
-    tablaId: "m06",
-    loteCodigo: cancelado.codigo,
-    items: alertaItems,
-    status: "abierta",
-  },
-];
-
-export const TARDIAS_INICIALES: PlaneacionTardia[] = [
-  {
-    id: "pt-1",
-    fecha: "2026-10-26",
-    ingeniero: "Israel",
-    ranchoId: "isidro",
-    tablaId: "s03",
-    loteCodigo: tardio.codigo,
-    semanasAnticipacion: 1,
-    opcion: "sin-pendientes",
-  },
-];
+export const ALERTAS_INICIALES: AlertaInsumos[] = [];
+export const TARDIAS_INICIALES: PlaneacionTardia[] = [];

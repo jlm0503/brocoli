@@ -9,6 +9,11 @@ Documento: PROMPT CONSOLIDADO. Se construye por fases y se confirma con el usuar
 - [x] 4. Pedido de planeación inmediato con semáforo, pendientes con insumos, planeación tardía, cancelación con alerta
 - [x] 5. Entregar semana N / Comprar N+2, consolidado con desglose, rollos redondeados, estatus Comprado/Recibido
 
+## Datos reales (cargados 29 oct)
+- [x] Plantaciones de brócoli y coliflor, variedades con su ciclo, paquete tecnológico de brócoli
+- [ ] Receta de coliflor (la manda el usuario)
+- [ ] Fechas de las plantaciones en amarillo (Trejo 6 ha, Dolores 14-16, 17, 18)
+
 ## Fase 2 (esperando confirmación de Fase 1)
 - 6. Roles múltiples por usuario (Autorizador, Almacén, Dirección)
 - 7. Extraordinarios con fotos de cámara + GPS y autorización

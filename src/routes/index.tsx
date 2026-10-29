@@ -94,7 +94,7 @@ function Index() {
           </div>
 
           <p className="mt-8 text-xs text-muted-foreground">
-            Prototipo navegable con datos de ejemplo. Nada se guarda.
+            Prototipo navegable con tus plantaciones reales al 29 de octubre. Nada se guarda.
           </p>
         </div>
       </section>

@@ -318,12 +318,12 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
 /* ───────────── Entregar / comprar ───────────── */
 
 function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "comprar" }) {
-  const { lotes, tablas, receta, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
+  const { lotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
   const [recibiendo, setRecibiendo] = useState<Consolidado | null>(null);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const lineas = useMemo(
-    () => lineasSemana(lotes, receta, adicionales, [semana]),
-    [lotes, receta, adicionales, semana],
+    () => lineasSemana(lotes, recetas, adicionales, [semana]),
+    [lotes, recetas, adicionales, semana],
   );
   const filas = useMemo(
     () => consolidar(lineas, productos, recepciones, semanaActual),
