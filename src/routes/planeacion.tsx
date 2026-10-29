@@ -36,6 +36,8 @@ import {
   estatusTabla,
   etapa,
   fechaCorta,
+  fechaCosechaLote,
+  fechaEnSemana,
   fechaLimite,
   formatoNum,
   hectareasDisponibles,
@@ -48,14 +50,16 @@ import {
   pendientesConInsumos,
   pendientesLote,
   plantadasLote,
+  semanaCosechaLote,
   semanaRecetaLote,
   semanaCultivoTabla,
+  sumarDias,
   semanasAnticipacion,
   semaforoPedido,
   sumarPorProducto,
   validarApartado,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
+import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
 
@@ -229,11 +233,13 @@ function Pendientes({ lotes }: { lotes: Lote[] }) {
   );
 }
 
+const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
+
 function estadoLote(l: Lote, semanaActual: number): string {
   const plantadas = plantadasLote(l);
   if (plantadas > 0 && pendientesLote(l) === 0) {
     const sr = semanaRecetaLote(l, semanaActual)!;
-    return `Plantado · sem ${sr} (${etapa(sr).toLowerCase()})`;
+    return `Plantado · sem ${sr}/${semanaCosechaLote(l)} (${etapa(sr, semanaCosechaLote(l)).toLowerCase()})`;
   }
   if (plantadas > 0) return `Plantando ${formatoNum(plantadas)}/${formatoNum(l.ha)}`;
   if (esArrastrado(l, semanaActual)) return "Pendiente arrastrado";
@@ -333,6 +339,9 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                       </Button>
                     ) : null}
                   </div>
+                  <div className="mt-1 text-muted-foreground">
+                    {nombreVariedad(l.variedadId)} · cosecha {fechaCorta(fechaCosechaLote(l))}
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
                     <span className={arr ? "font-medium text-soil-foreground" : ""}>
                       {estadoLote(l, semanaActual)}
@@ -400,8 +409,10 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
 }
 
 function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
-  const { semanaActual, receta, adicionales, productos, lotes, pedidos, tablas, planearLote } =
+  const { semanaActual, recetas, variedades, adicionales, productos, lotes, pedidos, tablas, planearLote } =
     useCampo();
+  const [variedadId, setVariedadId] = useState(variedades[0]!.id);
+  const variedad = variedades.find((v) => v.id === variedadId)!;
   const opciones = Array.from({ length: 9 }, (_, i) => semanaActual + i);
   const [semana, setSemana] = useState(String(semanaActual + ANTICIPACION_SEMANAS));
   const [ha, setHa] = useState("");
@@ -413,7 +424,17 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const haNum = Number(ha);
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
-  const tardia = esPlaneacionTardia(w, semanaActual);
+  const paquete = useMemo(
+    () =>
+      tabla && haNum > 0 ? lineasPlaneacion(recetas[variedad.cultivo], adicionales, tabla.id, haNum) : [],
+    [tabla, haNum, recetas, variedad, adicionales],
+  );
+  const sinPaquete = useMemo(
+    () => lineasPlaneacion(recetas[variedad.cultivo], adicionales, tabla?.id ?? "", 1).length === 0,
+    [recetas, variedad, adicionales, tabla],
+  );
+  // Sin paquete de planeación (receta pendiente) no hay insumos que decidir.
+  const tardia = esPlaneacionTardia(w, semanaActual) && !sinPaquete;
   const candidatos = useMemo(
     () => (tabla ? pendientesConInsumos(lotes, pedidos, tabla.ranchoId, semanaActual) : []),
     [tabla, lotes, pedidos, semanaActual],
@@ -426,14 +447,11 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
       : opcion
     : "";
 
-  const paquete = useMemo(
-    () => (tabla && haNum > 0 ? lineasPlaneacion(receta, adicionales, tabla.id, haNum) : []),
-    [tabla, haNum, receta, adicionales],
-  );
 
   const confirmar = () => {
     if (!tabla) return;
     const err = planearLote(tabla.id, w, haNum, {
+      variedadId,
       opcion: opcionEfectiva || undefined,
       motivo,
       usarLoteIds: usar,
@@ -443,7 +461,9 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
       return;
     }
     toast.success(
-      `${tabla.nombre}: lote de ${formatoNum(haNum)} ha para la semana ${w}. Pedido de planeación enviado a Compras.`,
+      sinPaquete
+        ? `${tabla.nombre}: lote de ${formatoNum(haNum)} ha de ${variedad.nombre} para la semana ${w}.`
+        : `${tabla.nombre}: lote de ${formatoNum(haNum)} ha de ${variedad.nombre} para la semana ${w}. Pedido de planeación enviado a Compras.`,
     );
     onClose();
   };
@@ -466,6 +486,25 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Variedad</Label>
+            <Select value={variedadId} onValueChange={setVariedadId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {variedades.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nombre} · {v.cultivo === "brocoli" ? "brócoli" : "coliflor"} · {v.cicloDias} días
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Cosecha estimada {fechaCorta(sumarDias(fechaEnSemana(w), variedad.cicloDias))} si se planta
+              el lunes de la semana {w}.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>Semana de plantación</Label>
             <Select value={semana} onValueChange={setSemana}>
@@ -567,6 +606,13 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
               </label>
             )}
           </div>
+        )}
+
+        {sinPaquete && !error && (
+          <p className="rounded-lg bg-secondary p-4 text-xs text-muted-foreground">
+            La receta de {variedad.cultivo === "brocoli" ? "brócoli" : "coliflor"} aún está pendiente: este lote
+            no genera pedido de planeación ni compras hasta que se cargue.
+          </p>
         )}
 
         {paquete.length > 0 && !error && (

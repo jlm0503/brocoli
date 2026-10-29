@@ -224,7 +224,7 @@ function Paquete() {
         </table>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Rollos de cinta: consumibles, se piden completos por lote y su costo se carga al 100% al
+        Rollos de cintilla: consumibles, se piden completos por lote y su costo se carga al 100% al
         lote. Las semanas sin productos se quedan vacías.
       </p>
 
