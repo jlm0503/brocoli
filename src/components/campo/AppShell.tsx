@@ -105,7 +105,7 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
             </SelectContent>
           </Select>
           <p className="mt-3 text-xs leading-relaxed text-ink-foreground/55">
-            Prototipo con datos de ejemplo. Los cambios no se guardan.
+            Prototipo con tus datos reales al 29 oct. Los cambios no se guardan.
           </p>
           <Button
             size="sm"
