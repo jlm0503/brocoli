@@ -18,6 +18,9 @@ import {
   estatusLinea,
   estatusTabla,
   etapa,
+  fechaCorta,
+  fechaCosechaLote,
+  fechaPlantacionLote,
   formatoMXN,
   formatoNum,
   hectareasActivas,
@@ -26,11 +29,12 @@ import {
   lotesDeTabla,
   pendientesLote,
   plantadasLote,
+  semanaCosechaLote,
   semanaCultivoTabla,
   semanaRealLote,
   semanaRecetaLote,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
+import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { EstatusTabla, LineaDemanda, Tabla } from "@/lib/campo/types";
 
@@ -54,6 +58,8 @@ export const Route = createFileRoute("/ranchos")({
   }),
   component: Ranchos,
 });
+
+const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
 
 const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",

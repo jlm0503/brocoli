@@ -64,17 +64,6 @@ export const Route = createFileRoute("/catalogos")({
   component: Catalogos,
 });
 
-const FAMILIAS: Familia[] = [
-  "Suelo",
-  "Agroquímico",
-  "Riego",
-  "Fertilizante",
-  "Bioestimulante",
-  "Micronutriente",
-  "Fungicida",
-  "Insecticida",
-  "Herbicida",
-];
 const UNIDADES: Unidad[] = ["kg", "L", "rollo"];
 
 function Catalogos() {
