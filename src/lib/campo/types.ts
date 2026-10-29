@@ -9,7 +9,19 @@ export type Familia =
   | "Micronutriente"
   | "Fungicida"
   | "Insecticida"
-  | "Herbicida";
+  | "Herbicida"
+  | "Coadyuvante";
+
+export type Cultivo = "brocoli" | "coliflor";
+
+/** Variedad sembrada. Su ciclo define la fecha estimada de cosecha y hasta qué semana aplica la receta. */
+export interface Variedad {
+  id: string;
+  nombre: string;
+  cultivo: Cultivo;
+  /** Días de plantación a cosecha */
+  cicloDias: number;
+}
 
 export type Unidad = "kg" | "L" | "rollo";
 
@@ -27,10 +39,13 @@ export interface Producto {
 /** Dosis por hectárea: semana de receta (-2 a 12) -> productoId -> cantidad. */
 export type DosisPorSemana = Record<number, Record<string, number>>;
 
-/** Paquete tecnológico base. */
+/** Paquete tecnológico base de un cultivo. */
 export interface Receta {
   dosis: DosisPorSemana;
 }
+
+/** Un paquete tecnológico por cultivo. */
+export type Recetas = Record<Cultivo, Receta>;
 
 /** Producto extra que solo aplica a ciertas tablas. */
 export interface Adicional {
@@ -97,6 +112,14 @@ export interface Lote {
   sinInsumos?: boolean | undefined;
   /** Copia de la receta (base + adicionales) guardada al plantarse. */
   receta?: DosisPorSemana | undefined;
+  variedadId: string;
+  cultivo: Cultivo;
+  /** Ciclo de la variedad (días) copiado al planear. */
+  cicloDias: number;
+  /** Fecha estimada de cosecha capturada a mano; si no, se calcula con el ciclo. */
+  fechaCosecha?: string | undefined;
+  /** Ya se cosechó: la tabla queda libre para el siguiente ciclo. */
+  finalizado?: boolean | undefined;
 }
 
 export type EstatusTabla =
