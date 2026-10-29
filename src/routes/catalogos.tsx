@@ -34,6 +34,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ESTATUS_TABLA_LABEL,
+  FAMILIAS,
   estatusTabla,
   fechaCorta,
   fechaEnSemana,
