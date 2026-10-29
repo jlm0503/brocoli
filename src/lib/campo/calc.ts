@@ -1,6 +1,7 @@
 import type {
   Adicional,
   AlertaInsumos,
+  Cultivo,
   DosisPorSemana,
   EstatusRecepcion,
   EstatusTabla,
@@ -9,10 +10,13 @@ import type {
   Lote,
   PedidoPlaneacion,
   Producto,
+  Familia,
   Receta,
+  Recetas,
   Recepcion,
   Semaforo,
   Tabla,
+  Variedad,
 } from "./types";
 
 /* ───────────────────────── Semanas ───────────────────────── */
@@ -20,8 +24,9 @@ import type {
 /** Semana de receta en que se entrega el paquete de planeación. */
 export const SEMANA_PLANEACION = -2;
 export const SEMANA_RECETA_MIN = -2;
-export const SEMANA_RECETA_MAX = 12;
-/** -2, -1, 0, 1 … 12 */
+/** La coliflor (95 días) llega hasta la semana 14; el brócoli hasta la 12. */
+export const SEMANA_RECETA_MAX = 14;
+/** -2, -1, 0, 1 … 14 */
 export const SEMANAS_RECETA = Array.from(
   { length: SEMANA_RECETA_MAX - SEMANA_RECETA_MIN + 1 },
   (_, i) => SEMANA_RECETA_MIN + i,
@@ -31,14 +36,47 @@ export const ANTICIPACION_SEMANAS = 2;
 /** Días que puede estar abierta una alerta antes de marcarse en rojo. */
 export const DIAS_ALERTA_ROJA = 7;
 
-export function etapa(semanaReceta: number): string {
+export const FAMILIAS: Familia[] = [
+  "Suelo",
+  "Agroquímico",
+  "Herbicida",
+  "Riego",
+  "Fertilizante",
+  "Bioestimulante",
+  "Micronutriente",
+  "Fungicida",
+  "Insecticida",
+  "Coadyuvante",
+];
+
+export const CULTIVO_LABEL: Record<Cultivo, string> = { brocoli: "Brócoli", coliflor: "Coliflor" };
+
+/**
+ * Etapa de una semana de receta. Con `semanaCosecha` (la del lote según su variedad),
+ * de ahí en adelante es cosecha; sin ella se usan las etapas generales del brócoli.
+ */
+export function etapa(semanaReceta: number, semanaCosecha?: number): string {
   if (semanaReceta === -2) return "Planeación";
   if (semanaReceta === -1) return "Preparación";
   if (semanaReceta === 0) return "Plantación";
+  if (semanaCosecha !== undefined) {
+    if (semanaReceta >= 1 && semanaReceta < semanaCosecha) return "Desarrollo";
+    if (semanaReceta >= semanaCosecha) return "Cosecha";
+  }
   if (semanaReceta >= 1 && semanaReceta <= 10) return "Desarrollo";
   if (semanaReceta === 11) return "Cosecha";
   if (semanaReceta === 12) return "Máxima cosecha y cierre";
+  if (semanaReceta > 12 && semanaReceta <= SEMANA_RECETA_MAX) return "Cosecha";
   return "Fuera de ciclo";
+}
+
+/** Semanas de receta que se muestran para un cultivo: de -2 hasta la cosecha de su variedad más larga (mínimo 12). */
+export function semanasReceta(cultivo: Cultivo, variedades: Variedad[]): number[] {
+  const max = Math.max(
+    12,
+    ...variedades.filter((v) => v.cultivo === cultivo).map((v) => Math.ceil(v.cicloDias / 7)),
+  );
+  return SEMANAS_RECETA.filter((w) => w <= Math.min(max, SEMANA_RECETA_MAX));
 }
 
 const LUNES_SEMANA_1_2026 = Date.UTC(2025, 11, 29);
@@ -57,6 +95,16 @@ export function fechaEnSemana(w: number, dia = 0): string {
 export function semanaDeFecha(iso: string): number {
   const t = Date.parse(iso + "T00:00:00Z");
   return Math.floor((t - LUNES_SEMANA_1_2026) / (7 * DIA)) + 1;
+}
+
+export function sumarDias(iso: string, dias: number): string {
+  return new Date(Date.parse(iso + "T00:00:00Z") + dias * DIA).toISOString().slice(0, 10);
+}
+
+/** dd/mm/aa → yyyy-mm-dd */
+export function fechaDeHoja(dmy: string): string {
+  const [d, m, y] = dmy.split("/").map(Number);
+  return `${2000 + y!}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
 export function diasEntre(desde: string, hasta: string): number {
@@ -108,9 +156,9 @@ export function recetaEfectiva(
   return out;
 }
 
-/** La receta de un lote plantado es su copia guardada; si aún no se planta, la vigente. */
-export function recetaLote(lote: Lote, receta: Receta, adicionales: Adicional[]): DosisPorSemana {
-  return lote.receta ?? recetaEfectiva(receta, adicionales, lote.tablaId);
+/** La receta de un lote plantado es su copia guardada; si aún no se planta, la vigente de su cultivo. */
+export function recetaLote(lote: Lote, recetas: Recetas, adicionales: Adicional[]): DosisPorSemana {
+  return lote.receta ?? recetaEfectiva(recetas[lote.cultivo], adicionales, lote.tablaId);
 }
 
 /** Paquete de planeación (semana -2) × hectáreas. */
@@ -148,9 +196,44 @@ export function semanaRecetaLote(l: Lote, semana: number): number | null {
   return real === null ? null : semana - real;
 }
 
+/** Fecha de plantación: primer avance; si aún no se planta, el lunes de la semana planeada. */
+export function fechaPlantacionLote(l: Lote): string {
+  return l.avances[0]?.fecha ?? fechaEnSemana(l.semanaPlaneada);
+}
+
+/** Fecha estimada de cosecha: la capturada, o plantación + ciclo de la variedad. */
+export function fechaCosechaLote(l: Lote): string {
+  return l.fechaCosecha ?? sumarDias(fechaPlantacionLote(l), l.cicloDias);
+}
+
+/**
+ * Semana de receta en que se cosecha: ciclo ÷ 7 hacia arriba (Diamante 70 días → 10,
+ * Tlaloc 84 → 12, coliflor 95 → 14), o la de la fecha capturada. La receta aplica hasta ahí.
+ */
+export function semanaCosechaLote(l: Lote): number {
+  if (l.fechaCosecha) {
+    const base = semanaRealLote(l) ?? l.semanaPlaneada;
+    return semanaDeFecha(l.fechaCosecha) - base;
+  }
+  return Math.ceil(l.cicloDias / 7);
+}
+
+/** Semanas después de la semana de cosecha en que el lote se da por terminado y libera la tabla. */
+export const SEMANAS_CIERRE = 2;
+
+/** Marca como finalizados los lotes plantados cuya cosecha ya pasó hace SEMANAS_CIERRE semanas o más. */
+export function finalizarCosechados(lotes: Lote[], semanaActual: number): Lote[] {
+  return lotes.map((l) => {
+    const real = semanaRealLote(l);
+    if (l.finalizado || l.cancelado || real === null || pendientesLote(l) > 0) return l;
+    return semanaActual >= real + semanaCosechaLote(l) + SEMANAS_CIERRE ? { ...l, finalizado: true } : l;
+  });
+}
+
+/** Lotes vigentes de la tabla (sin cancelados ni ciclos ya cosechados). */
 export function lotesDeTabla(lotes: Lote[], tablaId: string): Lote[] {
   return lotes
-    .filter((l) => l.tablaId === tablaId && !l.cancelado)
+    .filter((l) => l.tablaId === tablaId && !l.cancelado && !l.finalizado)
     .sort((a, b) => a.semanaPlaneada - b.semanaPlaneada || a.codigo.localeCompare(b.codigo));
 }
 
@@ -202,13 +285,13 @@ export function semanaCultivoTabla(lotes: Lote[], tablaId: string, semanaActual:
   return semanaActual - Math.min(...reales);
 }
 
-/** Hectáreas plantadas que siguen dentro del ciclo (semana 0 a 12). */
+/** Hectáreas plantadas que siguen dentro del ciclo (semana 0 a la de cosecha de su variedad). */
 export function hectareasActivas(lotes: Lote[], tablaId: string, semanaActual: number): number {
   return redondear(
     lotesDeTabla(lotes, tablaId)
       .filter((l) => {
         const sr = semanaRecetaLote(l, semanaActual);
-        return sr !== null && sr >= 0 && sr <= SEMANA_RECETA_MAX;
+        return sr !== null && sr >= 0 && sr <= semanaCosechaLote(l);
       })
       .reduce((s, l) => s + plantadasLote(l), 0),
   );
@@ -388,6 +471,9 @@ export function cerrarSemana(lotes: Lote[], semana: number, nuevoId: () => strin
       origenId: l.id,
       insumos: escalar(l.insumos, 1 - fPlant),
       sinInsumos: l.sinInsumos,
+      variedadId: l.variedadId,
+      cultivo: l.cultivo,
+      cicloDias: l.cicloDias,
     });
   }
   return out;
@@ -396,25 +482,25 @@ export function cerrarSemana(lotes: Lote[], semana: number, nuevoId: () => strin
 /* ───────────────────────── Entregar y comprar ───────────────────────── */
 
 /**
- * Insumos de un lote para una semana calendario. Semanas 0 a 12: solo hectáreas realmente
- * plantadas. Semana -1 (preparación): hectáreas planeadas de lotes nuevos. La semana -2 va
+ * Insumos de un lote para una semana calendario. Semanas 0 a la de cosecha de su variedad:
+ * solo hectáreas realmente plantadas. Semana -1 (preparación): hectáreas planeadas de lotes nuevos. La semana -2 va
  * en el pedido de planeación, no aquí.
  */
 export function lineasLote(
   l: Lote,
-  receta: Receta,
+  recetas: Recetas,
   adicionales: Adicional[],
   semana: number,
 ): LineaDemanda[] {
   if (l.cancelado) return [];
-  const dosis = recetaLote(l, receta, adicionales);
+  const dosis = recetaLote(l, recetas, adicionales);
   const plantadas = plantadasLote(l);
   let sr: number | null = null;
   let ha = 0;
   if (plantadas > 0) {
     sr = semanaRecetaLote(l, semana);
     ha = plantadas;
-    if (sr === null || sr < 0 || sr > SEMANA_RECETA_MAX) return [];
+    if (sr === null || sr < 0 || sr > Math.min(semanaCosechaLote(l), SEMANA_RECETA_MAX)) return [];
   } else if (!l.origenId && semana === l.semanaPlaneada - 1) {
     sr = -1;
     ha = l.ha;
@@ -435,11 +521,11 @@ export function lineasLote(
 
 export function lineasSemana(
   lotes: Lote[],
-  receta: Receta,
+  recetas: Recetas,
   adicionales: Adicional[],
   semanas: number[],
 ): LineaDemanda[] {
-  return lotes.flatMap((l) => semanas.flatMap((w) => lineasLote(l, receta, adicionales, w)));
+  return lotes.flatMap((l) => semanas.flatMap((w) => lineasLote(l, recetas, adicionales, w)));
 }
 
 /** En el prototipo, lo de semanas anteriores se da por recibido en rancho. */
