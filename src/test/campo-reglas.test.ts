@@ -5,6 +5,10 @@ import {
   codigoArrastre,
   consolidar,
   descontar,
+  etapa,
+  fechaCosechaLote,
+  finalizarCosechados,
+  hectareasActivas,
   esPlaneacionTardia,
   estatusTabla,
   hectareasDisponibles,
@@ -17,9 +21,13 @@ import {
   repartirAvance,
   semaforoPedido,
   validarApartado,
+  semanaCosechaLote,
   validarAvance,
 } from "@/lib/campo/calc";
-import type { Adicional, Lote, PedidoPlaneacion, Producto, Receta, Tabla } from "@/lib/campo/types";
+import { LOTES_INICIALES, RECETAS_INICIALES, TABLAS_INICIALES, VARIEDADES } from "@/lib/campo/seed";
+import type { Adicional, Lote, PedidoPlaneacion, Producto, Receta, Recetas, Tabla } from "@/lib/campo/types";
+
+const R = (brocoli: Receta): Recetas => ({ brocoli, coliflor: { dosis: {} } });
 
 // Receta de prueba: la semana N de receta pide N kg de urea por ha (fácil de verificar).
 const receta: Receta = {
@@ -46,6 +54,9 @@ function lote(p: Partial<Lote> & { id: string; ha: number; semanaPlaneada: numbe
     ingeniero: "Israel",
     avances: [],
     insumos: [],
+    variedadId: "tlaloc",
+    cultivo: "brocoli",
+    cicloDias: 84,
     ...p,
   };
 }
@@ -155,27 +166,27 @@ describe("Entregar semana N y comprar N+2", () => {
   ];
 
   it("caso obligatorio: en la sem 45 se entrega receta 5 × 5 ha + receta 4 × 3 ha", () => {
-    const l45 = lineasSemana(ls, receta, [], [45]);
+    const l45 = lineasSemana(ls, R(receta), [], [45]);
     expect(l45.find((l) => l.loteId === "t1")).toMatchObject({ semanaReceta: 5, cantidad: 105 * 5 });
     expect(l45.find((l) => l.loteId === "t2")).toMatchObject({ semanaReceta: 4, cantidad: 104 * 3 });
   });
 
   it("caso obligatorio: se compra para la sem 47 receta 7 × 5 ha + receta 6 × 3 ha", () => {
-    const l47 = lineasSemana(ls, receta, [], [47]);
+    const l47 = lineasSemana(ls, R(receta), [], [47]);
     expect(l47.find((l) => l.loteId === "t1")).toMatchObject({ semanaReceta: 7, cantidad: 107 * 5 });
     expect(l47.find((l) => l.loteId === "t2")).toMatchObject({ semanaReceta: 6, cantidad: 106 * 3 });
   });
 
   it("solo cuenta hectáreas realmente plantadas y no repite la semana -2", () => {
     const parcial = lote({ id: "p", ha: 6, semanaPlaneada: 44, avances: [av(44, 4)] });
-    expect(lineasLote(parcial, receta, [], 45)[0]?.cantidad).toBe(101 * 4);
+    expect(lineasLote(parcial, R(receta), [], 45)[0]?.cantidad).toBe(101 * 4);
     const sinPlantar = lote({ id: "s", ha: 6, semanaPlaneada: 46 });
-    expect(lineasLote(sinPlantar, receta, [], 44)).toEqual([]);
+    expect(lineasLote(sinPlantar, R(receta), [], 44)).toEqual([]);
   });
 
   it("el ciclo inicia en la semana real de plantación, no en la planeada", () => {
     const tarde = lote({ id: "x", ha: 2, semanaPlaneada: 43, avances: [av(44, 2)] });
-    expect(lineasLote(tarde, receta, [], 46)[0]?.semanaReceta).toBe(2);
+    expect(lineasLote(tarde, R(receta), [], 46)[0]?.semanaReceta).toBe(2);
   });
 
   it("los rollos se redondean hacia arriba después de sumar los lotes del rancho", () => {
@@ -184,7 +195,7 @@ describe("Entregar semana N y comprar N+2", () => {
       lote({ id: "a", ha: 1, semanaPlaneada: 44, avances: [av(44, 1)] }),
       lote({ id: "b", ha: 1, semanaPlaneada: 44, avances: [av(44, 1)], tablaId: "t2" }),
     ];
-    const [fila] = consolidar(lineasSemana(dos, cinta, [], [44]), productos, {}, 44);
+    const [fila] = consolidar(lineasSemana(dos, R(cinta), [], [44]), productos, {}, 44);
     expect(fila?.cantidad).toBe(4.2);
     expect(fila?.cantidadPedido).toBe(5);
   });
@@ -193,7 +204,7 @@ describe("Entregar semana N y comprar N+2", () => {
     const copia = recetaEfectiva(receta, [], "t1");
     const plantado = lote({ id: "f", ha: 1, semanaPlaneada: 40, avances: [av(40, 1)], receta: copia });
     const nueva: Receta = { dosis: { ...receta.dosis, 5: { urea: 999 } } };
-    expect(lineasLote(plantado, nueva, [], 45)[0]?.cantidad).toBe(105);
+    expect(lineasLote(plantado, R(nueva), [], 45)[0]?.cantidad).toBe(105);
   });
 });
 
@@ -202,5 +213,73 @@ describe("Catálogos", () => {
     expect(radioValidacion({ ...t12, hectareas: 12 })).toBe(293);
     expect(radioValidacion({ ...t12, hectareas: 0.2 })).toBe(100);
     expect(radioValidacion({ ...t12, radio: 250 })).toBe(250);
+  });
+});
+
+describe("Variedades y ciclo", () => {
+  it("Diamante (10 semanas) recibe receta hasta la semana 10; Tlaloc (12) hasta la 12", () => {
+    const diamante = lote({ id: "d", ha: 1, semanaPlaneada: 30, avances: [av(30, 1)], variedadId: "diamante", cicloDias: 70 });
+    const tlaloc = lote({ id: "t", ha: 1, semanaPlaneada: 30, avances: [av(30, 1)] });
+    expect(semanaCosechaLote(diamante)).toBe(10);
+    expect(semanaCosechaLote(tlaloc)).toBe(12);
+    expect(lineasLote(diamante, R(receta), [], 40)[0]?.semanaReceta).toBe(10);
+    expect(lineasLote(diamante, R(receta), [], 41)).toEqual([]);
+    expect(lineasLote(tlaloc, R(receta), [], 42)[0]?.semanaReceta).toBe(12);
+    expect(lineasLote(tlaloc, R(receta), [], 43)).toEqual([]);
+  });
+
+  it("coliflor: 95 días de la plantación a la cosecha", () => {
+    const col = lote({
+      id: "c", ha: 4, semanaPlaneada: 44, cultivo: "coliflor", variedadId: "altamira", cicloDias: 95,
+      avances: [{ id: "x", fecha: "2026-10-29", semana: 44, ha: 4 }],
+    });
+    expect(fechaCosechaLote(col)).toBe("2027-02-01");
+    expect(semanaCosechaLote(col)).toBe(14);
+  });
+
+  it("un lote de coliflor sin receta no genera compras", () => {
+    const col = lote({ id: "c", ha: 4, semanaPlaneada: 40, avances: [av(40, 4)], cultivo: "coliflor", cicloDias: 95 });
+    expect(lineasSemana([col], R(receta), [], [44, 46])).toEqual([]);
+  });
+
+  it("dos semanas después de la cosecha el lote se finaliza y la tabla queda libre", () => {
+    const t: Tabla = { id: "t1", ranchoId: "r", nombre: "Tabla 7", hectareas: 6.5 };
+    const viejo = lote({ id: "v", ha: 6.5, semanaPlaneada: 25, avances: [av(25, 6.5)], fechaCosecha: "2026-09-15" });
+    expect(semanaCosechaLote(viejo)).toBe(13);
+    expect(finalizarCosechados([viejo], 39)[0]!.finalizado).toBeUndefined();
+    const [fin] = finalizarCosechados([viejo], 40);
+    expect(fin!.finalizado).toBe(true);
+    expect(hectareasDisponibles(t, [fin!])).toBe(6.5);
+    expect(hectareasActivas([fin!], "t1", 40)).toBe(0);
+  });
+
+  it("la etapa de cosecha depende de la variedad", () => {
+    expect(etapa(10, 10)).toBe("Cosecha");
+    expect(etapa(10, 12)).toBe("Desarrollo");
+  });
+});
+
+describe("Datos reales cargados", () => {
+  it("variedades: Diamante 10 semanas, Tlaloc 12 semanas, coliflor 95 días", () => {
+    const ciclo = Object.fromEntries(VARIEDADES.map((v) => [v.id, v.cicloDias]));
+    expect(ciclo).toEqual({ diamante: 70, tlaloc: 84, altamira: 95 });
+  });
+
+  it("paquete de planeación de brócoli: GOAL 2XL 1 L, Dual Gold 1 L, cintilla 2 rollos, Silifosca 300 kg por ha", () => {
+    expect(RECETAS_INICIALES.brocoli.dosis[-2]).toEqual({ goal: 1, dualgold: 1, cintilla: 2, silifosca: 300 });
+    expect(RECETAS_INICIALES.coliflor.dosis).toEqual({});
+  });
+
+  it("ninguna tabla tiene más hectáreas en uso que su total", () => {
+    for (const t of TABLAS_INICIALES) {
+      expect(hectareasDisponibles(t, LOTES_INICIALES)).toBeGreaterThanOrEqual(0);
+      const enUso = LOTES_INICIALES.filter((l) => l.tablaId === t.id && !l.finalizado).reduce((s, l) => s + l.ha, 0);
+      expect(enUso).toBeLessThanOrEqual(t.hectareas + 1e-9);
+    }
+  });
+
+  it("los ciclos marcados Finalizado en la hoja ya liberaron su tabla", () => {
+    const fin = LOTES_INICIALES.filter((l) => l.finalizado).map((l) => `${l.tablaId}:${l.ha}`).sort();
+    expect(fin).toEqual(["sm-1:4", "sm-7:6.5", "tr-r3:4.5", "tr-r3:4.5"]);
   });
 });
