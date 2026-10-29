@@ -18,7 +18,6 @@ import {
   finalizarCosechados,
   insumosEntregados,
   lineasPlaneacion,
-  lineasSemana,
   lotesDeTabla,
   pendientesConInsumos,
   recetaEfectiva,
@@ -205,15 +204,16 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!variedad) return "Elige la variedad que se va a plantar.";
       const err = validarApartado(t, lotes, semana, ha, semanaActual);
       if (err) return err;
-      const tardia = esPlaneacionTardia(semana, semanaActual);
-      const opcion = opciones.opcion;
+      const necesidad = lineasPlaneacion(recetas[variedad.cultivo], adicionales, tablaId, redondear(ha));
+      // Sin paquete de planeación (p. ej. coliflor sin receta) no hay insumos que decidir.
+      const tardia = esPlaneacionTardia(semana, semanaActual) && necesidad.length > 0;
+      const opcion = tardia ? opciones.opcion : undefined;
       if (tardia && !opcion) return "Elige qué hacer con los insumos de planeación.";
       if (opcion === "pedir-nuevos" && !opciones.motivo?.trim())
         return "Escribe el motivo para pedir insumos nuevos.";
 
       const loteId = nuevoId("lt");
       const codigo = siguienteCodigo(t, lotes);
-      const necesidad = lineasPlaneacion(recetas[variedad.cultivo], adicionales, tablaId, redondear(ha));
 
       // Insumos reasignados desde lotes pendientes del mismo rancho
       let reasignados: InsumoAsignado[] = [];
@@ -224,7 +224,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
               .map((l) => l.id)
           : [],
       );
-      if (opcion === "usar-pendientes" && usar.size === 0 && necesidad.length > 0)
+      if (opcion === "usar-pendientes" && usar.size === 0)
         return "Selecciona al menos un lote pendiente para usar sus insumos.";
       for (const l of lotes) if (usar.has(l.id)) reasignados = [...reasignados, ...insumosEntregados(l, pedidos)];
 
