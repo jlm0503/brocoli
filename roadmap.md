@@ -10,9 +10,9 @@ Documento: PROMPT CONSOLIDADO. Se construye por fases y se confirma con el usuar
 - [x] 5. Entregar semana N / Comprar N+2, consolidado con desglose, rollos redondeados, estatus Comprado/Recibido
 
 ## Datos (30 oct: el usuario los captura en la app)
-- [ ] Borrar ranchos, tablas, plantaciones y pedidos; dejar solo productos, variedades y paquete tecnológico
-- [ ] Captura en la app: agregar ranchos y tablas, registrar plantaciones ya hechas
-- [ ] Botón de semanas en todos los perfiles: adelantar, regresar y volver a la semana actual
+- [x] Borrar ranchos, tablas, plantaciones y pedidos; dejar solo productos, variedades y paquete tecnológico
+- [x] Captura en la app: agregar ranchos y tablas, registrar plantaciones ya hechas
+- [x] Botón de semanas en todos los perfiles: adelantar, regresar y volver a la semana actual
 - [ ] Receta de coliflor (la manda el usuario)
 
 ## Fase 2 (esperando confirmación de Fase 1)
