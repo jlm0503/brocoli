@@ -67,7 +67,7 @@ export const Route = createFileRoute("/catalogos")({
 const UNIDADES: Unidad[] = ["kg", "L", "rollo"];
 
 function Catalogos() {
-  const { tablas, lotes, productos, semanaActual, setPrecio } = useCampo();
+  const { ranchos, tablas, lotes, productos, semanaActual, setPrecio } = useCampo();
   const [nuevo, setNuevo] = useState(false);
 
   return (

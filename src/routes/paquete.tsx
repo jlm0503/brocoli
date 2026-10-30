@@ -233,7 +233,7 @@ function Paquete() {
 }
 
 function Adicionales() {
-  const { adicionales, productos, tablas, eliminarAdicional } = useCampo();
+  const { ranchos, adicionales, productos, tablas, eliminarAdicional } = useCampo();
   const [editando, setEditando] = useState<Adicional | "nuevo" | null>(null);
 
   return (
@@ -308,9 +308,9 @@ function Adicionales() {
 }
 
 function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null; onClose: () => void }) {
-  const { productos, tablas, guardarAdicional } = useCampo();
+  const { ranchos, productos, tablas, guardarAdicional } = useCampo();
   const inicial = valor && valor !== "nuevo" ? valor : null;
-  const [ranchoId, setRanchoId] = useState(inicial?.ranchoId ?? ranchos[0]!.id);
+  const [ranchoId, setRanchoId] = useState(inicial?.ranchoId ?? ranchos[0]?.id ?? "");
   const [tablaIds, setTablaIds] = useState<string[]>(inicial?.tablaIds ?? []);
   const [productoId, setProductoId] = useState(inicial?.productoId ?? "");
   const [semanas, setSemanas] = useState<string[]>(inicial?.semanas.map(String) ?? []);

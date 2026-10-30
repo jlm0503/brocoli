@@ -17,9 +17,9 @@ import type {
  * Los códigos de producto y la familia de cada producto son provisionales.
  */
 
-/** "Hoy" en el prototipo al abrir: jueves 29 de octubre de 2026, semana 44. */
+/** "Hoy" en el prototipo al abrir: viernes 30 de octubre de 2026, semana 44. */
 export const SEMANA_INICIAL = 44;
-export const HOY_INICIAL = "2026-10-29";
+export const HOY_INICIAL = "2026-10-30";
 
 export const VARIEDADES: Variedad[] = [
   { id: "diamante", nombre: "Diamante", cultivo: "brocoli", cicloDias: 70 },

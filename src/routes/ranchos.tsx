@@ -98,7 +98,7 @@ function useCostos() {
 }
 
 function Ranchos() {
-  const { tablas, lotes, semanaActual } = useCampo();
+  const { ranchos, tablas, lotes, semanaActual } = useCampo();
   const [abierta, setAbierta] = useState<Tabla | null>(null);
   const { costoTabla } = useCostos();
 
@@ -203,7 +203,7 @@ function Ranchos() {
 }
 
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
-  const { productos, lotes, pedidos, recepciones, semanaActual } = useCampo();
+  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual } = useCampo();
   const { porLote, costoLote, costoTabla } = useCostos();
   const rancho = ranchos.find((r) => r.id === tabla.ranchoId);
   const est = estatusTabla(tabla, lotes);

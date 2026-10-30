@@ -71,7 +71,7 @@ const OPCION_LABEL: Record<OpcionTardia, string> = {
 };
 
 function Alertas() {
-  const { alertas, tardias, tablas, productos, inventarioAlmacen, hoy } = useCampo();
+  const { ranchos, alertas, tardias, tablas, productos, inventarioAlmacen, hoy } = useCampo();
   const [resolviendo, setResolviendo] = useState<AlertaInsumos | null>(null);
   const abiertas = alertas.filter((a) => a.status === "abierta");
   const cerradas = alertas.filter((a) => a.status !== "abierta");
@@ -228,7 +228,7 @@ function Alertas() {
 }
 
 function ResolverDialog({ alerta, onClose }: { alerta: AlertaInsumos | null; onClose: () => void }) {
-  const { lotes, tablas, hoy, resolverAlerta } = useCampo();
+  const { ranchos, lotes, tablas, hoy, resolverAlerta } = useCampo();
   const [tipo, setTipo] = useState<"reubicar" | "recolectar">("reubicar");
   const [loteId, setLoteId] = useState("");
   const [quien, setQuien] = useState("Oscar");

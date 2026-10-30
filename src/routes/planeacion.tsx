@@ -95,8 +95,9 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 }
 
 function Planeacion() {
-  const { tablas, lotes, semanaActual } = useCampo();
-  const [rancho, setRancho] = useState(ranchos[0]!.id);
+  const { ranchos, tablas, lotes, semanaActual } = useCampo();
+  const [ranchoElegido, setRancho] = useState("");
+  const rancho = ranchos.some((r) => r.id === ranchoElegido) ? ranchoElegido : (ranchos[0]?.id ?? "");
   const [planeando, setPlaneando] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
