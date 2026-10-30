@@ -12,6 +12,7 @@ import {
 import {
   cerrarSemana,
   codigoDisponible,
+  crearLotePlantado,
   descontar,
   esPlaneacionTardia,
   fechaEnSemana,
@@ -28,6 +29,9 @@ import {
   sumarPorProducto,
   validarApartado,
   validarAvance,
+  validarPlantacionPrevia,
+  validarRancho,
+  validarTabla,
 } from "./calc";
 import {
   ADICIONALES_INICIALES,
@@ -36,6 +40,7 @@ import {
   LOTES_INICIALES,
   PEDIDOS_INICIALES,
   PRODUCTOS_INICIALES,
+  RANCHOS_INICIALES,
   RECETAS_INICIALES,
   SEMANA_INICIAL,
   TABLAS_INICIALES,
@@ -52,6 +57,7 @@ import type {
   PedidoPlaneacion,
   PlaneacionTardia,
   Producto,
+  Rancho,
   Recetas,
   Recepcion,
   Role,
@@ -69,6 +75,26 @@ export interface OpcionesPlaneacion {
   usarLoteIds?: string[] | undefined;
 }
 
+export interface PlantacionPrevia {
+  tablaId: string;
+  ha: number;
+  variedadId: string;
+  fechaPlantacion: string;
+  fechaCosecha?: string | undefined;
+}
+
+/** Foto del estado de operación al cerrar una semana; permite regresar en la simulación. */
+interface Instantanea {
+  semanaActual: number;
+  hoy: string;
+  lotes: Lote[];
+  pedidos: PedidoPlaneacion[];
+  tardias: PlaneacionTardia[];
+  alertas: AlertaInsumos[];
+  inventarioAlmacen: Record<string, number>;
+  recepciones: Record<string, Recepcion>;
+}
+
 export type ResolucionAlerta =
   | { tipo: "reubicar"; loteId: string }
   | { tipo: "recolectar"; quien: string; foto: string };
@@ -83,6 +109,7 @@ interface CampoContextValue {
   variedades: Variedad[];
   recetas: Recetas;
   adicionales: Adicional[];
+  ranchos: Rancho[];
   tablas: Tabla[];
   lotes: Lote[];
   pedidos: PedidoPlaneacion[];
@@ -95,6 +122,11 @@ interface CampoContextValue {
   agregarProducto: (p: Omit<Producto, "id">) => string | null;
   guardarAdicional: (a: Adicional) => void;
   eliminarAdicional: (id: string) => void;
+  agregarRancho: (nombre: string, zona: string) => string | null;
+  eliminarRancho: (id: string) => string | null;
+  agregarTabla: (t: { ranchoId: string; nombre: string; hectareas: number }) => string | null;
+  eliminarTabla: (id: string) => string | null;
+  registrarPlantacion: (p: PlantacionPrevia) => string | null;
   planearLote: (
     tablaId: string,
     semana: number,
@@ -113,6 +145,12 @@ interface CampoContextValue {
   resolverAlerta: (alertaId: string, r: ResolucionAlerta) => string | null;
   /** Solo prototipo: cierra la semana actual y pasa a la siguiente. */
   avanzarSemana: () => void;
+  /** Solo prototipo: deshace el último cierre de semana. */
+  regresarSemana: () => void;
+  /** Solo prototipo: vuelve a la semana real del día de hoy. */
+  volverAHoy: () => void;
+  /** Semanas que se han adelantado en la simulación. */
+  semanasAdelantadas: number;
 }
 
 // Keep one context instance across hot reloads; otherwise editing this file creates a
@@ -134,7 +172,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const [recetas, setRecetas] = useState(RECETAS_INICIALES);
   const [variedades] = useState(VARIEDADES);
   const [adicionales, setAdicionales] = useState(ADICIONALES_INICIALES);
-  const [tablas] = useState(TABLAS_INICIALES);
+  const [ranchos, setRanchos] = useState(RANCHOS_INICIALES);
+  const [tablas, setTablas] = useState(TABLAS_INICIALES);
+  const [historial, setHistorial] = useState<Instantanea[]>([]);
   const [lotes, setLotes] = useState(LOTES_INICIALES);
   const [pedidos, setPedidos] = useState(PEDIDOS_INICIALES);
   const [tardias, setTardias] = useState(TARDIAS_INICIALES);
@@ -195,6 +235,76 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const eliminarAdicional = useCallback((id: string) => {
     setAdicionales((as) => as.filter((a) => a.id !== id));
   }, []);
+
+  const agregarRancho = useCallback(
+    (nombre: string, zona: string) => {
+      const err = validarRancho(nombre, ranchos);
+      if (err) return err;
+      setRanchos((rs) => [...rs, { id: nuevoId("ra"), nombre: nombre.trim(), zona: zona.trim() }]);
+      return null;
+    },
+    [ranchos],
+  );
+
+  const eliminarRancho = useCallback(
+    (id: string) => {
+      if (tablas.some((t) => t.ranchoId === id)) return "Primero elimina las tablas de este rancho.";
+      setRanchos((rs) => rs.filter((r) => r.id !== id));
+      return null;
+    },
+    [tablas],
+  );
+
+  const agregarTabla = useCallback(
+    (t: { ranchoId: string; nombre: string; hectareas: number }) => {
+      const err = validarTabla(t.ranchoId, t.nombre, t.hectareas, ranchos, tablas);
+      if (err) return err;
+      setTablas((ts) => [
+        ...ts,
+        { id: nuevoId("tb"), ranchoId: t.ranchoId, nombre: t.nombre.trim(), hectareas: redondear(t.hectareas) },
+      ]);
+      return null;
+    },
+    [ranchos, tablas],
+  );
+
+  const eliminarTabla = useCallback(
+    (id: string) => {
+      if (lotes.some((l) => l.tablaId === id && !l.cancelado))
+        return "Esta tabla ya tiene lotes; no se puede eliminar.";
+      setTablas((ts) => ts.filter((t) => t.id !== id));
+      setAdicionales((as) => as.map((a) => ({ ...a, tablaIds: a.tablaIds.filter((x) => x !== id) })).filter((a) => a.tablaIds.length > 0));
+      return null;
+    },
+    [lotes],
+  );
+
+  const registrarPlantacion = useCallback(
+    (p: PlantacionPrevia) => {
+      const t = tablas.find((x) => x.id === p.tablaId);
+      if (!t) return "Elige la tabla.";
+      const variedad = variedades.find((v) => v.id === p.variedadId);
+      if (!variedad) return "Elige la variedad.";
+      const err = validarPlantacionPrevia(t, lotes, p.ha, p.fechaPlantacion, hoy, p.fechaCosecha);
+      if (err) return err;
+      const { lote, pedido } = crearLotePlantado({
+        tabla: t,
+        lotes,
+        ha: p.ha,
+        variedad,
+        fechaPlantacion: p.fechaPlantacion,
+        fechaCosecha: p.fechaCosecha,
+        recetas,
+        adicionales,
+        ingeniero: "Israel",
+        nuevoId,
+      });
+      setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
+      if (pedido) setPedidos((ps) => [...ps, pedido]);
+      return null;
+    },
+    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual],
+  );
 
   const planearLote = useCallback<CampoContextValue["planearLote"]>(
     (tablaId, semana, ha, opciones) => {
@@ -459,10 +569,39 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   );
 
   const avanzarSemana = useCallback(() => {
+    setHistorial((h) => [
+      ...h,
+      { semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones },
+    ]);
     setLotes((ls) => finalizarCosechados(cerrarSemana(ls, semanaActual, () => nuevoId("lt")), semanaActual + 1));
     setSemanaActual((w) => w + 1);
     setHoy(fechaEnSemana(semanaActual + 1, 2));
-  }, [semanaActual]);
+  }, [semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones]);
+
+  const restaurar = useCallback((i: Instantanea) => {
+    setSemanaActual(i.semanaActual);
+    setHoy(i.hoy);
+    setLotes(i.lotes);
+    setPedidos(i.pedidos);
+    setTardias(i.tardias);
+    setAlertas(i.alertas);
+    setInventario(i.inventarioAlmacen);
+    setRecepciones(i.recepciones);
+  }, []);
+
+  const regresarSemana = useCallback(() => {
+    const ultima = historial[historial.length - 1];
+    if (!ultima) return;
+    restaurar(ultima);
+    setHistorial((h) => h.slice(0, -1));
+  }, [historial, restaurar]);
+
+  const volverAHoy = useCallback(() => {
+    const primera = historial[0];
+    if (!primera) return;
+    restaurar(primera);
+    setHistorial([]);
+  }, [historial, restaurar]);
 
   const value = useMemo<CampoContextValue>(
     () => ({
@@ -475,6 +614,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       variedades,
       recetas,
       adicionales,
+      ranchos,
       tablas,
       lotes,
       pedidos,
@@ -496,6 +636,14 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       marcar,
       resolverAlerta,
       avanzarSemana,
+      agregarRancho,
+      eliminarRancho,
+      agregarTabla,
+      eliminarTabla,
+      registrarPlantacion,
+      regresarSemana,
+      volverAHoy,
+      semanasAdelantadas: historial.length,
     }),
     [
       ready,
@@ -507,6 +655,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       variedades,
       recetas,
       adicionales,
+      ranchos,
       tablas,
       lotes,
       pedidos,
@@ -528,6 +677,14 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       marcar,
       resolverAlerta,
       avanzarSemana,
+      agregarRancho,
+      eliminarRancho,
+      agregarTabla,
+      eliminarTabla,
+      registrarPlantacion,
+      regresarSemana,
+      volverAHoy,
+      historial,
     ],
   );
 
