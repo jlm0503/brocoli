@@ -14,6 +14,7 @@ import type {
   Receta,
   Recetas,
   Recepcion,
+  Rancho,
   Semaforo,
   Tabla,
   Variedad,
@@ -330,6 +331,108 @@ export function validarApartado(
   if (!(ha > 0)) return "Indica cuántas hectáreas se van a plantar.";
   if (ha > disponibles) return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
   return null;
+}
+
+/* ───────────────────────── Captura de catálogos ───────────────────────── */
+
+const normal = (x: string) => x.trim().toLowerCase();
+
+/** Errores al agregar un rancho. `null` si es válido. */
+export function validarRancho(nombre: string, ranchos: Rancho[]): string | null {
+  if (!nombre.trim()) return "Escribe el nombre del rancho.";
+  if (ranchos.some((r) => normal(r.nombre) === normal(nombre))) return `Ya existe el rancho ${nombre.trim()}.`;
+  return null;
+}
+
+/** Errores al agregar una tabla. El nombre no se repite dentro del mismo rancho. */
+export function validarTabla(
+  ranchoId: string,
+  nombre: string,
+  hectareas: number,
+  ranchos: Rancho[],
+  tablas: Tabla[],
+): string | null {
+  if (!ranchos.some((r) => r.id === ranchoId)) return "Elige el rancho de la tabla.";
+  if (!nombre.trim()) return "Escribe el nombre de la tabla.";
+  if (!(hectareas > 0)) return "Indica las hectáreas de la tabla.";
+  if (tablas.some((t) => t.ranchoId === ranchoId && normal(t.nombre) === normal(nombre)))
+    return `Ya existe ${nombre.trim()} en este rancho.`;
+  return null;
+}
+
+/** Errores al registrar una plantación que ya se hizo (fecha de hoy o anterior). */
+export function validarPlantacionPrevia(
+  t: Tabla,
+  lotes: Lote[],
+  ha: number,
+  fechaPlantacion: string,
+  hoy: string,
+  fechaCosecha?: string,
+): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaPlantacion)) return "Indica la fecha de plantación.";
+  if (fechaPlantacion > hoy) return "La fecha de plantación no puede ser futura; para eso usa Planear lote.";
+  if (fechaCosecha && fechaCosecha <= fechaPlantacion) return "La cosecha debe ser después de la plantación.";
+  if (!(ha > 0)) return "Indica cuántas hectáreas se plantaron.";
+  const disponibles = hectareasDisponibles(t, lotes);
+  if (ha > disponibles) return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
+  return null;
+}
+
+/**
+ * Lote ya plantado capturado a mano: se plantó completo en la fecha dada, guarda la receta vigente
+ * y su paquete de planeación (semana -2) se da por pedido y entregado a tiempo.
+ */
+export function crearLotePlantado(p: {
+  tabla: Tabla;
+  lotes: Lote[];
+  ha: number;
+  variedad: Variedad;
+  fechaPlantacion: string;
+  fechaCosecha?: string | undefined;
+  recetas: Recetas;
+  adicionales: Adicional[];
+  ingeniero: string;
+  nuevoId: (prefijo: string) => string;
+}): { lote: Lote; pedido: PedidoPlaneacion | null } {
+  const ha = redondear(p.ha);
+  const semana = semanaDeFecha(p.fechaPlantacion);
+  const loteId = p.nuevoId("lt");
+  const receta = p.recetas[p.variedad.cultivo];
+  const lineas = lineasPlaneacion(receta, p.adicionales, p.tabla.id, ha);
+  const pedido: PedidoPlaneacion | null =
+    lineas.length > 0
+      ? {
+          id: p.nuevoId("pp"),
+          loteId,
+          tablaId: p.tabla.id,
+          ranchoId: p.tabla.ranchoId,
+          semanaPlantacion: semana,
+          ha,
+          lineas,
+          fecha: fechaEnSemana(semana - 3, 1),
+          ingeniero: p.ingeniero,
+          urgente: false,
+          status: "entregado",
+          fechaEntrega: fechaEnSemana(semana - 2, 2),
+        }
+      : null;
+  const lote: Lote = {
+    id: loteId,
+    codigo: siguienteCodigo(p.tabla, p.lotes),
+    tablaId: p.tabla.id,
+    ranchoId: p.tabla.ranchoId,
+    ha,
+    semanaPlaneada: semana,
+    ingeniero: p.ingeniero,
+    avances: [{ id: p.nuevoId("av"), fecha: p.fechaPlantacion, semana, ha }],
+    insumos: pedido ? pedido.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) : [],
+    receta: recetaEfectiva(receta, p.adicionales, p.tabla.id),
+    variedadId: p.variedad.id,
+    cultivo: p.variedad.cultivo,
+    cicloDias: p.variedad.cicloDias,
+    fechaCosecha: p.fechaCosecha || undefined,
+  };
+  return { lote, pedido };
 }
 
 export function semanasAnticipacion(semana: number, semanaActual: number): number {
