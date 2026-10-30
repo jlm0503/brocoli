@@ -34,7 +34,7 @@ import {
   semanaRealLote,
   semanaRecetaLote,
 } from "@/lib/campo/calc";
-import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
+import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { EstatusTabla, LineaDemanda, Tabla } from "@/lib/campo/types";
 
@@ -128,7 +128,7 @@ function Ranchos() {
       </div>
 
       <div className="space-y-10">
-        {RANCHOS.map((r) => {
+        {ranchos.map((r) => {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
           const costo = ts.reduce((s, t) => s + costoTabla(t.id), 0);
           const ha = ts.reduce((s, t) => s + t.hectareas, 0);
@@ -205,7 +205,7 @@ function Ranchos() {
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
   const { productos, lotes, pedidos, recepciones, semanaActual } = useCampo();
   const { porLote, costoLote, costoTabla } = useCostos();
-  const rancho = RANCHOS.find((r) => r.id === tabla.ranchoId);
+  const rancho = ranchos.find((r) => r.id === tabla.ranchoId);
   const est = estatusTabla(tabla, lotes);
   const ls = lotesDeTabla(lotes, tabla.id);
   const cosechados = lotes.filter((l) => l.tablaId === tabla.id && l.finalizado);

@@ -59,7 +59,7 @@ import {
   sumarPorProducto,
   validarApartado,
 } from "@/lib/campo/calc";
-import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
+import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
 
@@ -96,7 +96,7 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 
 function Planeacion() {
   const { tablas, lotes, semanaActual } = useCampo();
-  const [rancho, setRancho] = useState(RANCHOS[0]!.id);
+  const [rancho, setRancho] = useState(ranchos[0]!.id);
   const [planeando, setPlaneando] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
@@ -120,7 +120,7 @@ function Planeacion() {
     >
       <Tabs value={rancho} onValueChange={setRancho} className="mb-6">
         <TabsList>
-          {RANCHOS.map((r) => (
+          {ranchos.map((r) => (
             <TabsTrigger key={r.id} value={r.id}>
               {r.nombre}
             </TabsTrigger>

@@ -41,7 +41,6 @@ import {
   formatoNum,
   radioValidacion,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Familia, Unidad } from "@/lib/campo/types";
 
@@ -145,7 +144,7 @@ function Catalogos() {
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="pl-5 text-muted-foreground">
-                        {RANCHOS.find((r) => r.id === t.ranchoId)?.nombre}
+                        {ranchos.find((r) => r.id === t.ranchoId)?.nombre}
                       </TableCell>
                       <TableCell className="font-medium">{t.nombre}</TableCell>
                       <TableCell className="num text-right">{formatoNum(t.hectareas)}</TableCell>
@@ -182,7 +181,7 @@ function Catalogos() {
 
         <TabsContent value="ranchos">
           <div className="grid gap-4 md:grid-cols-3">
-            {RANCHOS.map((r) => {
+            {ranchos.map((r) => {
               const ts = tablas.filter((t) => t.ranchoId === r.id);
               return (
                 <article key={r.id} className="rounded-xl border border-border bg-card p-5 shadow-card">

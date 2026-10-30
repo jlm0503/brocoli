@@ -40,7 +40,6 @@ import {
   formatoNum,
   sumarPorProducto,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { AlertaInsumos, OpcionTardia } from "@/lib/campo/types";
 
@@ -80,7 +79,7 @@ function Alertas() {
   const valor = (a: AlertaInsumos) =>
     a.items.reduce((s, i) => s + i.cantidad * (precio.get(i.productoId)?.precio ?? 0), 0);
   const tabla = (id: string) => tablas.find((t) => t.id === id)?.nombre;
-  const rancho = (id: string) => RANCHOS.find((r) => r.id === id)?.nombre;
+  const rancho = (id: string) => ranchos.find((r) => r.id === id)?.nombre;
   const inventario = Object.entries(inventarioAlmacen).filter(([, c]) => c > 0);
 
   return (
@@ -272,7 +271,7 @@ function ResolverDialog({ alerta, onClose }: { alerta: AlertaInsumos | null; onC
               <SelectContent>
                 {destinos.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
-                    {RANCHOS.find((r) => r.id === l.ranchoId)?.nombre} · {tablas.find((t) => t.id === l.tablaId)?.nombre} · {l.codigo} (sem {l.semanaPlaneada})
+                    {ranchos.find((r) => r.id === l.ranchoId)?.nombre} · {tablas.find((t) => t.id === l.tablaId)?.nombre} · {l.codigo} (sem {l.semanaPlaneada})
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -38,7 +38,6 @@ import {
   semanaEntregaLimite,
   type Consolidado,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
@@ -155,7 +154,7 @@ function PedidosPlaneacion() {
       <div className="space-y-6">
         {grupos.map(([k, ps]) => {
           const limite = Number(k.split("|")[0]);
-          const rancho = RANCHOS.find((r) => r.id === ps[0]!.ranchoId);
+          const rancho = ranchos.find((r) => r.id === ps[0]!.ranchoId);
           const consolidado = consolidarPlaneacion(ps, productos);
           return (
             <section key={k} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
@@ -360,7 +359,7 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
       </div>
 
       <div className="space-y-8">
-        {RANCHOS.map((r) => {
+        {ranchos.map((r) => {
           const deRancho = filas
             .filter((f) => f.ranchoId === r.id)
             .sort((a, b) => {
@@ -488,7 +487,7 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
   const [cantidad, setCantidad] = useState<string | null>(null);
   const [foto, setFoto] = useState<string | undefined>();
   const p = fila ? productos.find((x) => x.id === fila.productoId) : undefined;
-  const rancho = fila ? RANCHOS.find((r) => r.id === fila.ranchoId) : undefined;
+  const rancho = fila ? ranchos.find((r) => r.id === fila.ranchoId) : undefined;
   const valor = cantidad ?? (fila ? String(fila.cantidadPedido) : "");
 
   const cerrar = () => {
