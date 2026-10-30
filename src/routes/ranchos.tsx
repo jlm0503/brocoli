@@ -127,6 +127,12 @@ function Ranchos() {
         ))}
       </div>
 
+      {ranchos.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-card/60 p-8 text-center text-sm text-muted-foreground">
+          Aún no hay ranchos. Agrégalos con sus tablas en Catálogos y registra en Planeación lo que ya
+          está plantado; aquí verás su estatus y costos.
+        </div>
+      )}
       <div className="space-y-10">
         {ranchos.map((r) => {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
