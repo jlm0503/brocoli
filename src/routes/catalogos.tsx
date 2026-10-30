@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPinOff, MapPin, Plus } from "lucide-react";
+import { MapPinOff, MapPin, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -41,7 +41,6 @@ import {
   formatoNum,
   radioValidacion,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Familia, Unidad } from "@/lib/campo/types";
 
@@ -68,8 +67,12 @@ export const Route = createFileRoute("/catalogos")({
 const UNIDADES: Unidad[] = ["kg", "L", "rollo"];
 
 function Catalogos() {
-  const { tablas, lotes, productos, semanaActual, setPrecio } = useCampo();
+  const { ranchos, tablas, lotes, productos, semanaActual, setPrecio } = useCampo();
+  const { eliminarRancho, eliminarTabla } = useCampo();
   const [nuevo, setNuevo] = useState(false);
+  const [nuevoRancho, setNuevoRancho] = useState(false);
+  const [nuevaTabla, setNuevaTabla] = useState(false);
+  const quitar = (err: string | null, ok: string) => (err ? toast.error(err) : toast(ok));
 
   return (
     <AppShell
@@ -78,7 +81,7 @@ function Catalogos() {
       title="Catálogos"
       description={`Semanas ISO del 1 al 52, iniciando en lunes. Hoy es la semana ${semanaActual}: del ${fechaCorta(fechaEnSemana(semanaActual, 0))} al ${fechaCorta(fechaEnSemana(semanaActual, 6))}.`}
     >
-      <Tabs defaultValue="productos">
+      <Tabs defaultValue={ranchos.length === 0 ? "ranchos" : "productos"}>
         <TabsList className="mb-6">
           <TabsTrigger value="productos">Productos</TabsTrigger>
           <TabsTrigger value="tablas">Tablas</TabsTrigger>
@@ -127,6 +130,18 @@ function Catalogos() {
         </TabsContent>
 
         <TabsContent value="tablas">
+          <div className="mb-4 flex justify-end">
+            <Button onClick={() => setNuevaTabla(true)} disabled={ranchos.length === 0}>
+              <Plus /> Nueva tabla
+            </Button>
+          </div>
+          {tablas.length === 0 && (
+            <p className="mb-4 rounded-xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
+              {ranchos.length === 0
+                ? "Primero agrega un rancho en la pestaña Ranchos."
+                : "Aún no hay tablas. Agrega la primera con su rancho y hectáreas."}
+            </p>
+          )}
           <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
             <Table>
               <TableHeader>
@@ -136,7 +151,8 @@ function Catalogos() {
                   <TableHead className="text-right">Hectáreas</TableHead>
                   <TableHead>Punto GPS central</TableHead>
                   <TableHead className="text-right">Radio de validación</TableHead>
-                  <TableHead className="pr-5">Estatus</TableHead>
+                  <TableHead>Estatus</TableHead>
+                  <TableHead className="pr-5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -145,7 +161,7 @@ function Catalogos() {
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="pl-5 text-muted-foreground">
-                        {RANCHOS.find((r) => r.id === t.ranchoId)?.nombre}
+                        {ranchos.find((r) => r.id === t.ranchoId)?.nombre}
                       </TableCell>
                       <TableCell className="font-medium">{t.nombre}</TableCell>
                       <TableCell className="num text-right">{formatoNum(t.hectareas)}</TableCell>
@@ -165,8 +181,19 @@ function Catalogos() {
                         {formatoNum(radioValidacion(t))} m
                         <div className="text-xs text-muted-foreground">{t.radio ? "manual" : "automático"}</div>
                       </TableCell>
-                      <TableCell className="pr-5">
+                      <TableCell>
                         <Badge variant={est}>{ESTATUS_TABLA_LABEL[est]}</Badge>
+                      </TableCell>
+                      <TableCell className="pr-5 text-right">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          aria-label={`Eliminar ${t.nombre}`}
+                          onClick={() => quitar(eliminarTabla(t.id), `${t.nombre} eliminada`)}
+                        >
+                          <Trash2 />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -181,12 +208,33 @@ function Catalogos() {
         </TabsContent>
 
         <TabsContent value="ranchos">
+          <div className="mb-4 flex justify-end">
+            <Button onClick={() => setNuevoRancho(true)}>
+              <Plus /> Nuevo rancho
+            </Button>
+          </div>
+          {ranchos.length === 0 && (
+            <p className="mb-4 rounded-xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
+              Aún no hay ranchos. Agrega el primero y después sus tablas.
+            </p>
+          )}
           <div className="grid gap-4 md:grid-cols-3">
-            {RANCHOS.map((r) => {
+            {ranchos.map((r) => {
               const ts = tablas.filter((t) => t.ranchoId === r.id);
               return (
                 <article key={r.id} className="rounded-xl border border-border bg-card p-5 shadow-card">
-                  <h3 className="text-2xl font-semibold">{r.nombre}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-2xl font-semibold">{r.nombre}</h3>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8"
+                      aria-label={`Eliminar ${r.nombre}`}
+                      onClick={() => quitar(eliminarRancho(r.id), `${r.nombre} eliminado`)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground">Zona: {r.zona}</p>
                   <p className="num mt-3 text-sm">
                     {ts.length} tablas · {formatoNum(ts.reduce((s, t) => s + t.hectareas, 0))} ha
@@ -199,7 +247,120 @@ function Catalogos() {
       </Tabs>
 
       <NuevoProducto open={nuevo} onClose={() => setNuevo(false)} />
+      <NuevoRancho open={nuevoRancho} onClose={() => setNuevoRancho(false)} />
+      <NuevaTabla open={nuevaTabla} onClose={() => setNuevaTabla(false)} />
     </AppShell>
+  );
+}
+
+function NuevoRancho({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { agregarRancho } = useCampo();
+  const [nombre, setNombre] = useState("");
+  const [zona, setZona] = useState("");
+
+  const guardar = () => {
+    const err = agregarRancho(nombre, zona);
+    if (err) return void toast.error(err);
+    toast.success(`Rancho ${nombre.trim()} agregado`);
+    setNombre("");
+    setZona("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Nuevo rancho</DialogTitle>
+          <DialogDescription>Después agrega sus tablas en la pestaña Tablas.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="nr-nombre">Nombre</Label>
+            <Input id="nr-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nr-zona">Zona (opcional)</Label>
+            <Input id="nr-zona" value={zona} onChange={(e) => setZona(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar}>Agregar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NuevaTabla({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { ranchos, agregarTabla } = useCampo();
+  const [ranchoElegido, setRanchoId] = useState("");
+  const ranchoId = ranchos.some((r) => r.id === ranchoElegido) ? ranchoElegido : (ranchos[0]?.id ?? "");
+  const [nombre, setNombre] = useState("");
+  const [ha, setHa] = useState("");
+
+  const guardar = () => {
+    const err = agregarTabla({ ranchoId, nombre, hectareas: Number(ha) });
+    if (err) return void toast.error(err);
+    toast.success(`${nombre.trim()} agregada`);
+    // Se queda abierto el mismo rancho para capturar varias tablas seguidas.
+    setNombre("");
+    setHa("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Nueva tabla</DialogTitle>
+          <DialogDescription>Puedes agregar varias seguidas; la ventana se queda abierta.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label>Rancho</Label>
+            <Select value={ranchoId} onValueChange={setRanchoId}>
+              <SelectTrigger aria-label="Rancho">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ranchos.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nt-nombre">Nombre</Label>
+            <Input id="nt-nombre" placeholder="Tabla 1" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nt-ha">Hectáreas</Label>
+            <Input
+              id="nt-ha"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.1"
+              value={ha}
+              onChange={(e) => setHa(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && guardar()}
+              className="num"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Listo
+          </Button>
+          <Button onClick={guardar}>Agregar tabla</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -23,8 +23,19 @@ import {
   validarApartado,
   semanaCosechaLote,
   validarAvance,
+  crearLotePlantado,
+  validarPlantacionPrevia,
+  validarRancho,
+  validarTabla,
 } from "@/lib/campo/calc";
-import { LOTES_INICIALES, RECETAS_INICIALES, TABLAS_INICIALES, VARIEDADES } from "@/lib/campo/seed";
+import {
+  LOTES_INICIALES,
+  PEDIDOS_INICIALES,
+  RANCHOS_INICIALES,
+  RECETAS_INICIALES,
+  TABLAS_INICIALES,
+  VARIEDADES,
+} from "@/lib/campo/seed";
 import type { Adicional, Lote, PedidoPlaneacion, Producto, Receta, Recetas, Tabla } from "@/lib/campo/types";
 
 const R = (brocoli: Receta): Recetas => ({ brocoli, coliflor: { dosis: {} } });
@@ -270,16 +281,56 @@ describe("Datos reales cargados", () => {
     expect(RECETAS_INICIALES.coliflor.dosis).toEqual({});
   });
 
-  it("ninguna tabla tiene más hectáreas en uso que su total", () => {
-    for (const t of TABLAS_INICIALES) {
-      expect(hectareasDisponibles(t, LOTES_INICIALES)).toBeGreaterThanOrEqual(0);
-      const enUso = LOTES_INICIALES.filter((l) => l.tablaId === t.id && !l.finalizado).reduce((s, l) => s + l.ha, 0);
-      expect(enUso).toBeLessThanOrEqual(t.hectareas + 1e-9);
-    }
+  it("arranca sin ranchos, tablas ni plantaciones (el usuario los captura)", () => {
+    expect(RANCHOS_INICIALES).toEqual([]);
+    expect(TABLAS_INICIALES).toEqual([]);
+    expect(LOTES_INICIALES).toEqual([]);
+    expect(PEDIDOS_INICIALES).toEqual([]);
+  });
+});
+
+describe("Captura de ranchos, tablas y plantaciones", () => {
+  const ranchos = [{ id: "r", nombre: "Dolores", zona: "Dolores" }];
+
+  it("no se repite el nombre de un rancho", () => {
+    expect(validarRancho("dolores ", ranchos)).not.toBeNull();
+    expect(validarRancho("Trejo", ranchos)).toBeNull();
   });
 
-  it("los ciclos marcados Finalizado en la hoja ya liberaron su tabla", () => {
-    const fin = LOTES_INICIALES.filter((l) => l.finalizado).map((l) => `${l.tablaId}:${l.ha}`).sort();
-    expect(fin).toEqual(["sm-1:4", "sm-7:6.5", "tr-r3:4.5", "tr-r3:4.5"]);
+  it("una tabla necesita rancho, nombre único en su rancho y hectáreas", () => {
+    expect(validarTabla("r", "Tabla 2", 4, ranchos, [t12])).toBeNull();
+    expect(validarTabla("r", "tabla 1", 4, ranchos, [t12])).not.toBeNull();
+    expect(validarTabla("r", "Tabla 2", 0, ranchos, [t12])).not.toBeNull();
+    expect(validarTabla("x", "Tabla 2", 4, ranchos, [t12])).not.toBeNull();
+  });
+
+  it("plantación ya hecha: no puede ser futura ni pasar las hectáreas libres", () => {
+    expect(validarPlantacionPrevia(t12, [], 6, "2026-10-15", "2026-10-30")).toBeNull();
+    expect(validarPlantacionPrevia(t12, [], 6, "2026-11-02", "2026-10-30")).not.toBeNull();
+    expect(validarPlantacionPrevia(t12, [], 12.5, "2026-10-15", "2026-10-30")).not.toBeNull();
+    expect(validarPlantacionPrevia(t12, [], 6, "2026-10-15", "2026-10-30", "2026-10-10")).not.toBeNull();
+  });
+
+  it("plantación ya hecha de 4 ha de Diamante: plantada completa y paquete de planeación entregado", () => {
+    let n = 0;
+    const diamante = VARIEDADES.find((v) => v.id === "diamante")!;
+    const { lote: l, pedido } = crearLotePlantado({
+      tabla: t12,
+      lotes: [],
+      ha: 4,
+      variedad: diamante,
+      fechaPlantacion: "2026-10-15",
+      recetas: RECETAS_INICIALES,
+      adicionales: [],
+      ingeniero: "Israel",
+      nuevoId: (p) => `${p}${++n}`,
+    });
+    expect(l.codigo).toBe("1-A");
+    expect(l.avances).toHaveLength(1);
+    expect(l.avances[0]!.ha).toBe(4);
+    expect(semanaCosechaLote(l)).toBe(10);
+    expect(pedido?.status).toBe("entregado");
+    expect(pedido?.lineas).toContainEqual({ productoId: "silifosca", cantidad: 1200 });
+    expect(hectareasDisponibles(t12, [l])).toBe(8);
   });
 });

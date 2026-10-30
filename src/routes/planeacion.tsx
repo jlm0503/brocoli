@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, CornerDownRight, Lock, Package, Plus, X } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CalendarClock, CornerDownRight, Lock, Package, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -58,8 +58,9 @@ import {
   semaforoPedido,
   sumarPorProducto,
   validarApartado,
+  validarPlantacionPrevia,
 } from "@/lib/campo/calc";
-import { RANCHOS, VARIEDADES } from "@/lib/campo/seed";
+import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
 
@@ -95,9 +96,11 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 }
 
 function Planeacion() {
-  const { tablas, lotes, semanaActual } = useCampo();
-  const [rancho, setRancho] = useState(RANCHOS[0]!.id);
+  const { ranchos, tablas, lotes, semanaActual } = useCampo();
+  const [ranchoElegido, setRancho] = useState("");
+  const rancho = ranchos.some((r) => r.id === ranchoElegido) ? ranchoElegido : (ranchos[0]?.id ?? "");
   const [planeando, setPlaneando] = useState<Tabla | null>(null);
+  const [registrando, setRegistrando] = useState(false);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
   const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado);
@@ -117,10 +120,25 @@ function Planeacion() {
       eyebrow={`Ingenieros · semana ${semanaActual}`}
       title="Planeación y avance"
       description={`Planea la tabla completa o por lotes en distintas semanas, idealmente con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana pasa a un lote pendiente.`}
+      actions={
+        tablas.length > 0 && (
+          <Button variant="outline" onClick={() => setRegistrando(true)}>
+            <CalendarCheck /> Registrar plantación ya hecha
+          </Button>
+        )
+      }
     >
+      {ranchos.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-card/60 p-8 text-center text-sm text-muted-foreground">
+          Aún no hay ranchos ni tablas. El administrador los agrega en Catálogos; después aquí se planean
+          los lotes y se registran las plantaciones que ya se hicieron.
+        </div>
+      )}
+      {ranchos.length > 0 && (
+      <>
       <Tabs value={rancho} onValueChange={setRancho} className="mb-6">
         <TabsList>
-          {RANCHOS.map((r) => (
+          {ranchos.map((r) => (
             <TabsTrigger key={r.id} value={r.id}>
               {r.nombre}
             </TabsTrigger>
@@ -156,10 +174,19 @@ function Planeacion() {
         </p>
       </div>
 
+      </>
+      )}
+
       <PlanearDialog
         key={planeando ? `${planeando.id}-${lotes.length}` : "cerrado"}
         tabla={planeando}
         onClose={() => setPlaneando(null)}
+      />
+      <RegistrarPlantacionDialog
+        key={registrando ? `reg-${rancho}` : "reg-cerrado"}
+        open={registrando}
+        ranchoInicial={rancho}
+        onClose={() => setRegistrando(false)}
       />
     </AppShell>
   );
@@ -230,6 +257,143 @@ function Pendientes({ lotes }: { lotes: Lote[] }) {
         })}
       </ul>
     </section>
+  );
+}
+
+function RegistrarPlantacionDialog({
+  open,
+  ranchoInicial,
+  onClose,
+}: {
+  open: boolean;
+  ranchoInicial: string;
+  onClose: () => void;
+}) {
+  const { ranchos, tablas, lotes, variedades, hoy, registrarPlantacion } = useCampo();
+  const [ranchoId, setRanchoId] = useState(ranchoInicial);
+  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
+  const [tablaElegida, setTablaId] = useState("");
+  const tabla = deRancho.find((t) => t.id === tablaElegida) ?? deRancho[0];
+  const [variedadId, setVariedadId] = useState(variedades[0]?.id ?? "");
+  const variedad = variedades.find((v) => v.id === variedadId);
+  const [ha, setHa] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [cosecha, setCosecha] = useState("");
+  const disponibles = tabla ? hectareasDisponibles(tabla, lotes) : 0;
+  const error = tabla ? validarPlantacionPrevia(tabla, lotes, Number(ha), fecha, hoy, cosecha || undefined) : "Elige la tabla.";
+
+  const guardar = () => {
+    if (!tabla) return void toast.error("Elige la tabla.");
+    const err = registrarPlantacion({
+      tablaId: tabla.id,
+      ha: Number(ha),
+      variedadId,
+      fechaPlantacion: fecha,
+      fechaCosecha: cosecha || undefined,
+    });
+    if (err) return void toast.error(err);
+    toast.success(`${tabla.nombre}: ${formatoNum(Number(ha))} ha de ${variedad?.nombre} registradas`);
+    // Se queda abierta para capturar la siguiente.
+    setHa("");
+    setFecha("");
+    setCosecha("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Registrar plantación ya hecha</DialogTitle>
+          <DialogDescription>
+            Para lo que ya está plantado. Su paquete de planeación se da por entregado y desde aquí la
+            receta sigue semana a semana. La ventana se queda abierta para capturar varias.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Rancho</Label>
+            <Select value={ranchoId} onValueChange={setRanchoId}>
+              <SelectTrigger aria-label="Rancho">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ranchos.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Tabla</Label>
+            <Select value={tabla?.id ?? ""} onValueChange={setTablaId}>
+              <SelectTrigger aria-label="Tabla">
+                <SelectValue placeholder="Sin tablas" />
+              </SelectTrigger>
+              <SelectContent>
+                {deRancho.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.nombre} · {formatoNum(hectareasDisponibles(t, lotes))} de {formatoNum(t.hectareas)} ha libres
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Variedad</Label>
+            <Select value={variedadId} onValueChange={setVariedadId}>
+              <SelectTrigger aria-label="Variedad">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {variedades.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nombre} · {v.cultivo === "brocoli" ? "brócoli" : "coliflor"} · {v.cicloDias} días
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="rp-ha">Hectáreas plantadas</Label>
+            <Input
+              id="rp-ha"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              placeholder={`hasta ${formatoNum(disponibles)}`}
+              value={ha}
+              onChange={(e) => setHa(e.target.value)}
+              className="num"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="rp-fecha">Fecha de plantación</Label>
+            <Input id="rp-fecha" type="date" max={hoy} value={fecha} onChange={(e) => setFecha(e.target.value)} className="num" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="rp-cosecha">Fecha estimada de cosecha (opcional)</Label>
+            <Input id="rp-cosecha" type="date" value={cosecha} onChange={(e) => setCosecha(e.target.value)} className="num" />
+            {fecha && variedad && !cosecha && (
+              <p className="text-xs text-muted-foreground">
+                Si la dejas vacía: {fechaCorta(sumarDias(fecha, variedad.cicloDias))} ({variedad.cicloDias} días).
+              </p>
+            )}
+          </div>
+        </div>
+        {ha && fecha && error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Listo
+          </Button>
+          <Button onClick={guardar} disabled={!!error}>
+            Registrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

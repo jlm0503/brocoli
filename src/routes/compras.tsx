@@ -38,7 +38,6 @@ import {
   semanaEntregaLimite,
   type Consolidado,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
@@ -118,7 +117,7 @@ function Compras() {
 /* ───────────── Pedidos de planeación ───────────── */
 
 function PedidosPlaneacion() {
-  const { pedidos, productos, tablas, lotes, semanaActual, reabrirPedido } = useCampo();
+  const { ranchos, pedidos, productos, tablas, lotes, semanaActual, reabrirPedido } = useCampo();
   const [todos, setTodos] = useState(false);
   const [entregando, setEntregando] = useState<PedidoPlaneacion | null>(null);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
@@ -155,7 +154,7 @@ function PedidosPlaneacion() {
       <div className="space-y-6">
         {grupos.map(([k, ps]) => {
           const limite = Number(k.split("|")[0]);
-          const rancho = RANCHOS.find((r) => r.id === ps[0]!.ranchoId);
+          const rancho = ranchos.find((r) => r.id === ps[0]!.ranchoId);
           const consolidado = consolidarPlaneacion(ps, productos);
           return (
             <section key={k} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
@@ -318,7 +317,7 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
 /* ───────────── Entregar / comprar ───────────── */
 
 function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "comprar" }) {
-  const { lotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
+  const { ranchos, lotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
   const [recibiendo, setRecibiendo] = useState<Consolidado | null>(null);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const lineas = useMemo(
@@ -360,7 +359,7 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
       </div>
 
       <div className="space-y-8">
-        {RANCHOS.map((r) => {
+        {ranchos.map((r) => {
           const deRancho = filas
             .filter((f) => f.ranchoId === r.id)
             .sort((a, b) => {
@@ -484,11 +483,11 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
 }
 
 function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: () => void }) {
-  const { productos, recibir, tablas, lotes } = useCampo();
+  const { ranchos, productos, recibir, tablas, lotes } = useCampo();
   const [cantidad, setCantidad] = useState<string | null>(null);
   const [foto, setFoto] = useState<string | undefined>();
   const p = fila ? productos.find((x) => x.id === fila.productoId) : undefined;
-  const rancho = fila ? RANCHOS.find((r) => r.id === fila.ranchoId) : undefined;
+  const rancho = fila ? ranchos.find((r) => r.id === fila.ranchoId) : undefined;
   const valor = cantidad ?? (fila ? String(fila.cantidadPedido) : "");
 
   const cerrar = () => {

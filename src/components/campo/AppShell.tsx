@@ -2,8 +2,9 @@ import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import {
   BellRing,
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
-  FastForward,
   FlaskConical,
   LayoutGrid,
   ShieldAlert,
@@ -43,7 +44,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
-  const { ready, role, setRole, semanaActual, hoy, avanzarSemana } = useCampo();
+  const { ready, role, setRole, semanaActual, hoy } = useCampo();
   const navigate = useNavigate();
 
   if (!ready) return <div className="min-h-screen bg-background" />;
@@ -105,17 +106,10 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
             </SelectContent>
           </Select>
           <p className="mt-3 text-xs leading-relaxed text-ink-foreground/55">
-            Prototipo con tus datos reales al 29 oct. Los cambios no se guardan.
+            Prototipo: captura tus ranchos, tablas y plantaciones. Los cambios se borran al recargar.
           </p>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="mt-2 w-full justify-start px-2 text-xs text-ink-foreground/75 hover:bg-sidebar-accent hover:text-ink-foreground"
-            onClick={avanzarSemana}
-            title="Cierra la semana: lo no plantado pasa a un lote pendiente nuevo"
-          >
-            <FastForward /> Simular: pasar a semana {semanaActual + 1}
-          </Button>
+          <span className="eyebrow mt-4 block !text-ink-foreground/60">Simular semana</span>
+          <ControlSemana oscuro />
         </div>
       </aside>
 
@@ -125,15 +119,9 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
             <span className="text-xs text-muted-foreground">
               {ROLES[role].persona} · {ROLES[role].nombre}
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="ml-auto h-8 text-xs"
-              onClick={avanzarSemana}
-              title="Prototipo: cierra la semana y pasa a la siguiente"
-            >
-              <FastForward /> Sem {semanaActual + 1}
-            </Button>
+            <div className="ml-auto">
+              <ControlSemana />
+            </div>
             <Select value={role} onValueChange={cambiarRol}>
               <SelectTrigger className="h-8 w-auto text-xs">
                 <SelectValue placeholder="Cambiar" />
@@ -180,6 +168,45 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+/** Solo prototipo: adelantar, regresar o volver a la semana real. */
+function ControlSemana({ oscuro = false }: { oscuro?: boolean }) {
+  const { semanaActual, semanasAdelantadas, avanzarSemana, regresarSemana, volverAHoy } = useCampo();
+  const btn = oscuro
+    ? "border-sidebar-border bg-sidebar-accent text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+    : "";
+  return (
+    <div className="mt-2 flex items-center gap-1">
+      <Button
+        size="icon"
+        variant="outline"
+        className={`size-8 ${btn}`}
+        onClick={regresarSemana}
+        disabled={semanasAdelantadas === 0}
+        aria-label={`Regresar a la semana ${semanaActual - 1}`}
+        title="Regresar una semana (deshace lo hecho en esta semana)"
+      >
+        <ChevronLeft />
+      </Button>
+      <span className="num min-w-16 text-center text-xs">Sem {semanaActual}</span>
+      <Button
+        size="icon"
+        variant="outline"
+        className={`size-8 ${btn}`}
+        onClick={avanzarSemana}
+        aria-label={`Pasar a la semana ${semanaActual + 1}`}
+        title="Cierra la semana: lo no plantado pasa a un lote pendiente nuevo"
+      >
+        <ChevronRight />
+      </Button>
+      {semanasAdelantadas > 0 && (
+        <Button size="sm" variant="outline" className={`h-8 text-xs ${btn}`} onClick={volverAHoy}>
+          Hoy
+        </Button>
+      )}
     </div>
   );
 }

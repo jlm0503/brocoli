@@ -34,7 +34,6 @@ import {
   formatoNum,
   semanasReceta,
 } from "@/lib/campo/calc";
-import { RANCHOS } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Adicional, Cultivo } from "@/lib/campo/types";
 
@@ -234,7 +233,7 @@ function Paquete() {
 }
 
 function Adicionales() {
-  const { adicionales, productos, tablas, eliminarAdicional } = useCampo();
+  const { ranchos, adicionales, productos, tablas, eliminarAdicional } = useCampo();
   const [editando, setEditando] = useState<Adicional | "nuevo" | null>(null);
 
   return (
@@ -255,7 +254,7 @@ function Adicionales() {
       <div className="grid gap-3 md:grid-cols-2">
         {adicionales.map((a) => {
           const p = productos.find((x) => x.id === a.productoId);
-          const rancho = RANCHOS.find((r) => r.id === a.ranchoId);
+          const rancho = ranchos.find((r) => r.id === a.ranchoId);
           return (
             <article key={a.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
               <div className="flex items-start justify-between gap-2">
@@ -309,9 +308,9 @@ function Adicionales() {
 }
 
 function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null; onClose: () => void }) {
-  const { productos, tablas, guardarAdicional } = useCampo();
+  const { ranchos, productos, tablas, guardarAdicional } = useCampo();
   const inicial = valor && valor !== "nuevo" ? valor : null;
-  const [ranchoId, setRanchoId] = useState(inicial?.ranchoId ?? RANCHOS[0]!.id);
+  const [ranchoId, setRanchoId] = useState(inicial?.ranchoId ?? ranchos[0]?.id ?? "");
   const [tablaIds, setTablaIds] = useState<string[]>(inicial?.tablaIds ?? []);
   const [productoId, setProductoId] = useState(inicial?.productoId ?? "");
   const [semanas, setSemanas] = useState<string[]>(inicial?.semanas.map(String) ?? []);
@@ -362,7 +361,7 @@ function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {RANCHOS.map((r) => (
+                  {ranchos.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.nombre}
                     </SelectItem>

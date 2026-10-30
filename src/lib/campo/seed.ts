@@ -1,11 +1,3 @@
-import {
-  fechaDeHoja,
-  fechaEnSemana,
-  finalizarCosechados,
-  lineasPlaneacion,
-  recetaEfectiva,
-  semanaDeFecha,
-} from "./calc";
 import type {
   Adicional,
   AlertaInsumos,
@@ -20,14 +12,14 @@ import type {
 } from "./types";
 
 /**
- * Datos reales compartidos por el usuario (hojas "BROCOLI", "COLIFLOR" y "Paquete Tecnologico"
- * de BROCOLI_DASHBOARD_CON_DETALLES, 28 oct 2026). Los códigos de producto y la familia de cada
- * producto son provisionales; el precio unitario = costo por ha de la hoja ÷ dosis.
+ * Punto de partida: solo productos, variedades y paquete tecnológico (hoja "Paquete Tecnologico"
+ * del usuario). Ranchos, tablas y plantaciones los captura el usuario en la app.
+ * Los códigos de producto y la familia de cada producto son provisionales.
  */
 
-/** "Hoy" en el prototipo al abrir: jueves 29 de octubre de 2026, semana 44. */
+/** "Hoy" en el prototipo al abrir: viernes 30 de octubre de 2026, semana 44. */
 export const SEMANA_INICIAL = 44;
-export const HOY_INICIAL = "2026-10-29";
+export const HOY_INICIAL = "2026-10-30";
 
 export const VARIEDADES: Variedad[] = [
   { id: "diamante", nombre: "Diamante", cultivo: "brocoli", cicloDias: 70 },
@@ -93,145 +85,9 @@ export const RECETAS_INICIALES: Recetas = {
 
 export const ADICIONALES_INICIALES: Adicional[] = [];
 
-export const RANCHOS: Rancho[] = [
-  { id: "smonica", nombre: "Santa Mónica", zona: "Dolores" },
-  { id: "dolores", nombre: "Dolores", zona: "Dolores" },
-  { id: "trejo", nombre: "Trejo", zona: "Trejo" },
-];
-
-const T = (ranchoId: string, id: string, nombre: string, hectareas: number): Tabla => ({
-  id,
-  ranchoId,
-  nombre,
-  hectareas,
-});
-
-export const TABLAS_INICIALES: Tabla[] = [
-  T("smonica", "sm-1", "Tabla 1", 4),
-  T("smonica", "sm-2", "Tabla 2", 4),
-  T("smonica", "sm-6", "Tabla 6", 6.5),
-  T("smonica", "sm-7", "Tabla 7", 6.5),
-  T("smonica", "sm-9-10", "Tabla 9-10", 9),
-  T("smonica", "sm-11", "Tabla 11", 4),
-  T("smonica", "sm-12", "Tabla 12", 4),
-  T("dolores", "do-1", "Tabla 1", 3.2),
-  T("dolores", "do-2", "Tabla 2", 4),
-  T("dolores", "do-3", "Tabla 3", 5.5),
-  T("dolores", "do-4", "Tabla 4", 6.3),
-  T("dolores", "do-5-6", "Tabla 5-6", 6.3),
-  T("dolores", "do-7", "Tabla 7", 2.6),
-  T("dolores", "do-9-10-11", "Tabla 9-10-11", 7.5),
-  T("dolores", "do-12-13", "Tabla 12-13", 3.8),
-  T("dolores", "do-14-16", "Tabla 14-16", 4.3),
-  T("dolores", "do-15", "Tabla 15", 2.5),
-  T("dolores", "do-17", "Tabla 17", 1.6),
-  T("dolores", "do-18", "Tabla 18", 5.2),
-  T("trejo", "tr-r1", "Ríos 1", 12.5),
-  T("trejo", "tr-r2", "Ríos 2", 7.4),
-  T("trejo", "tr-r3", "Ríos 3", 9),
-  T("trejo", "tr-r4", "Ríos 4", 6.2),
-  T("trejo", "tr-t3", "Torres 3", 7),
-  T("trejo", "tr-t4", "Torres 4", 6.5),
-  T("trejo", "tr-t5", "Torres 5", 6),
-  T("trejo", "tr-t6", "Torres 6", 7),
-  T("trejo", "tr-t7", "Torres 7", 6.5),
-  T("trejo", "tr-pa", "Por asignar", 6),
-];
-
-/* ── Plantaciones de las hojas BROCOLI y COLIFLOR ── */
-
-/** [tablaId, ha, variedad, fecha de plantación, fecha estimada de cosecha] */
-const PLANTACIONES: [string, number, string, string, string][] = [
-  // Brócoli
-  ["sm-7", 6.5, "tlaloc", "20/06/26", "15/09/26"],
-  ["sm-1", 4, "tlaloc", "27/06/26", "15/09/26"],
-  ["tr-r3", 4.5, "tlaloc", "15/07/26", "29/09/26"],
-  ["tr-r3", 4.5, "tlaloc", "23/07/26", "29/09/26"],
-  ["do-9-10-11", 7.5, "tlaloc", "31/07/26", "26/10/26"],
-  ["tr-r2", 3.7, "tlaloc", "04/08/26", "21/10/26"],
-  ["tr-r2", 2.7, "tlaloc", "04/08/26", "21/10/26"],
-  ["tr-r4", 3.8, "tlaloc", "13/08/26", "30/10/26"],
-  ["do-15", 2.5, "diamante", "14/08/26", "31/10/26"],
-  ["tr-r2", 1, "tlaloc", "14/08/26", "31/10/26"],
-  ["do-7", 2.6, "diamante", "19/08/26", "09/11/26"],
-  ["tr-r4", 2.4, "tlaloc", "25/08/26", "11/11/26"],
-  ["do-1", 3.2, "diamante", "31/08/26", "21/11/26"],
-  ["do-2", 4, "diamante", "06/09/26", "27/11/26"],
-  ["do-3", 5.5, "diamante", "12/09/26", "03/12/26"],
-  ["do-4", 6.3, "diamante", "25/09/26", "16/12/26"],
-  ["do-5-6", 6.3, "diamante", "01/10/26", "22/12/26"],
-  ["do-12-13", 3.8, "diamante", "09/10/26", "30/12/26"],
-  // Coliflor
-  ["sm-9-10", 4, "altamira", "20/08/26", "23/11/26"],
-  ["tr-t4", 6.5, "altamira", "25/08/26", "28/11/26"],
-  ["sm-9-10", 5, "altamira", "26/08/26", "29/11/26"],
-  ["sm-11", 4, "altamira", "03/09/26", "07/12/26"],
-  ["tr-t3", 7, "altamira", "04/09/26", "08/12/26"],
-  ["tr-r1", 6, "altamira", "10/09/26", "14/12/26"],
-  ["tr-r1", 6.5, "altamira", "20/09/26", "24/12/26"],
-  ["sm-2", 4, "altamira", "21/09/26", "25/12/26"],
-  ["tr-t5", 6, "altamira", "02/10/26", "05/01/27"],
-  ["sm-7", 6.5, "altamira", "12/10/26", "15/01/27"],
-  ["sm-1", 4, "altamira", "15/10/26", "18/01/27"],
-  ["tr-t6", 7, "altamira", "17/10/26", "20/01/27"],
-  ["sm-6", 6.5, "altamira", "27/10/26", "30/01/27"],
-  ["tr-t7", 6.5, "altamira", "29/10/26", "31/01/27"],
-  ["sm-12", 4, "altamira", "29/10/26", "01/02/27"],
-];
-
-let n = 0;
-const sid = (p: string) => `${p}-s${++n}`;
-
-const lotes: Lote[] = [];
-const pedidos: PedidoPlaneacion[] = [];
-
-for (const [tablaId, ha, variedadId, fp, fc] of [...PLANTACIONES].sort(
-  (a, b) => fechaDeHoja(a[3]).localeCompare(fechaDeHoja(b[3])),
-)) {
-  const t = TABLAS_INICIALES.find((x) => x.id === tablaId)!;
-  const v = VARIEDADES.find((x) => x.id === variedadId)!;
-  const fecha = fechaDeHoja(fp);
-  const semana = semanaDeFecha(fecha);
-  const previos = lotes.filter((l) => l.tablaId === tablaId).length;
-  const loteId = sid("lt");
-  const lineas = lineasPlaneacion(RECETAS_INICIALES[v.cultivo], ADICIONALES_INICIALES, tablaId, ha);
-  const pedido: PedidoPlaneacion | null =
-    lineas.length > 0
-      ? {
-          id: sid("pp"),
-          loteId,
-          tablaId,
-          ranchoId: t.ranchoId,
-          semanaPlantacion: semana,
-          ha,
-          lineas,
-          fecha: fechaEnSemana(semana - 3, 1),
-          ingeniero: "Israel",
-          urgente: false,
-          status: "entregado",
-          fechaEntrega: fechaEnSemana(semana - 2, 2),
-        }
-      : null;
-  if (pedido) pedidos.push(pedido);
-  lotes.push({
-    id: loteId,
-    codigo: `${t.nombre.replace(/^Tabla\s*/i, "")}-${String.fromCharCode(65 + previos)}`,
-    tablaId,
-    ranchoId: t.ranchoId,
-    ha,
-    semanaPlaneada: semana,
-    ingeniero: "Israel",
-    avances: [{ id: sid("av"), fecha, semana, ha }],
-    insumos: pedido ? pedido.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) : [],
-    receta: recetaEfectiva(RECETAS_INICIALES[v.cultivo], ADICIONALES_INICIALES, tablaId),
-    variedadId,
-    cultivo: v.cultivo,
-    cicloDias: v.cicloDias,
-    fechaCosecha: fechaDeHoja(fc),
-  });
-}
-
-export const LOTES_INICIALES: Lote[] = finalizarCosechados(lotes, SEMANA_INICIAL);
-export const PEDIDOS_INICIALES: PedidoPlaneacion[] = pedidos;
+export const RANCHOS_INICIALES: Rancho[] = [];
+export const TABLAS_INICIALES: Tabla[] = [];
+export const LOTES_INICIALES: Lote[] = [];
+export const PEDIDOS_INICIALES: PedidoPlaneacion[] = [];
 export const ALERTAS_INICIALES: AlertaInsumos[] = [];
 export const TARDIAS_INICIALES: PlaneacionTardia[] = [];
