@@ -99,7 +99,8 @@ function useCostos() {
 }
 
 function Ranchos() {
-  const { ranchos, tablas, lotes, semanaActual } = useCampo();
+  const { ranchos, tablas, lotes, semanaActual, variedades } = useCampo();
+  const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const [abierta, setAbierta] = useState<Tabla | null>(null);
   const { costoTabla } = useCostos();
 
@@ -210,7 +211,8 @@ function Ranchos() {
 }
 
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
-  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role } = useCampo();
+  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role, variedades } = useCampo();
+  const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const { porLote, costoLote, costoTabla } = useCostos();
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
   const editar = puedeCorregirFechas(role);
