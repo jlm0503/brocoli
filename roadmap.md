@@ -17,10 +17,11 @@ Documento: PROMPT CONSOLIDADO. Se construye por fases y se confirma con el usuar
 - [x] Solo el administrador corrige fechas de plantación y cosecha
 
 ## Cuentas y datos guardados (30 oct)
-- [ ] Cuentas con correo y contraseña; cada quien se registra con su nombre
-- [ ] Admin aprueba y asigna puesto (sin puesto no ve nada); cada puesto solo ve sus pantallas
-- [ ] Guardar todos los datos para que todos vean lo mismo
-- [ ] Simulador de semanas: práctica que no se guarda; "Hoy" vuelve a lo guardado
+- [x] Cuentas con correo y contraseña; cada quien se registra con su nombre
+- [x] Admin aprueba y asigna puesto (sin puesto no ve nada); cada puesto solo ve sus pantallas
+- [x] Guardar todos los datos para que todos vean lo mismo
+- [x] Simulador de semanas: práctica que no se guarda; "Hoy" vuelve a lo guardado
+- [ ] Probar con la cuenta real del administrador (la usuaria se registra primero)
 
 ## Fase 2 (esperando confirmación de Fase 1)
 - 6. Roles múltiples por usuario (Autorizador, Almacén, Dirección)
