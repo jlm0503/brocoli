@@ -11,6 +11,7 @@ import {
   Loader2,
   LogOut,
   ShieldAlert,
+  SlidersHorizontal,
   Sprout,
   Users,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/catalogos": BookOpen,
   "/alertas": BellRing,
   "/usuarios": Users,
+  "/parametros": SlidersHorizontal,
 };
 
 interface AppShellProps {
