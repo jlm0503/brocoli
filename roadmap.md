@@ -1,35 +1,22 @@
-# Roadmap · App control de campo brócoli
+# Roadmap · App control de campo brócoli (Ultra Farms)
 
-Documento: PROMPT CONSOLIDADO. Se construye por fases y se confirma con el usuario al terminar cada una.
+Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con el usuario al terminar cada una. Nunca borrar datos capturados.
 
-## Fase 1 (lista, esperando confirmación)
-- [x] 1. Catálogos: ranchos (zona), tablas (GPS, radio, estatus), productos con código único, semanas ISO
-- [x] 2. Receta semanas -2 a 12, rollos 2.1/ha en -2, adicionales por tabla, copia de receta por lote
-- [x] 3. Lotes de plantación (1-A, 1-B), 5 estatus de tabla, arrastre a lote nuevo (1-A2)
-- [x] 4. Pedido de planeación inmediato con semáforo, pendientes con insumos, planeación tardía, cancelación con alerta
-- [x] 5. Entregar semana N / Comprar N+2, consolidado con desglose, rollos redondeados, estatus Comprado/Recibido
-
-## Datos (30 oct: el usuario los captura en la app)
-- [x] Borrar ranchos, tablas, plantaciones y pedidos; dejar solo productos, variedades y paquete tecnológico
-- [x] Captura en la app: agregar ranchos y tablas, registrar plantaciones ya hechas
-- [x] Botón de semanas en todos los perfiles: adelantar, regresar y volver a la semana actual
+## Fase 1 — Base (lista, esperando confirmación)
+- [x] Catálogos: ranchos, tablas, productos, cultivos (editable), variedades, viveros, choferes, congeladora única, problemas de calidad
+- [x] Parámetros con fecha de vigencia (plantas/ha, costo planta, precio kg, descuento viaje, meta, rollos/ha, merma, días sin evaluación)
+- [x] Precios de productos con fecha de vigencia
+- [x] Receta -2 a 12 con cinta a 2.1 rollos/ha desde Parámetros; adicionales por tabla; receta fija por lote
+- [x] Planeación por lotes con plantas (ha × 60,000, ±10% con motivo), vivero, fecha de entrega de planta
+- [x] Arrastre divide plantas proporcionalmente; estatus "En cosecha"
+- [x] Pedido de planeación con semáforo, planeación tardía, cancelación con alerta
+- [x] Entregar N / Comprar N+2 con rollos redondeados y estatus por renglón
 - [ ] Receta de coliflor (la manda el usuario)
-- [x] Solo el administrador corrige fechas de plantación y cosecha
+- [ ] Nombre real de la congeladora (lo da el usuario)
 
-## Cuentas y datos guardados (30 oct)
-- [x] Cuentas con correo y contraseña; cada quien se registra con su nombre
-- [x] Admin aprueba y asigna puesto (sin puesto no ve nada); cada puesto solo ve sus pantallas
-- [x] Guardar todos los datos para que todos vean lo mismo
-- [x] Simulador de semanas: práctica que no se guarda; "Hoy" vuelve a lo guardado
-- [ ] Probar con la cuenta real del administrador (la usuaria se registra primero)
-
-## Fase 2 (esperando confirmación de Fase 1)
-- 6. Roles múltiples por usuario (Autorizador, Almacén, Dirección)
-- 7. Extraordinarios con fotos de cámara + GPS y autorización
-- 8. Alertas a Dirección
-- 9. Devoluciones semanales
-
-## Fase 3
-- 10. Ubicación de tablas y mapa
-- 11. Modo sin señal
-- 12. Importación CSV para integración
+## Fase 2 — Solicitud de planta (PDF) y cuenta de planta
+## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones
+## Fase 4 — Cosecha: salidas, evaluación, panel, liquidación semanal, rendimiento, calidad
+## Fase 5 — Cierre de ciclo, históricos, captura histórica
+## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
+## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
