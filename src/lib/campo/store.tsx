@@ -513,7 +513,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (pedido) setPedidos((ps) => [...ps, pedido]);
       return null;
     },
-    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual],
+    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual, ingeniero],
   );
 
   const planearLote = useCallback<CampoContextValue["planearLote"]>(
@@ -606,7 +606,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       }
       return null;
     },
-    [tablas, variedades, lotes, pedidos, recetas, adicionales, semanaActual, hoy],
+    [tablas, variedades, lotes, pedidos, recetas, adicionales, semanaActual, hoy, ingeniero],
   );
 
   const cancelarLote = useCallback(
@@ -812,25 +812,26 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setRecepciones(i.recepciones);
   }, []);
 
+  /** Termina la simulación: se vuelve a lo guardado en la nube. */
+  const volverAHoy = useCallback(() => {
+    if (historial.length === 0) return;
+    setCargado(false);
+    setHistorial([]);
+    void cargar();
+  }, [historial, cargar]);
+
   const regresarSemana = useCallback(() => {
     const ultima = historial[historial.length - 1];
     if (!ultima) return;
+    if (historial.length === 1) return volverAHoy();
     restaurar(ultima);
     setHistorial((h) => h.slice(0, -1));
-  }, [historial, restaurar]);
-
-  const volverAHoy = useCallback(() => {
-    const primera = historial[0];
-    if (!primera) return;
-    restaurar(primera);
-    setHistorial([]);
-  }, [historial, restaurar]);
+  }, [historial, restaurar, volverAHoy]);
 
   const value = useMemo<CampoContextValue>(
     () => ({
       ready,
       role,
-      setRole,
       semanaActual,
       hoy,
       productos,
@@ -872,7 +873,6 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [
       ready,
       role,
-      setRole,
       semanaActual,
       hoy,
       productos,
