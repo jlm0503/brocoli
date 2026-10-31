@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
+import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -34,9 +36,10 @@ import {
   semanaRealLote,
   semanaRecetaLote,
 } from "@/lib/campo/calc";
+import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { EstatusTabla, LineaDemanda, Tabla } from "@/lib/campo/types";
+import type { EstatusTabla, LineaDemanda, Lote, Tabla } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/ranchos")({
   head: () => ({
@@ -209,8 +212,16 @@ function Ranchos() {
 }
 
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
-  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual } = useCampo();
+  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role } = useCampo();
   const { porLote, costoLote, costoTabla } = useCostos();
+  const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
+  const editar = puedeCorregirFechas(role);
+  const botonFechas = (l: Lote) =>
+    editar && l.avances.length > 0 ? (
+      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setCorrigiendo(l)}>
+        Corregir fechas
+      </Button>
+    ) : null;
   const rancho = ranchos.find((r) => r.id === tabla.ranchoId);
   const est = estatusTabla(tabla, lotes);
   const ls = lotesDeTabla(lotes, tabla.id);
@@ -280,9 +291,13 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                         ? `Pendiente arrastrado · ${formatoNum(pendientesLote(l))} ha`
                         : `Planeado para sem ${l.semanaPlaneada}`}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Cosecha estimada {fechaCorta(fechaCosechaLote(l))}
-                  </p>
+                  <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Cosecha {l.fechaCosecha ? "" : "estimada "}
+                      {fechaCorta(fechaCosechaLote(l))}
+                    </span>
+                    {botonFechas(l)}
+                  </div>
                 </li>
               );
             })}
@@ -302,6 +317,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   <span className="block text-xs text-muted-foreground">
                     {fechaCorta(fechaPlantacionLote(l))} → {fechaCorta(fechaCosechaLote(l))}
                   </span>
+                  {botonFechas(l) && <span className="-ml-2 block">{botonFechas(l)}</span>}
                 </span>
                 <span className="num">{formatoMXN(costoLote(l.id))}</span>
               </li>
@@ -333,6 +349,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
           </ul>
         )}
       </div>
+      <CorregirFechasDialog lote={corrigiendo} onClose={() => setCorrigiendo(null)} />
     </>
   );
 }
