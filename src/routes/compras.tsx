@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Camera, Check, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
+import { Check, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
