@@ -29,8 +29,11 @@ import {
   validarTabla,
   corregirFechasLote,
   semanaRealLote,
+  hoyEnMexico,
+  ponerAlDia,
 } from "@/lib/campo/calc";
-import { puedeCorregirFechas } from "@/lib/campo/roles";
+import { puedeCorregirFechas, puestoPrincipal } from "@/lib/campo/roles";
+import { diferencias, porId } from "@/lib/campo/sync";
 import {
   LOTES_INICIALES,
   PEDIDOS_INICIALES,
@@ -375,5 +378,35 @@ describe("Corrección de fechas (solo administrador)", () => {
   it("no acepta plantación futura ni cosecha antes de la plantación", () => {
     expect("error" in corregirFechasLote(plantado, { avances: { a1: "2026-11-05" } }, "2026-10-30")).toBe(true);
     expect("error" in corregirFechasLote(plantado, { avances: {}, fechaCosecha: "2026-10-10" }, "2026-10-30")).toBe(true);
+  });
+});
+
+describe("Cuentas y datos guardados", () => {
+  it("quien tiene varios puestos entra con el de más alcance; sin puesto espera aprobación", () => {
+    expect(puestoPrincipal(["compras", "admin"])).toBe("admin");
+    expect(puestoPrincipal(["compras", "ingeniero"])).toBe("ingeniero");
+    expect(puestoPrincipal([])).toBeNull();
+  });
+
+  it("solo se guardan los elementos que cambiaron y se borran los que ya no están", () => {
+    const a = { id: "a" };
+    const b = { id: "b" };
+    const b2 = { id: "b", x: 1 };
+    const c = { id: "c" };
+    const r = diferencias(porId([a, b]), porId([a, b2, c]));
+    expect(r.guardar.map(([id]) => id)).toEqual(["b", "c"]);
+    expect(diferencias(porId([a, b]), porId([a])).borrar).toEqual(["b"]);
+  });
+
+  it("hoy es la fecha de Ciudad de México: el 31 oct 02:34 UTC todavía es 30 oct (semana 44)", () => {
+    expect(hoyEnMexico(Date.UTC(2026, 9, 31, 2, 34))).toBe("2026-10-30");
+  });
+
+  it("al pasar semanas sin abrir la app, lo no plantado se arrastra a un lote pendiente", () => {
+    const l = lote({ id: "l1", ha: 6, semanaPlaneada: 44, avances: [av(44, 4)] });
+    let n = 0;
+    const r = ponerAlDia([l], 44, 46, () => `n${++n}`);
+    expect(r.find((x) => x.id === "l1")!.ha).toBe(4);
+    expect(r.filter((x) => x.origenId === "l1")[0]!.ha).toBe(2);
   });
 });
