@@ -39,7 +39,6 @@ import {
   estatusTabla,
   fechaCorta,
   fechaEnSemana,
-  formatoMXN,
   formatoNum,
   precioVigente,
   radioValidacion,
