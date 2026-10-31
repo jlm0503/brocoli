@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
+import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,6 +61,7 @@ import {
   validarApartado,
   validarPlantacionPrevia,
 } from "@/lib/campo/calc";
+import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
@@ -412,8 +414,10 @@ function estadoLote(l: Lote, semanaActual: number): string {
 }
 
 function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }) {
-  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote } = useCampo();
+  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote, role } = useCampo();
   const [ha, setHa] = useState("");
+  const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
+  const editarFechas = puedeCorregirFechas(role);
   const estatus = estatusTabla(tabla, lotes);
   const deTabla = lotesDeTabla(lotes, tabla.id);
   const planeadas = hectareasPlaneadas(lotes, tabla.id);
@@ -501,6 +505,15 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                       >
                         Cancelar
                       </Button>
+                    ) : editarFechas ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setCorrigiendo(l)}
+                      >
+                        Corregir fechas
+                      </Button>
                     ) : null}
                   </div>
                   <div className="mt-1 text-muted-foreground">
@@ -568,6 +581,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
           estatus === "plantada" && <p className="text-xs text-primary">Plantación completa</p>
         )}
       </div>
+      <CorregirFechasDialog lote={corrigiendo} onClose={() => setCorrigiendo(null)} />
     </article>
   );
 }

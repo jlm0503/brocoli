@@ -12,6 +12,7 @@ import {
 import {
   cerrarSemana,
   codigoDisponible,
+  corregirFechasLote,
   crearLotePlantado,
   descontar,
   esPlaneacionTardia,
@@ -47,6 +48,7 @@ import {
   TARDIAS_INICIALES,
   VARIEDADES,
 } from "./seed";
+import { puedeCorregirFechas } from "./roles";
 import type {
   Adicional,
   AlertaInsumos,
@@ -134,6 +136,11 @@ interface CampoContextValue {
     opciones: OpcionesPlaneacion,
   ) => string | null;
   cancelarLote: (loteId: string) => void;
+  /** Solo administrador: corrige fechas de plantación (por avance) y cosecha (vacía = ciclo). */
+  corregirFechas: (
+    loteId: string,
+    cambios: { avances: Record<string, string>; fechaCosecha?: string | undefined },
+  ) => string | null;
   registrarAvance: (tablaId: string, ha: number) => string | null;
   entregarPedido: (pedidoId: string, foto: string) => void;
   reabrirPedido: (pedidoId: string) => void;
@@ -438,6 +445,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [lotes, pedidos, hoy],
   );
 
+  const corregirFechas = useCallback<CampoContextValue["corregirFechas"]>(
+    (loteId, cambios) => {
+      if (!puedeCorregirFechas(role)) return "Solo el administrador puede corregir fechas.";
+      const l = lotes.find((x) => x.id === loteId);
+      if (!l) return "Lote no encontrado.";
+      const r = corregirFechasLote(l, cambios, hoy);
+      if ("error" in r) return r.error;
+      setLotes((ls) => finalizarCosechados(ls.map((x) => (x.id === loteId ? r.lote : x)), semanaActual));
+      return null;
+    },
+    [role, lotes, hoy, semanaActual],
+  );
+
   const registrarAvance = useCallback(
     (tablaId: string, ha: number) => {
       const deTabla = lotesDeTabla(lotes, tablaId);
@@ -629,6 +649,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarAdicional,
       planearLote,
       cancelarLote,
+      corregirFechas,
       registrarAvance,
       entregarPedido,
       reabrirPedido,
@@ -670,6 +691,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarAdicional,
       planearLote,
       cancelarLote,
+      corregirFechas,
       registrarAvance,
       entregarPedido,
       reabrirPedido,

@@ -27,7 +27,10 @@ import {
   validarPlantacionPrevia,
   validarRancho,
   validarTabla,
+  corregirFechasLote,
+  semanaRealLote,
 } from "@/lib/campo/calc";
+import { puedeCorregirFechas } from "@/lib/campo/roles";
 import {
   LOTES_INICIALES,
   PEDIDOS_INICIALES,
@@ -332,5 +335,45 @@ describe("Captura de ranchos, tablas y plantaciones", () => {
     expect(pedido?.status).toBe("entregado");
     expect(pedido?.lineas).toContainEqual({ productoId: "silifosca", cantidad: 1200 });
     expect(hectareasDisponibles(t12, [l])).toBe(8);
+  });
+});
+
+describe("Corrección de fechas (solo administrador)", () => {
+  const plantado = lote({
+    id: "l1",
+    ha: 4,
+    semanaPlaneada: 42,
+    variedadId: "diamante",
+    cicloDias: 70,
+    avances: [{ id: "a1", fecha: "2026-10-15", semana: 42, ha: 4 }],
+  });
+
+  it("solo el administrador puede corregir fechas; ingeniero y compras no", () => {
+    expect(puedeCorregirFechas("admin")).toBe(true);
+    expect(puedeCorregirFechas("ingeniero")).toBe(false);
+    expect(puedeCorregirFechas("compras")).toBe(false);
+    expect(puedeCorregirFechas(null)).toBe(false);
+  });
+
+  it("al mover la plantación del 15 al 8 oct, el lote pasa a la semana 41 y la cosecha se recalcula con el ciclo", () => {
+    const r = corregirFechasLote(plantado, { avances: { a1: "2026-10-08" } }, "2026-10-30");
+    if ("error" in r) throw new Error(r.error);
+    expect(semanaRealLote(r.lote)).toBe(41);
+    expect(r.lote.semanaPlaneada).toBe(41);
+    expect(fechaCosechaLote(r.lote)).toBe("2026-12-17");
+  });
+
+  it("la cosecha capturada a mano se respeta; vacía vuelve al ciclo", () => {
+    const r = corregirFechasLote(plantado, { avances: {}, fechaCosecha: "2027-01-05" }, "2026-10-30");
+    if ("error" in r) throw new Error(r.error);
+    expect(fechaCosechaLote(r.lote)).toBe("2027-01-05");
+    const r2 = corregirFechasLote(r.lote, { avances: {}, fechaCosecha: "" }, "2026-10-30");
+    if ("error" in r2) throw new Error(r2.error);
+    expect(fechaCosechaLote(r2.lote)).toBe("2026-12-24");
+  });
+
+  it("no acepta plantación futura ni cosecha antes de la plantación", () => {
+    expect("error" in corregirFechasLote(plantado, { avances: { a1: "2026-11-05" } }, "2026-10-30")).toBe(true);
+    expect("error" in corregirFechasLote(plantado, { avances: {}, fechaCosecha: "2026-10-10" }, "2026-10-30")).toBe(true);
   });
 });
