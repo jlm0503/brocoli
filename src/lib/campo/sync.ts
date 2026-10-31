@@ -15,6 +15,13 @@ export const COLECCIONES = [
   "alertas",
   "recepciones",
   "inventario",
+  "cultivos",
+  "variedades",
+  "viveros",
+  "choferes",
+  "congeladoras",
+  "problemas",
+  "parametros",
 ] as const;
 export type Coleccion = (typeof COLECCIONES)[number];
 

@@ -446,6 +446,22 @@ export function validarApartado(
 
 const normal = (x: string) => x.trim().toLowerCase();
 
+/** Errores al agregar un elemento con nombre a un catálogo (cultivo, vivero, chofer, problema…). */
+export function validarNombreCatalogo(nombre: string, existentes: { id: string; nombre: string }[], exceptoId?: string): string | null {
+  if (!nombre.trim()) return "Escribe el nombre.";
+  if (existentes.some((x) => x.id !== exceptoId && normal(x.nombre) === normal(nombre)))
+    return `Ya existe ${nombre.trim()}.`;
+  return null;
+}
+
+export function validarVariedad(v: Omit<Variedad, "id">, variedades: Variedad[], cultivos: CultivoCat[]): string | null {
+  if (!cultivos.some((c) => c.id === v.cultivo)) return "Elige el cultivo de la variedad.";
+  const err = validarNombreCatalogo(v.nombre, variedades.filter((x) => x.cultivo === v.cultivo));
+  if (err) return err;
+  if (!Number.isInteger(v.cicloDias) || v.cicloDias <= 0) return "Indica los días de plantación a cosecha.";
+  return null;
+}
+
 /** Errores al agregar un rancho. `null` si es válido. */
 export function validarRancho(nombre: string, ranchos: Rancho[]): string | null {
   if (!nombre.trim()) return "Escribe el nombre del rancho.";
