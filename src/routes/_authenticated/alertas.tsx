@@ -44,7 +44,7 @@ import {
 import { useCampo } from "@/lib/campo/store";
 import type { AlertaInsumos, OpcionTardia } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/alertas")({
+export const Route = createFileRoute("/_authenticated/alertas")({
   head: () => ({
     meta: [
       { title: "Alertas y reportes · Brócoli" },

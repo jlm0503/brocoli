@@ -10,7 +10,9 @@ const BUCKET = "evidencias";
 async function subirEvidencia(file: File): Promise<string> {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const ruta = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(ruta, file, { contentType: file.type || undefined });
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(ruta, file, file.type ? { contentType: file.type } : {});
   if (error) throw error;
   return ruta;
 }

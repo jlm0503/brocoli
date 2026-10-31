@@ -41,7 +41,7 @@ import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { EstatusTabla, LineaDemanda, Lote, Tabla } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/ranchos")({
+export const Route = createFileRoute("/_authenticated/ranchos")({
   head: () => ({
     meta: [
       { title: "Estatus de ranchos y costos · Brócoli" },

@@ -42,7 +42,7 @@ import {
 import { useCampo } from "@/lib/campo/store";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/compras")({
+export const Route = createFileRoute("/_authenticated/compras")({
   head: () => ({
     meta: [
       { title: "Compras y entregas · Brócoli" },

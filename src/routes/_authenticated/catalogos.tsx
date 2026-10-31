@@ -44,7 +44,7 @@ import {
 import { useCampo } from "@/lib/campo/store";
 import type { Familia, Unidad } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/catalogos")({
+export const Route = createFileRoute("/_authenticated/catalogos")({
   head: () => ({
     meta: [
       { title: "Catálogos · Brócoli" },
