@@ -12,7 +12,56 @@ export type Familia =
   | "Herbicida"
   | "Coadyuvante";
 
-export type Cultivo = "brocoli" | "coliflor";
+/** Id del cultivo (catálogo editable: brócoli, coliflor, fresa…). */
+export type Cultivo = string;
+
+export interface CultivoCat {
+  id: string;
+  nombre: string;
+}
+
+export interface Vivero {
+  id: string;
+  nombre: string;
+  contacto: string;
+  telefono: string;
+  correo: string;
+}
+
+export interface Chofer {
+  id: string;
+  nombre: string;
+  telefono: string;
+  placas: string;
+}
+
+export interface Congeladora {
+  id: string;
+  nombre: string;
+}
+
+export interface ProblemaCalidad {
+  id: string;
+  nombre: string;
+}
+
+export type ClaveParametro =
+  | "plantasPorHa"
+  | "costoPlantaHa"
+  | "precioKg"
+  | "descuentoViaje"
+  | "metaKgHa"
+  | "rollosCintaHa"
+  | "mermaMax"
+  | "diasSinEvaluacion";
+
+/** Valor de un parámetro que aplica desde `desde` (yyyy-mm-dd) hasta el siguiente cambio. */
+export interface Parametro {
+  id: string;
+  clave: ClaveParametro;
+  valor: number;
+  desde: string;
+}
 
 /** Variedad sembrada. Su ciclo define la fecha estimada de cosecha y hasta qué semana aplica la receta. */
 export interface Variedad {
@@ -32,8 +81,10 @@ export interface Producto {
   nombre: string;
   familia: Familia;
   unidad: Unidad;
-  /** Precio unitario estimado en MXN */
+  /** Precio unitario estimado en MXN (el inicial, vale desde siempre). */
   precio: number;
+  /** Cambios de precio con fecha de vigencia; cada uno aplica desde su fecha. */
+  precios?: { desde: string; precio: number }[] | undefined;
 }
 
 /** Dosis por hectárea: semana de receta (-2 a 12) -> productoId -> cantidad. */
@@ -120,6 +171,13 @@ export interface Lote {
   fechaCosecha?: string | undefined;
   /** Ya se cosechó: la tabla queda libre para el siguiente ciclo. */
   finalizado?: boolean | undefined;
+  /** Plantas del lote (sugerido: ha × plantas por ha vigente al planear). */
+  plantas?: number | undefined;
+  /** Motivo cuando las plantas difieren más de ±10% de lo sugerido. */
+  motivoPlantas?: string | undefined;
+  viveroId?: string | undefined;
+  /** Fecha requerida de entrega de la planta (por defecto, el lunes de la semana de plantación). */
+  fechaEntregaPlanta?: string | undefined;
 }
 
 export type EstatusTabla =
@@ -127,7 +185,8 @@ export type EstatusTabla =
   | "parcial-planeada"
   | "planeada"
   | "plantada-parcial"
-  | "plantada";
+  | "plantada"
+  | "en-cosecha";
 
 export type EstatusPedido = "pendiente" | "entregado" | "cancelado";
 
