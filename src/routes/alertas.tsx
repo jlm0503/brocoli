@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRightLeft, Camera, ImageIcon, Warehouse } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, ImageIcon, Warehouse } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
+import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -151,9 +152,9 @@ function Alertas() {
               {tabla(a.tablaId)} · Lote {a.loteCodigo} · {fechaCorta(a.fechaCierre ?? a.fecha)}
               {a.recolecto && ` · recolectó ${a.recolecto}`}
               {a.foto && (
-                <a href={a.foto} target="_blank" rel="noreferrer" title="Ver foto">
+                <VerEvidencia foto={a.foto} title="Ver foto">
                   <ImageIcon className="size-3.5 text-primary" />
-                </a>
+                </VerEvidencia>
               )}
             </li>
           ))}
@@ -231,7 +232,7 @@ function ResolverDialog({ alerta, onClose }: { alerta: AlertaInsumos | null; onC
   const { ranchos, lotes, tablas, hoy, resolverAlerta } = useCampo();
   const [tipo, setTipo] = useState<"reubicar" | "recolectar">("reubicar");
   const [loteId, setLoteId] = useState("");
-  const [quien, setQuien] = useState("Oscar");
+  const [quien, setQuien] = useState("");
   const [foto, setFoto] = useState<string | undefined>();
   const destinos = lotes.filter((l) => !l.cancelado && l.avances.length === 0);
 
@@ -289,25 +290,7 @@ function ResolverDialog({ alerta, onClose }: { alerta: AlertaInsumos | null; onC
                 <Input value={fechaCorta(hoy)} disabled />
               </div>
             </div>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/50 p-4 text-sm text-muted-foreground hover:border-primary">
-              {foto ? (
-                <img src={foto} alt="Evidencia de recolección" className="max-h-40 rounded-md" />
-              ) : (
-                <>
-                  <Camera className="size-5" /> Foto obligatoria
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setFoto(URL.createObjectURL(f));
-                }}
-              />
-            </label>
+            <FotoInput foto={foto} setFoto={setFoto} texto="Foto obligatoria" alt="Evidencia de recolección" />
           </div>
         )}
         <DialogFooter>
