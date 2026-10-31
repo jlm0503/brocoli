@@ -782,3 +782,25 @@ export function corregirFechasLote(
   const semanaPlaneada = l.semanaPlaneada === semanaRealLote(l) ? avances[0]!.semana : l.semanaPlaneada;
   return { lote: { ...l, avances, semanaPlaneada, fechaCosecha: cosecha } };
 }
+
+/* ───────────────────────── Fecha real ───────────────────────── */
+
+/** Fecha de hoy en Ciudad de México (UTC-6, sin horario de verano). */
+export function hoyEnMexico(ahora: number = Date.now()): string {
+  return new Date(ahora - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Cierra las semanas que pasaron desde la última guardada hasta la actual:
+ * lo no plantado pasa a lote pendiente y los lotes ya cosechados se finalizan.
+ */
+export function ponerAlDia(
+  lotes: Lote[],
+  semanaGuardada: number,
+  semanaActual: number,
+  nuevoId: () => string,
+): Lote[] {
+  let ls = lotes;
+  for (let w = semanaGuardada; w < semanaActual; w++) ls = finalizarCosechados(cerrarSemana(ls, w, nuevoId), w + 1);
+  return finalizarCosechados(ls, semanaActual);
+}

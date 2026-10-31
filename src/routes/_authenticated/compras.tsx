@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Camera, Check, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
+import { Check, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
+import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +42,7 @@ import {
 import { useCampo } from "@/lib/campo/store";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/compras")({
+export const Route = createFileRoute("/_authenticated/compras")({
   head: () => ({
     meta: [
       { title: "Compras y entregas · Brócoli" },
@@ -217,9 +218,9 @@ function PedidosPlaneacion() {
                         ) : p.status === "entregado" ? (
                           <div className="flex items-center gap-1">
                             {p.foto && (
-                              <a href={p.foto} target="_blank" rel="noreferrer" title="Ver evidencia">
+                              <VerEvidencia foto={p.foto} title="Ver evidencia">
                                 <ImageIcon className="size-4 text-primary" />
-                              </a>
+                              </VerEvidencia>
                             )}
                             <Button size="sm" variant="ghost" onClick={() => reabrirPedido(p.id)}>
                               <RotateCcw /> Reabrir
@@ -243,31 +244,6 @@ function PedidosPlaneacion() {
 
       <EntregarPedidoDialog pedido={entregando} onClose={() => setEntregando(null)} />
     </>
-  );
-}
-
-function FotoInput({ foto, setFoto }: { foto?: string | undefined; setFoto: (f: string) => void }) {
-  return (
-    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/50 p-4 text-sm text-muted-foreground transition-colors hover:border-primary">
-      {foto ? (
-        <img src={foto} alt="Evidencia" className="max-h-40 rounded-md" />
-      ) : (
-        <>
-          <Camera className="size-5" />
-          Tomar o subir foto
-        </>
-      )}
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="sr-only"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) setFoto(URL.createObjectURL(file));
-        }}
-      />
-    </label>
   );
 }
 
@@ -399,9 +375,9 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
                               <span className="num text-xs text-muted-foreground">{p.codigo}</span>
                               {p.nombre}
                               {foto && (
-                                <a href={foto} target="_blank" rel="noreferrer" title="Ver evidencia">
+                                <VerEvidencia foto={foto} title="Ver evidencia">
                                   <ImageIcon className="size-3.5 text-primary" />
-                                </a>
+                                </VerEvidencia>
                               )}
                             </div>
                             <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">

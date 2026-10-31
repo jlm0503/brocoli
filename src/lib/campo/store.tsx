@@ -4,10 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Context,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
+
+import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 import {
   cerrarSemana,
@@ -17,14 +22,17 @@ import {
   descontar,
   esPlaneacionTardia,
   fechaEnSemana,
+  hoyEnMexico,
   finalizarCosechados,
   insumosEntregados,
   lineasPlaneacion,
   lotesDeTabla,
   pendientesConInsumos,
+  ponerAlDia,
   recetaEfectiva,
   redondear,
   repartirAvance,
+  semanaDeFecha,
   semanasAnticipacion,
   siguienteCodigo,
   sumarPorProducto,
@@ -34,20 +42,9 @@ import {
   validarRancho,
   validarTabla,
 } from "./calc";
-import {
-  ADICIONALES_INICIALES,
-  ALERTAS_INICIALES,
-  HOY_INICIAL,
-  LOTES_INICIALES,
-  PEDIDOS_INICIALES,
-  PRODUCTOS_INICIALES,
-  RANCHOS_INICIALES,
-  RECETAS_INICIALES,
-  SEMANA_INICIAL,
-  TABLAS_INICIALES,
-  TARDIAS_INICIALES,
-  VARIEDADES,
-} from "./seed";
+import { VARIEDADES } from "./seed";
+import { useSesion } from "./sesion";
+import { COLECCIONES, diferencias, porId, type Coleccion, type Mapa } from "./sync";
 import { puedeCorregirFechas } from "./roles";
 import type {
   Adicional,
@@ -66,8 +63,6 @@ import type {
   Tabla,
   Variedad,
 } from "./types";
-
-const ROLE_KEY = "brocoli-rol";
 
 export interface OpcionesPlaneacion {
   variedadId: string;
@@ -104,7 +99,6 @@ export type ResolucionAlerta =
 interface CampoContextValue {
   ready: boolean;
   role: Role | null;
-  setRole: (r: Role | null) => void;
   semanaActual: number;
   hoy: string;
   productos: Producto[];
@@ -168,38 +162,247 @@ const CampoContext: Context<CampoContextValue | null> =
   globalCtx[CTX_KEY] ?? (globalCtx[CTX_KEY] = createContext<CampoContextValue | null>(null));
 
 let seq = 0;
-const nuevoId = (p: string) => `${p}-${Date.now().toString(36)}-${++seq}`;
+const nuevoId = (p: string) =>
+  `${p}-${Date.now().toString(36)}-${(++seq).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+const RECETAS_VACIAS: Recetas = { brocoli: { dosis: {} }, coliflor: { dosis: {} } };
+
+interface Fila {
+  coleccion: string;
+  id: string;
+  data: Json;
+}
+
+async function leerTodo(): Promise<Fila[]> {
+  const filas: Fila[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await supabase
+      .from("registros")
+      .select("coleccion, id, data")
+      .order("coleccion")
+      .order("id")
+      .range(desde, desde + 999);
+    if (error) throw error;
+    filas.push(...data);
+    if (data.length < 1000) return filas;
+  }
+}
+
+/** Guarda en la nube lo que cambió de una colección. */
+async function escribir(coleccion: Coleccion, antes: Mapa, ahora: Mapa, userId: string) {
+  const { guardar, borrar } = diferencias(antes, ahora);
+  if (guardar.length > 0) {
+    const { error } = await supabase.from("registros").upsert(
+      guardar.map(([id, data]) => ({ coleccion, id, data: JSON.parse(JSON.stringify(data)) as Json, updated_by: userId })),
+    );
+    if (error) throw error;
+  }
+  if (borrar.length > 0) {
+    const { error } = await supabase.from("registros").delete().eq("coleccion", coleccion).in("id", borrar);
+    if (error) throw error;
+  }
+}
 
 export function CampoProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [role, setRoleState] = useState<Role | null>(null);
-  const [semanaActual, setSemanaActual] = useState(SEMANA_INICIAL);
-  const [hoy, setHoy] = useState(HOY_INICIAL);
-  const [productos, setProductos] = useState(PRODUCTOS_INICIALES);
-  const [recetas, setRecetas] = useState(RECETAS_INICIALES);
+  const { user, role, nombre, lista } = useSesion();
+  const [cargado, setCargado] = useState(false);
+  const [semanaActual, setSemanaActual] = useState(() => semanaDeFecha(hoyEnMexico()));
+  const [hoy, setHoy] = useState(() => hoyEnMexico());
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<Recetas>(RECETAS_VACIAS);
   const [variedades] = useState(VARIEDADES);
-  const [adicionales, setAdicionales] = useState(ADICIONALES_INICIALES);
-  const [ranchos, setRanchos] = useState(RANCHOS_INICIALES);
-  const [tablas, setTablas] = useState(TABLAS_INICIALES);
+  const [adicionales, setAdicionales] = useState<Adicional[]>([]);
+  const [ranchos, setRanchos] = useState<Rancho[]>([]);
+  const [tablas, setTablas] = useState<Tabla[]>([]);
   const [historial, setHistorial] = useState<Instantanea[]>([]);
-  const [lotes, setLotes] = useState(LOTES_INICIALES);
-  const [pedidos, setPedidos] = useState(PEDIDOS_INICIALES);
-  const [tardias, setTardias] = useState(TARDIAS_INICIALES);
-  const [alertas, setAlertas] = useState(ALERTAS_INICIALES);
+  const [lotes, setLotes] = useState<Lote[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoPlaneacion[]>([]);
+  const [tardias, setTardias] = useState<PlaneacionTardia[]>([]);
+  const [alertas, setAlertas] = useState<AlertaInsumos[]>([]);
   const [inventarioAlmacen, setInventario] = useState<Record<string, number>>({});
   const [recepciones, setRecepciones] = useState<Record<string, Recepcion>>({});
+  const ingeniero = nombre || "Ingeniero";
+
+  /** Lo último que se sabe guardado en la nube, por colección. */
+  const guardado = useRef<Partial<Record<Coleccion, Mapa>>>({});
+  const simulando = historial.length > 0;
+  const simulandoRef = useRef(simulando);
+  simulandoRef.current = simulando;
+
+  const cargar = useCallback(async (intento = 0): Promise<void> => {
+    let filas: Fila[];
+    try {
+      filas = await leerTodo();
+    } catch {
+      toast.error("No se pudieron cargar los datos. Revisa tu conexión y recarga.");
+      return;
+    }
+    const de = <T,>(c: string) => filas.filter((f) => f.coleccion === c).map((f) => f.data as unknown as T);
+    const mapa = <T,>(c: string) =>
+      Object.fromEntries(filas.filter((f) => f.coleccion === c).map((f) => [f.id, f.data as unknown as T]));
+    const hoyReal = hoyEnMexico();
+    const semanaReal = semanaDeFecha(hoyReal);
+    const semanaGuardada =
+      (mapa<{ semana: number }>("sistema")["semana"]?.semana as number | undefined) ?? semanaReal;
+
+    const datos = {
+      productos: de<Producto>("productos"),
+      recetas: { ...RECETAS_VACIAS, ...mapa<Recetas[Cultivo]>("recetas") } as Recetas,
+      adicionales: de<Adicional>("adicionales"),
+      ranchos: de<Rancho>("ranchos"),
+      tablas: de<Tabla>("tablas"),
+      lotes: de<Lote>("lotes"),
+      pedidos: de<PedidoPlaneacion>("pedidos"),
+      tardias: de<PlaneacionTardia>("tardias"),
+      alertas: de<AlertaInsumos>("alertas"),
+      recepciones: mapa<Recepcion>("recepciones"),
+      inventario: mapa<number>("inventario"),
+    };
+
+    // Cierre de las semanas que pasaron: lo hace solo quien llegue primero.
+    let lotesAlDia = datos.lotes;
+    if (semanaGuardada < semanaReal) {
+      const { data: ok } = await supabase
+        .from("registros")
+        .update({ data: { semana: semanaReal } })
+        .eq("coleccion", "sistema")
+        .eq("id", "semana")
+        .eq("data->>semana", String(semanaGuardada))
+        .select("id");
+      if (!ok || ok.length === 0) {
+        if (intento < 2) return cargar(intento + 1);
+      } else {
+        lotesAlDia = ponerAlDia(datos.lotes, semanaGuardada, semanaReal, () => nuevoId("lt"));
+      }
+    } else {
+      lotesAlDia = ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt"));
+    }
+
+    guardado.current = {
+      productos: porId(datos.productos),
+      recetas: { ...datos.recetas },
+      adicionales: porId(datos.adicionales),
+      ranchos: porId(datos.ranchos),
+      tablas: porId(datos.tablas),
+      lotes: porId(datos.lotes),
+      pedidos: porId(datos.pedidos),
+      tardias: porId(datos.tardias),
+      alertas: porId(datos.alertas),
+      recepciones: datos.recepciones,
+      inventario: datos.inventario,
+    };
+    setHoy(hoyReal);
+    setSemanaActual(semanaReal);
+    setProductos(datos.productos);
+    setRecetas(datos.recetas);
+    setAdicionales(datos.adicionales);
+    setRanchos(datos.ranchos);
+    setTablas(datos.tablas);
+    setLotes(lotesAlDia);
+    setPedidos(datos.pedidos);
+    setTardias(datos.tardias);
+    setAlertas(datos.alertas);
+    setRecepciones(datos.recepciones);
+    setInventario(datos.inventario);
+    setCargado(true);
+  }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(ROLE_KEY);
-    if (saved === "admin" || saved === "ingeniero" || saved === "compras") setRoleState(saved);
-    setReady(true);
-  }, []);
+    if (!lista) return;
+    if (!user || !role) {
+      setCargado(false);
+      setHistorial([]);
+      return;
+    }
+    void cargar();
+  }, [lista, user, role, cargar]);
 
-  const setRole = useCallback((r: Role | null) => {
-    setRoleState(r);
-    if (r) window.localStorage.setItem(ROLE_KEY, r);
-    else window.localStorage.removeItem(ROLE_KEY);
-  }, []);
+  // Guardar automáticamente lo que cambie (nunca durante la simulación de semanas).
+  const activo = cargado && !simulando && !!user && !!role;
+  const mapas = useMemo<Record<Coleccion, Mapa>>(
+    () => ({
+      productos: porId(productos),
+      recetas: { ...recetas },
+      adicionales: porId(adicionales),
+      ranchos: porId(ranchos),
+      tablas: porId(tablas),
+      lotes: porId(lotes),
+      pedidos: porId(pedidos),
+      tardias: porId(tardias),
+      alertas: porId(alertas),
+      recepciones: { ...recepciones },
+      inventario: { ...inventarioAlmacen },
+    }),
+    [productos, recetas, adicionales, ranchos, tablas, lotes, pedidos, tardias, alertas, recepciones, inventarioAlmacen],
+  );
+  useEffect(() => {
+    if (!activo || !user) return;
+    for (const c of COLECCIONES) {
+      const antes = guardado.current[c] ?? {};
+      const ahora = mapas[c];
+      const { guardar, borrar } = diferencias(antes, ahora);
+      if (guardar.length === 0 && borrar.length === 0) continue;
+      guardado.current[c] = ahora;
+      escribir(c, antes, ahora, user.id).catch((e: { message?: string }) => {
+        toast.error(
+          e?.message?.includes("Solo el administrador")
+            ? "Solo el administrador puede corregir fechas."
+            : "No se guardó el último cambio. Se recargan los datos.",
+        );
+        void cargar();
+      });
+    }
+  }, [activo, mapas, user, cargar]);
+
+  // Cambios de otras personas en vivo.
+  useEffect(() => {
+    if (!user || !role) return;
+    const aplicar = (col: string, id: string, data: unknown) => {
+      if (simulandoRef.current || !(COLECCIONES as readonly string[]).includes(col)) return;
+      const c = col as Coleccion;
+      const base = { ...(guardado.current[c] ?? {}) };
+      if (data === undefined) delete base[id];
+      else base[id] = data;
+      guardado.current[c] = base;
+      const lista = <T extends { id: string }>(xs: T[]) =>
+        data === undefined ? xs.filter((x) => x.id !== id) : xs.some((x) => x.id === id) ? xs.map((x) => (x.id === id ? (data as T) : x)) : [...xs, data as T];
+      const registro = <T,>(r: Record<string, T>) => {
+        const n = { ...r };
+        if (data === undefined) delete n[id];
+        else n[id] = data as T;
+        return n;
+      };
+      if (c === "productos") setProductos(lista);
+      else if (c === "adicionales") setAdicionales(lista);
+      else if (c === "ranchos") setRanchos(lista);
+      else if (c === "tablas") setTablas(lista);
+      else if (c === "lotes") setLotes(lista);
+      else if (c === "pedidos") setPedidos(lista);
+      else if (c === "tardias") setTardias(lista);
+      else if (c === "alertas") setAlertas(lista);
+      else if (c === "recepciones") setRecepciones(registro);
+      else if (c === "inventario") setInventario(registro);
+      else if (c === "recetas") setRecetas((r) => registro(r as unknown as Record<string, Recetas[Cultivo]>) as unknown as Recetas);
+    };
+    const canal = supabase
+      .channel(`registros-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "registros" }, (payload) => {
+        const nuevo = payload.new as Partial<Fila & { updated_by: string }>;
+        const viejo = payload.old as Partial<Fila>;
+        if (payload.eventType === "DELETE") {
+          if (viejo.coleccion && viejo.id) aplicar(viejo.coleccion, viejo.id, undefined);
+          return;
+        }
+        if (!nuevo.coleccion || !nuevo.id || nuevo.updated_by === user.id) return;
+        aplicar(nuevo.coleccion, nuevo.id, nuevo.data);
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(canal);
+    };
+  }, [user, role]);
+
+  const ready = lista && (!user || !role || cargado);
 
   const setDosis = useCallback((cultivo: Cultivo, productoId: string, semana: number, valor: number) => {
     setRecetas((rs) => {
@@ -303,14 +506,14 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         fechaCosecha: p.fechaCosecha,
         recetas,
         adicionales,
-        ingeniero: "Israel",
+        ingeniero,
         nuevoId,
       });
       setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
       if (pedido) setPedidos((ps) => [...ps, pedido]);
       return null;
     },
-    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual],
+    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual, ingeniero],
   );
 
   const planearLote = useCallback<CampoContextValue["planearLote"]>(
@@ -357,7 +560,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
               ha: redondear(ha),
               lineas: porPedir,
               fecha: hoy,
-              ingeniero: "Israel",
+              ingeniero,
               urgente: opcion === "sin-pendientes",
               motivo: opcion === "pedir-nuevos" ? opciones.motivo?.trim() : undefined,
               status: "pendiente",
@@ -371,7 +574,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         ranchoId: t.ranchoId,
         ha: redondear(ha),
         semanaPlaneada: semana,
-        ingeniero: "Israel",
+        ingeniero,
         avances: [],
         insumos: [...reasignados, ...(pedido?.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) ?? [])],
         variedadId: variedad.id,
@@ -390,7 +593,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           {
             id: nuevoId("pt"),
             fecha: hoy,
-            ingeniero: "Israel",
+            ingeniero,
             ranchoId: t.ranchoId,
             tablaId,
             loteCodigo: codigo,
@@ -403,7 +606,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       }
       return null;
     },
-    [tablas, variedades, lotes, pedidos, recetas, adicionales, semanaActual, hoy],
+    [tablas, variedades, lotes, pedidos, recetas, adicionales, semanaActual, hoy, ingeniero],
   );
 
   const cancelarLote = useCallback(
@@ -609,25 +812,26 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setRecepciones(i.recepciones);
   }, []);
 
+  /** Termina la simulación: se vuelve a lo guardado en la nube. */
+  const volverAHoy = useCallback(() => {
+    if (historial.length === 0) return;
+    setCargado(false);
+    setHistorial([]);
+    void cargar();
+  }, [historial, cargar]);
+
   const regresarSemana = useCallback(() => {
     const ultima = historial[historial.length - 1];
     if (!ultima) return;
+    if (historial.length === 1) return volverAHoy();
     restaurar(ultima);
     setHistorial((h) => h.slice(0, -1));
-  }, [historial, restaurar]);
-
-  const volverAHoy = useCallback(() => {
-    const primera = historial[0];
-    if (!primera) return;
-    restaurar(primera);
-    setHistorial([]);
-  }, [historial, restaurar]);
+  }, [historial, restaurar, volverAHoy]);
 
   const value = useMemo<CampoContextValue>(
     () => ({
       ready,
       role,
-      setRole,
       semanaActual,
       hoy,
       productos,
@@ -669,7 +873,6 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [
       ready,
       role,
-      setRole,
       semanaActual,
       hoy,
       productos,

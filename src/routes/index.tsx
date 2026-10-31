@@ -1,19 +1,22 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
 import campo from "@/assets/campo-brocoli.jpg";
+import { EsperandoPuesto } from "@/components/campo/AppShell";
+import { Button } from "@/components/ui/button";
 import { ROLES } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import type { Role } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Brócoli · Elige tu puesto" },
+      { title: "Brócoli · Control de insumos por receta" },
       {
         name: "description",
         content:
-          "Entra como administrador, ingeniero de campo o compras para planear la siembra y surtir insumos con la receta maestra.",
+          "Administrador, ingenieros de campo y compras planean la siembra y surten insumos con la receta maestra.",
       },
       { property: "og:title", content: "Brócoli · Control de insumos por receta" },
       {
@@ -30,13 +33,11 @@ export const Route = createFileRoute("/")({
 const ORDEN: Role[] = ["admin", "ingeniero", "compras"];
 
 function Index() {
-  const { setRole, semanaActual } = useCampo();
-  const navigate = useNavigate();
+  const { lista, user, role } = useSesion();
+  const { semanaActual } = useCampo();
 
-  const entrar = (r: Role) => {
-    setRole(r);
-    navigate({ to: ROLES[r].home });
-  };
+  if (lista && user && role) return <Navigate to={ROLES[role].home} />;
+  if (lista && user && !role) return <EsperandoPuesto />;
 
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[1.15fr_1fr]">
@@ -64,38 +65,35 @@ function Index() {
       <section className="paper-grain flex flex-col justify-center px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-md">
           <span className="eyebrow">Brócoli · Control de insumos</span>
-          <h2 className="mt-2 text-3xl font-semibold">¿Quién entra hoy?</h2>
+          <h2 className="mt-2 text-3xl font-semibold">Entra con tu cuenta</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Cada puesto ve solo las pantallas que le corresponden.
+            Cada persona entra con su correo y solo ve las pantallas de su puesto.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3">
+          <ul className="mt-8 space-y-3">
             {ORDEN.map((r) => (
-              <button
-                key={r}
-                onClick={() => entrar(r)}
-                className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lift"
-              >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary-soft font-display text-xl text-primary">
-                  {ROLES[r].persona[0]}
+              <li key={r} className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft font-display text-lg text-primary">
+                  {ROLES[r].nombre[0]}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-foreground">
-                    {ROLES[r].persona}{" "}
-                    <span className="font-normal text-muted-foreground">· {ROLES[r].nombre}</span>
-                  </span>
-                  <span className="mt-0.5 block text-sm text-muted-foreground">
-                    {ROLES[r].descripcion}
-                  </span>
+                <span className="min-w-0">
+                  <span className="block font-medium text-foreground">{ROLES[r].nombre}</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">{ROLES[r].descripcion}</span>
                 </span>
-                <ArrowRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-              </button>
+              </li>
             ))}
-          </div>
+          </ul>
 
-          <p className="mt-8 text-xs text-muted-foreground">
-            Prototipo navegable con tus plantaciones reales al 29 de octubre. Nada se guarda.
-          </p>
+          <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+            <Button asChild className="flex-1">
+              <Link to="/auth">
+                Entrar <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1">
+              <Link to="/auth">Crear cuenta</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

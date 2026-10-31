@@ -66,7 +66,7 @@ import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/planeacion")({
+export const Route = createFileRoute("/_authenticated/planeacion")({
   head: () => ({
     meta: [
       { title: "Planeación por lotes y avance · Brócoli" },

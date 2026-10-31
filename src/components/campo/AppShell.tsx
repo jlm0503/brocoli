@@ -1,4 +1,4 @@
-import { Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 import {
   BellRing,
   BookOpen,
@@ -6,24 +6,21 @@ import {
   ChevronRight,
   ClipboardList,
   FlaskConical,
+  Hourglass,
   LayoutGrid,
+  Loader2,
+  LogOut,
   ShieldAlert,
   Sprout,
+  Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { fechaCorta } from "@/lib/campo/calc";
 import { NAV, ROLES, type NavPath } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
-import type { Role } from "@/lib/campo/types";
 
 const ICONS: Record<NavPath, typeof Sprout> = {
   "/ranchos": LayoutGrid,
@@ -32,6 +29,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/paquete": FlaskConical,
   "/catalogos": BookOpen,
   "/alertas": BellRing,
+  "/usuarios": Users,
 };
 
 interface AppShellProps {
@@ -44,20 +42,21 @@ interface AppShellProps {
 }
 
 export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
-  const { ready, role, setRole, semanaActual, hoy } = useCampo();
-  const navigate = useNavigate();
+  const { ready, semanaActual, hoy, semanasAdelantadas } = useCampo();
+  const { lista, user, role, nombre, salir } = useSesion();
 
-  if (!ready) return <div className="min-h-screen bg-background" />;
-  if (!role) return <Navigate to="/" />;
+  if (!lista) return <div className="min-h-screen bg-background" />;
+  if (!user) return <Navigate to="/auth" />;
+  if (!role) return <EsperandoPuesto />;
+  if (!ready)
+    return (
+      <div className="flex min-h-screen items-center justify-center gap-2 bg-background text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Cargando datos…
+      </div>
+    );
 
   const allowed = NAV.find((n) => n.to === path)?.roles.includes(role);
   const items = NAV.filter((n) => n.roles.includes(role));
-
-  const cambiarRol = (r: string) => {
-    const nuevo = r as Role;
-    setRole(nuevo);
-    navigate({ to: ROLES[nuevo].home });
-  };
 
   return (
     <div className="min-h-screen bg-background lg:grid lg:grid-cols-[260px_1fr]">
@@ -92,22 +91,18 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
         </nav>
 
         <div className="mt-auto hidden border-t border-sidebar-border p-4 lg:block">
-          <span className="eyebrow !text-ink-foreground/60">Entrando como</span>
-          <Select value={role} onValueChange={cambiarRol}>
-            <SelectTrigger className="mt-2 border-sidebar-border bg-sidebar-accent text-ink-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(ROLES) as Role[]).map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ROLES[r].persona} · {ROLES[r].nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-3 text-xs leading-relaxed text-ink-foreground/55">
-            Prototipo: captura tus ranchos, tablas y plantaciones. Los cambios se borran al recargar.
-          </p>
+          <span className="eyebrow !text-ink-foreground/60">{ROLES[role].nombre}</span>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <span className="truncate text-sm">{nombre}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 border-sidebar-border bg-sidebar-accent text-xs text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+              onClick={() => void salir()}
+            >
+              <LogOut /> Salir
+            </Button>
+          </div>
           <span className="eyebrow mt-4 block !text-ink-foreground/60">Simular semana</span>
           <ControlSemana oscuro />
         </div>
@@ -116,25 +111,23 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
       <main className="paper-grain min-w-0">
         <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-12">
           <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
-            <span className="text-xs text-muted-foreground">
-              {ROLES[role].persona} · {ROLES[role].nombre}
+            <span className="min-w-0 truncate text-xs text-muted-foreground">
+              {nombre} · {ROLES[role].nombre}
             </span>
             <div className="ml-auto">
               <ControlSemana />
             </div>
-            <Select value={role} onValueChange={cambiarRol}>
-              <SelectTrigger className="h-8 w-auto text-xs">
-                <SelectValue placeholder="Cambiar" />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(ROLES) as Role[]).map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {ROLES[r].persona} · {ROLES[r].nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button size="icon" variant="outline" className="size-8" onClick={() => void salir()} aria-label="Salir">
+              <LogOut />
+            </Button>
           </div>
+
+          {semanasAdelantadas > 0 && (
+            <div className="mb-6 rounded-lg border border-soil/40 bg-soil-soft px-4 py-3 text-sm text-soil-foreground">
+              Estás simulando la semana {semanaActual}. Lo que hagas aquí es práctica y no se guarda; con “Hoy”
+              regresas a los datos reales.
+            </div>
+          )}
 
           {allowed ? (
             <>
@@ -172,7 +165,30 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
   );
 }
 
-/** Solo prototipo: adelantar, regresar o volver a la semana real. */
+/** Pantalla para quien ya tiene cuenta pero aún no tiene puesto asignado. */
+export function EsperandoPuesto() {
+  const { nombre, user, salir, recargarPuesto } = useSesion();
+  return (
+    <div className="paper-grain flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-card">
+        <Hourglass className="mx-auto size-8 text-soil" />
+        <h1 className="mt-4 text-2xl font-semibold">Tu cuenta espera aprobación</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Hola {nombre || user?.email}. El administrador tiene que asignarte tu puesto; cuando lo haga, aquí verás
+          tus pantallas.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button onClick={() => void recargarPuesto()}>Ya me aprobaron</Button>
+          <Button variant="outline" onClick={() => void salir()}>
+            <LogOut /> Salir
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Adelantar, regresar o volver a la semana real. Lo simulado no se guarda. */
 function ControlSemana({ oscuro = false }: { oscuro?: boolean }) {
   const { semanaActual, semanasAdelantadas, avanzarSemana, regresarSemana, volverAHoy } = useCampo();
   const btn = oscuro

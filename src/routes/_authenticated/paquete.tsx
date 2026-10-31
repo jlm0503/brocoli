@@ -37,7 +37,7 @@ import {
 import { useCampo } from "@/lib/campo/store";
 import type { Adicional, Cultivo } from "@/lib/campo/types";
 
-export const Route = createFileRoute("/paquete")({
+export const Route = createFileRoute("/_authenticated/paquete")({
   head: () => ({
     meta: [
       { title: "Paquete tecnológico · Brócoli" },

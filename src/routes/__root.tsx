@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { SesionProvider } from "@/lib/campo/sesion";
 import { CampoProvider } from "@/lib/campo/store";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -132,10 +133,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CampoProvider>
-        <Outlet />
-        <Toaster position="bottom-right" />
-      </CampoProvider>
+      <SesionProvider>
+        <CampoProvider>
+          <Outlet />
+          <Toaster position="bottom-right" />
+        </CampoProvider>
+      </SesionProvider>
     </QueryClientProvider>
   );
 }
