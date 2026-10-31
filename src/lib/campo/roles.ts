@@ -27,7 +27,8 @@ export type NavPath =
   | "/paquete"
   | "/ranchos"
   | "/catalogos"
-  | "/alertas";
+  | "/alertas"
+  | "/usuarios";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin"] },
@@ -36,6 +37,7 @@ export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/alertas", label: "Alertas y reportes", roles: ["admin"] },
   { to: "/paquete", label: "Paquete tecnológico", roles: ["admin"] },
   { to: "/catalogos", label: "Catálogos", roles: ["admin"] },
+  { to: "/usuarios", label: "Usuarios y puestos", roles: ["admin"] },
 ];
 
 export function puedeVer(role: Role | null, path: NavPath): boolean {
@@ -46,4 +48,10 @@ export function puedeVer(role: Role | null, path: NavPath): boolean {
 /** Solo el administrador corrige fechas de plantación y cosecha ya registradas. */
 export function puedeCorregirFechas(role: Role | null): boolean {
   return role === "admin";
+}
+
+/** Si alguien tiene varios puestos, entra con el de más alcance. Sin puesto = espera aprobación. */
+export function puestoPrincipal(roles: Role[]): Role | null {
+  for (const r of ["admin", "ingeniero", "compras"] as const) if (roles.includes(r)) return r;
+  return null;
 }
