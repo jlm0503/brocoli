@@ -36,6 +36,7 @@ function traducir(msg: string): string {
   if (/invalid login/i.test(msg)) return "Correo o contraseña incorrectos.";
   if (/email not confirmed/i.test(msg)) return "Primero confirma tu correo con el enlace que te enviamos.";
   if (/already registered|already exists/i.test(msg)) return "Ya existe una cuenta con ese correo. Entra con tu contraseña.";
+  if (/not allowed|invalid.*email|email.*invalid/i.test(msg)) return "Ese correo no es válido. Revisa que esté bien escrito.";
   if (/password/i.test(msg) && /characters|short|weak/i.test(msg)) return "La contraseña es muy corta o débil; usa al menos 8 caracteres.";
   return "No se pudo completar. Intenta de nuevo.";
 }
