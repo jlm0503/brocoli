@@ -10,76 +10,76 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AlertasRouteImport } from './routes/alertas'
-import { Route as CatalogosRouteImport } from './routes/catalogos'
-import { Route as ComprasRouteImport } from './routes/compras'
-import { Route as PaqueteRouteImport } from './routes/paquete'
-import { Route as PlaneacionRouteImport } from './routes/planeacion'
-import { Route as RanchosRouteImport } from './routes/ranchos'
+import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
+import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
+import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
+import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
+import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
+import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AlertasRoute = AlertasRouteImport.update({
-  id: '/alertas',
+const AuthenticatedAlertasRoute = AuthenticatedAlertasRouteImport.update({
+  id: '/_authenticated/alertas',
   path: '/alertas',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CatalogosRoute = CatalogosRouteImport.update({
-  id: '/catalogos',
+const AuthenticatedCatalogosRoute = AuthenticatedCatalogosRouteImport.update({
+  id: '/_authenticated/catalogos',
   path: '/catalogos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ComprasRoute = ComprasRouteImport.update({
-  id: '/compras',
+const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
+  id: '/_authenticated/compras',
   path: '/compras',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PaqueteRoute = PaqueteRouteImport.update({
-  id: '/paquete',
+const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
+  id: '/_authenticated/paquete',
   path: '/paquete',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlaneacionRoute = PlaneacionRouteImport.update({
-  id: '/planeacion',
+const AuthenticatedPlaneacionRoute = AuthenticatedPlaneacionRouteImport.update({
+  id: '/_authenticated/planeacion',
   path: '/planeacion',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RanchosRoute = RanchosRouteImport.update({
-  id: '/ranchos',
+const AuthenticatedRanchosRoute = AuthenticatedRanchosRouteImport.update({
+  id: '/_authenticated/ranchos',
   path: '/ranchos',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/alertas': typeof AlertasRoute
-  '/catalogos': typeof CatalogosRoute
-  '/compras': typeof ComprasRoute
-  '/paquete': typeof PaqueteRoute
-  '/planeacion': typeof PlaneacionRoute
-  '/ranchos': typeof RanchosRoute
+  '/alertas': typeof AuthenticatedAlertasRoute
+  '/catalogos': typeof AuthenticatedCatalogosRoute
+  '/compras': typeof AuthenticatedComprasRoute
+  '/paquete': typeof AuthenticatedPaqueteRoute
+  '/planeacion': typeof AuthenticatedPlaneacionRoute
+  '/ranchos': typeof AuthenticatedRanchosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/alertas': typeof AlertasRoute
-  '/catalogos': typeof CatalogosRoute
-  '/compras': typeof ComprasRoute
-  '/paquete': typeof PaqueteRoute
-  '/planeacion': typeof PlaneacionRoute
-  '/ranchos': typeof RanchosRoute
+  '/alertas': typeof AuthenticatedAlertasRoute
+  '/catalogos': typeof AuthenticatedCatalogosRoute
+  '/compras': typeof AuthenticatedComprasRoute
+  '/paquete': typeof AuthenticatedPaqueteRoute
+  '/planeacion': typeof AuthenticatedPlaneacionRoute
+  '/ranchos': typeof AuthenticatedRanchosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/alertas': typeof AlertasRoute
-  '/catalogos': typeof CatalogosRoute
-  '/compras': typeof ComprasRoute
-  '/paquete': typeof PaqueteRoute
-  '/planeacion': typeof PlaneacionRoute
-  '/ranchos': typeof RanchosRoute
+  '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
+  '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
+  '/_authenticated/compras': typeof AuthenticatedComprasRoute
+  '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
+  '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
+  '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -103,22 +103,22 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/alertas'
-    | '/catalogos'
-    | '/compras'
-    | '/paquete'
-    | '/planeacion'
-    | '/ranchos'
+    | '/_authenticated/alertas'
+    | '/_authenticated/catalogos'
+    | '/_authenticated/compras'
+    | '/_authenticated/paquete'
+    | '/_authenticated/planeacion'
+    | '/_authenticated/ranchos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AlertasRoute: typeof AlertasRoute
-  CatalogosRoute: typeof CatalogosRoute
-  ComprasRoute: typeof ComprasRoute
-  PaqueteRoute: typeof PaqueteRoute
-  PlaneacionRoute: typeof PlaneacionRoute
-  RanchosRoute: typeof RanchosRoute
+  AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
+  AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
+  AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
+  AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
+  AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,46 +130,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/alertas': {
-      id: '/alertas'
+    '/_authenticated/alertas': {
+      id: '/_authenticated/alertas'
       path: '/alertas'
       fullPath: '/alertas'
-      preLoaderRoute: typeof AlertasRouteImport
+      preLoaderRoute: typeof AuthenticatedAlertasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/catalogos': {
-      id: '/catalogos'
+    '/_authenticated/catalogos': {
+      id: '/_authenticated/catalogos'
       path: '/catalogos'
       fullPath: '/catalogos'
-      preLoaderRoute: typeof CatalogosRouteImport
+      preLoaderRoute: typeof AuthenticatedCatalogosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compras': {
-      id: '/compras'
+    '/_authenticated/compras': {
+      id: '/_authenticated/compras'
       path: '/compras'
       fullPath: '/compras'
-      preLoaderRoute: typeof ComprasRouteImport
+      preLoaderRoute: typeof AuthenticatedComprasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/paquete': {
-      id: '/paquete'
+    '/_authenticated/paquete': {
+      id: '/_authenticated/paquete'
       path: '/paquete'
       fullPath: '/paquete'
-      preLoaderRoute: typeof PaqueteRouteImport
+      preLoaderRoute: typeof AuthenticatedPaqueteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/planeacion': {
-      id: '/planeacion'
+    '/_authenticated/planeacion': {
+      id: '/_authenticated/planeacion'
       path: '/planeacion'
       fullPath: '/planeacion'
-      preLoaderRoute: typeof PlaneacionRouteImport
+      preLoaderRoute: typeof AuthenticatedPlaneacionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ranchos': {
-      id: '/ranchos'
+    '/_authenticated/ranchos': {
+      id: '/_authenticated/ranchos'
       path: '/ranchos'
       fullPath: '/ranchos'
-      preLoaderRoute: typeof RanchosRouteImport
+      preLoaderRoute: typeof AuthenticatedRanchosRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -177,12 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AlertasRoute: AlertasRoute,
-  CatalogosRoute: CatalogosRoute,
-  ComprasRoute: ComprasRoute,
-  PaqueteRoute: PaqueteRoute,
-  PlaneacionRoute: PlaneacionRoute,
-  RanchosRoute: RanchosRoute,
+  AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
+  AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
+  AuthenticatedComprasRoute: AuthenticatedComprasRoute,
+  AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
+  AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
+  AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
