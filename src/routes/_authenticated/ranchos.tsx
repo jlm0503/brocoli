@@ -15,6 +15,8 @@ import {
 import {
   ESTATUS_TABLA_LABEL,
   cantidadRecibida,
+  costoLineas,
+  precioVigente,
   costoPlaneacionLote,
   esArrastrado,
   estatusLinea,
@@ -37,9 +39,10 @@ import {
   semanaRecetaLote,
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
-import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { EstatusTabla, LineaDemanda, Lote, Tabla } from "@/lib/campo/types";
+import type { EstatusTabla, LineaDemanda, Lote, Tabla, Variedad } from "@/lib/campo/types";
+
+const nombreDe = (variedades: Variedad[], id: string) => variedades.find((v) => v.id === id)?.nombre ?? id;
 
 export const Route = createFileRoute("/_authenticated/ranchos")({
   head: () => ({
@@ -62,7 +65,6 @@ export const Route = createFileRoute("/_authenticated/ranchos")({
   component: Ranchos,
 });
 
-const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
 
 const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",
@@ -72,12 +74,12 @@ const TILE: Record<EstatusTabla, string> = {
   "plantada-parcial":
     "bg-status-plantada/60 text-status-plantada-foreground ring-1 ring-status-plantada-foreground/30",
   plantada: "bg-status-plantada text-status-plantada-foreground",
+  "en-cosecha": "bg-soil text-soil-foreground",
 };
 
 function useCostos() {
   const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
   return useMemo(() => {
-    const precio = new Map(productos.map((p) => [p.id, p.precio]));
     // Desde la primera plantación registrada hasta hoy.
     const desde = Math.min(semanaActual, ...lotes.flatMap((l) => l.avances.map((a) => a.semana)));
     const semanas = Array.from({ length: semanaActual - desde + 1 }, (_, i) => desde + i);
@@ -88,10 +90,7 @@ function useCostos() {
     for (const l of recibidas) porLote.set(l.loteId, [...(porLote.get(l.loteId) ?? []), l]);
     const costoLote = (loteId: string) => {
       const lote = lotes.find((x) => x.id === loteId);
-      const semanal = (porLote.get(loteId) ?? []).reduce(
-        (s, l) => s + cantidadRecibida(l, recepciones) * (precio.get(l.productoId) ?? 0),
-        0,
-      );
+      const semanal = costoLineas(porLote.get(loteId) ?? [], productos, recepciones);
       return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0);
     };
     const costoTabla = (tablaId: string) =>
@@ -101,13 +100,14 @@ function useCostos() {
 }
 
 function Ranchos() {
-  const { ranchos, tablas, lotes, semanaActual } = useCampo();
+  const { ranchos, tablas, lotes, semanaActual, variedades } = useCampo();
+  const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const [abierta, setAbierta] = useState<Tabla | null>(null);
   const { costoTabla } = useCostos();
 
   const total = tablas.reduce((s, t) => s + costoTabla(t.id), 0);
   const haActivas = tablas.reduce((s, t) => s + hectareasActivas(lotes, t.id, semanaActual), 0);
-  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes) !== "libre").length;
+  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes, semanaActual) !== "libre").length;
 
   return (
     <AppShell
@@ -154,7 +154,7 @@ function Ranchos() {
               </header>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {ts.map((t) => {
-                  const est = estatusTabla(t, lotes);
+                  const est = estatusTabla(t, lotes, semanaActual);
                   const sc = semanaCultivoTabla(lotes, t.id, semanaActual);
                   const ls = lotesDeTabla(lotes, t.id);
                   const primero = ls.find((l) => l.avances.length > 0);
@@ -212,7 +212,8 @@ function Ranchos() {
 }
 
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
-  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role } = useCampo();
+  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role, variedades, hoy: hoyActual } = useCampo();
+  const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const { porLote, costoLote, costoTabla } = useCostos();
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
   const editar = puedeCorregirFechas(role);
@@ -223,7 +224,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
       </Button>
     ) : null;
   const rancho = ranchos.find((r) => r.id === tabla.ranchoId);
-  const est = estatusTabla(tabla, lotes);
+  const est = estatusTabla(tabla, lotes, semanaActual);
   const ls = lotesDeTabla(lotes, tabla.id);
   const cosechados = lotes.filter((l) => l.tablaId === tabla.id && l.finalizado);
 
@@ -285,6 +286,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {nombreVariedad(l.variedadId)} ·{" "}
+                    {l.plantas ? `${formatoNum(l.plantas)} plantas · ` : ""}
                     {real !== null
                       ? `Plantado ${fechaCorta(fechaPlantacionLote(l))} (sem ${real}) · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!, semanaCosechaLote(l)).toLowerCase()})`
                       : esArrastrado(l, semanaActual)
@@ -342,7 +344,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   <div className="num">
                     {formatoNum(cantidad)} {p.unidad}
                   </div>
-                  <div className="num text-xs text-muted-foreground">{formatoMXN(cantidad * p.precio)}</div>
+                  <div className="num text-xs text-muted-foreground">{formatoMXN(cantidad * precioVigente(p, hoyActual))}</div>
                 </div>
               </li>
             ))}

@@ -17,6 +17,7 @@ import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
+import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
 import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
@@ -60,6 +61,11 @@ const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
   path: '/paquete',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedParametrosRoute = AuthenticatedParametrosRouteImport.update({
+  id: '/parametros',
+  path: '/parametros',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlaneacionRoute = AuthenticatedPlaneacionRouteImport.update({
   id: '/planeacion',
   path: '/planeacion',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
+  '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
+  '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
+  '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
   '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/paquete'
+    | '/parametros'
     | '/planeacion'
     | '/ranchos'
     | '/usuarios'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/paquete'
+    | '/parametros'
     | '/planeacion'
     | '/ranchos'
     | '/usuarios'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
     | '/_authenticated/paquete'
+    | '/_authenticated/parametros'
     | '/_authenticated/planeacion'
     | '/_authenticated/ranchos'
     | '/_authenticated/usuarios'
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPaqueteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/parametros': {
+      id: '/_authenticated/parametros'
+      path: '/parametros'
+      fullPath: '/parametros'
+      preLoaderRoute: typeof AuthenticatedParametrosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/planeacion': {
       id: '/_authenticated/planeacion'
       path: '/planeacion'
@@ -248,6 +267,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
+  AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
   AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
@@ -258,6 +278,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
+  AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,

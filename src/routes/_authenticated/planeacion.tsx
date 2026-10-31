@@ -45,8 +45,13 @@ import {
   hectareasPlaneadas,
   hectareasPlantadas,
   insumosEntregados,
+  cintaPlaneacion,
   lineasPlaneacion,
   lotePorPlantar,
+  nombreCultivo,
+  plantasFueraDeRango,
+  plantasSugeridas,
+  recetaDe,
   lotesDeTabla,
   pendientesConInsumos,
   pendientesLote,
@@ -62,9 +67,8 @@ import {
   validarPlantacionPrevia,
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
-import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { Lote, OpcionTardia, Producto, Tabla } from "@/lib/campo/types";
+import type { CultivoCat, Lote, OpcionTardia, Producto, Tabla, Variedad } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/planeacion")({
   head: () => ({
@@ -271,7 +275,7 @@ function RegistrarPlantacionDialog({
   ranchoInicial: string;
   onClose: () => void;
 }) {
-  const { ranchos, tablas, lotes, variedades, hoy, registrarPlantacion } = useCampo();
+  const { ranchos, tablas, lotes, variedades, cultivos, hoy, registrarPlantacion } = useCampo();
   const [ranchoId, setRanchoId] = useState(ranchoInicial);
   const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
   const [tablaElegida, setTablaId] = useState("");
@@ -351,7 +355,7 @@ function RegistrarPlantacionDialog({
               <SelectContent>
                 {variedades.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.nombre} · {v.cultivo === "brocoli" ? "brócoli" : "coliflor"} · {v.cicloDias} días
+                    {etiquetaVariedad(v, cultivos)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -399,7 +403,8 @@ function RegistrarPlantacionDialog({
   );
 }
 
-const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
+const etiquetaVariedad = (v: Variedad, cultivos: CultivoCat[]) =>
+  `${v.nombre} · ${nombreCultivo(cultivos, v.cultivo).toLowerCase()} · ${v.cicloDias} días`;
 
 function estadoLote(l: Lote, semanaActual: number): string {
   const plantadas = plantadasLote(l);
@@ -414,11 +419,12 @@ function estadoLote(l: Lote, semanaActual: number): string {
 }
 
 function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }) {
-  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote, role } = useCampo();
+  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote, role, variedades, viveros } = useCampo();
+  const nombreVariedad = (id: string) => variedades.find((v) => v.id === id)?.nombre ?? id;
   const [ha, setHa] = useState("");
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
   const editarFechas = puedeCorregirFechas(role);
-  const estatus = estatusTabla(tabla, lotes);
+  const estatus = estatusTabla(tabla, lotes, semanaActual);
   const deTabla = lotesDeTabla(lotes, tabla.id);
   const planeadas = hectareasPlaneadas(lotes, tabla.id);
   const plantadas = hectareasPlantadas(lotes, tabla.id);
@@ -518,6 +524,8 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                   </div>
                   <div className="mt-1 text-muted-foreground">
                     {nombreVariedad(l.variedadId)} · cosecha {fechaCorta(fechaCosechaLote(l))}
+                    {l.plantas ? ` · ${formatoNum(l.plantas)} plantas` : ""}
+                    {l.viveroId ? ` · ${viveros.find((v) => v.id === l.viveroId)?.nombre ?? ""}` : ""}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
                     <span className={arr ? "font-medium text-soil-foreground" : ""}>
@@ -587,10 +595,27 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
 }
 
 function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
-  const { semanaActual, recetas, variedades, adicionales, productos, lotes, pedidos, tablas, planearLote } =
-    useCampo();
-  const [variedadId, setVariedadId] = useState(variedades[0]!.id);
-  const variedad = variedades.find((v) => v.id === variedadId)!;
+  const {
+    semanaActual,
+    recetas,
+    variedades,
+    cultivos,
+    viveros,
+    adicionales,
+    productos,
+    lotes,
+    pedidos,
+    tablas,
+    planearLote,
+    parametro,
+  } = useCampo();
+  const [variedadId, setVariedadId] = useState(variedades[0]?.id ?? "");
+  const variedad = variedades.find((v) => v.id === variedadId) ?? variedades[0];
+  const cultivo = variedad?.cultivo ?? "";
+  const [plantasTxt, setPlantasTxt] = useState("");
+  const [motivoPlantas, setMotivoPlantas] = useState("");
+  const [viveroId, setViveroId] = useState("");
+  const [fechaEntrega, setFechaEntrega] = useState("");
   const opciones = Array.from({ length: 9 }, (_, i) => semanaActual + i);
   const [semana, setSemana] = useState(String(semanaActual + ANTICIPACION_SEMANAS));
   const [ha, setHa] = useState("");
@@ -602,14 +627,19 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const haNum = Number(ha);
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
+  const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa"));
+  const plantas = plantasTxt === "" ? sugeridas : Math.round(Number(plantasTxt));
+  const fueraDeRango = plantasFueraDeRango(plantas, sugeridas);
+  const entregaPlanta = fechaEntrega || fechaEnSemana(w, 0);
+  const cinta = useMemo(() => cintaPlaneacion(productos, parametro("rollosCintaHa")), [productos, parametro]);
   const paquete = useMemo(
     () =>
-      tabla && haNum > 0 ? lineasPlaneacion(recetas[variedad.cultivo], adicionales, tabla.id, haNum) : [],
-    [tabla, haNum, recetas, variedad, adicionales],
+      tabla && haNum > 0 ? lineasPlaneacion(recetaDe(recetas, cultivo), adicionales, tabla.id, haNum, cinta) : [],
+    [tabla, haNum, recetas, cultivo, adicionales, cinta],
   );
   const sinPaquete = useMemo(
-    () => lineasPlaneacion(recetas[variedad.cultivo], adicionales, tabla?.id ?? "", 1).length === 0,
-    [recetas, variedad, adicionales, tabla],
+    () => lineasPlaneacion(recetaDe(recetas, cultivo), adicionales, tabla?.id ?? "", 1, cinta).length === 0,
+    [recetas, cultivo, adicionales, tabla, cinta],
   );
   // Sin paquete de planeación (receta pendiente) no hay insumos que decidir.
   const tardia = esPlaneacionTardia(w, semanaActual) && !sinPaquete;
@@ -628,8 +658,13 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
 
   const confirmar = () => {
     if (!tabla) return;
+    if (!variedad) return void toast.error("Primero agrega una variedad en Catálogos.");
     const err = planearLote(tabla.id, w, haNum, {
-      variedadId,
+      variedadId: variedad.id,
+      plantas,
+      motivoPlantas: fueraDeRango ? motivoPlantas : undefined,
+      viveroId: viveroId || undefined,
+      fechaEntregaPlanta: entregaPlanta,
       opcion: opcionEfectiva || undefined,
       motivo,
       usarLoteIds: usar,
@@ -647,10 +682,14 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   };
 
   const faltaDecision =
-    tardia &&
-    (!opcionEfectiva ||
-      (opcionEfectiva === "pedir-nuevos" && !motivo.trim()) ||
-      (opcionEfectiva === "usar-pendientes" && usar.length === 0));
+    (tardia &&
+      (!opcionEfectiva ||
+        (opcionEfectiva === "pedir-nuevos" && !motivo.trim()) ||
+        (opcionEfectiva === "usar-pendientes" && usar.length === 0))) ||
+    !variedad ||
+    !(plantas > 0) ||
+    (fueraDeRango && !motivoPlantas.trim()) ||
+    (viveros.length > 0 && !viveroId);
 
   return (
     <Dialog open={!!tabla} onOpenChange={(o) => !o && onClose()}>
@@ -673,15 +712,17 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
               <SelectContent>
                 {variedades.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.nombre} · {v.cultivo === "brocoli" ? "brócoli" : "coliflor"} · {v.cicloDias} días
+                    {etiquetaVariedad(v, cultivos)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Cosecha estimada {fechaCorta(sumarDias(fechaEnSemana(w), variedad.cicloDias))} si se planta
-              el lunes de la semana {w}.
-            </p>
+            {variedad && (
+              <p className="text-xs text-muted-foreground">
+                Cosecha estimada {fechaCorta(sumarDias(fechaEnSemana(w), variedad.cicloDias))} si se planta
+                el lunes de la semana {w}.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Semana de plantación</Label>
@@ -713,6 +754,66 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
               onChange={(e) => setHa(e.target.value)}
               className="num"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plantas-planear">Cantidad de plantas</Label>
+            <Input
+              id="plantas-planear"
+              type="number"
+              inputMode="numeric"
+              step="1000"
+              min="0"
+              value={plantasTxt === "" ? (sugeridas > 0 ? sugeridas : "") : plantasTxt}
+              onChange={(e) => setPlantasTxt(e.target.value)}
+              className="num"
+            />
+            <p className="text-xs text-muted-foreground">
+              Sugerido: {formatoNum(sugeridas)} ({formatoNum(parametro("plantasPorHa"))} por ha)
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="entrega-planta">Entrega de la planta</Label>
+            <Input
+              id="entrega-planta"
+              type="date"
+              value={entregaPlanta}
+              onChange={(e) => setFechaEntrega(e.target.value)}
+              className="num"
+            />
+            <p className="text-xs text-muted-foreground">Por defecto, el lunes de la semana de plantación.</p>
+          </div>
+          {fueraDeRango && (
+            <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive-soft p-3 sm:col-span-2">
+              <p className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <AlertTriangle className="size-4" /> Las plantas difieren más de 10% de lo sugerido
+              </p>
+              <Textarea
+                placeholder="Motivo (obligatorio)"
+                value={motivoPlantas}
+                onChange={(e) => setMotivoPlantas(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Vivero</Label>
+            {viveros.length > 0 ? (
+              <Select value={viveroId} onValueChange={setViveroId}>
+                <SelectTrigger aria-label="Vivero">
+                  <SelectValue placeholder="Elige el vivero" />
+                </SelectTrigger>
+                <SelectContent>
+                  {viveros.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Aún no hay viveros. El administrador los agrega en Catálogos → Viveros.
+              </p>
+            )}
           </div>
         </div>
 
@@ -788,8 +889,8 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
 
         {sinPaquete && !error && (
           <p className="rounded-lg bg-secondary p-4 text-xs text-muted-foreground">
-            La receta de {variedad.cultivo === "brocoli" ? "brócoli" : "coliflor"} aún está pendiente: este lote
-            no genera pedido de planeación ni compras hasta que se cargue.
+            La receta de {nombreCultivo(cultivos, cultivo).toLowerCase()} aún está pendiente: este lote no genera
+            pedido de planeación ni compras hasta que se cargue.
           </p>
         )}
 

@@ -28,7 +28,8 @@ export type NavPath =
   | "/ranchos"
   | "/catalogos"
   | "/alertas"
-  | "/usuarios";
+  | "/usuarios"
+  | "/parametros";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin"] },
@@ -37,6 +38,7 @@ export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/alertas", label: "Alertas y reportes", roles: ["admin"] },
   { to: "/paquete", label: "Paquete tecnológico", roles: ["admin"] },
   { to: "/catalogos", label: "Catálogos", roles: ["admin"] },
+  { to: "/parametros", label: "Parámetros", roles: ["admin"] },
   { to: "/usuarios", label: "Usuarios y puestos", roles: ["admin"] },
 ];
 
