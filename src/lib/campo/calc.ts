@@ -1,13 +1,16 @@
 import type {
   Adicional,
   AlertaInsumos,
+  ClaveParametro,
   Cultivo,
+  CultivoCat,
   DosisPorSemana,
   EstatusRecepcion,
   EstatusTabla,
   InsumoAsignado,
   LineaDemanda,
   Lote,
+  Parametro,
   PedidoPlaneacion,
   Producto,
   Familia,
@@ -50,7 +53,78 @@ export const FAMILIAS: Familia[] = [
   "Coadyuvante",
 ];
 
-export const CULTIVO_LABEL: Record<Cultivo, string> = { brocoli: "Brócoli", coliflor: "Coliflor" };
+export function nombreCultivo(cultivos: CultivoCat[], id: Cultivo): string {
+  return cultivos.find((c) => c.id === id)?.nombre ?? id;
+}
+
+/* ───────────────────────── Parámetros con vigencia ───────────────────────── */
+
+export const PARAMETROS_INFO: Record<ClaveParametro, { nombre: string; unidad: string; defecto: number }> = {
+  plantasPorHa: { nombre: "Plantas por hectárea (sugerido)", unidad: "plantas", defecto: 60000 },
+  costoPlantaHa: { nombre: "Costo de planta por hectárea", unidad: "MXN", defecto: 16200 },
+  precioKg: { nombre: "Precio por kg pagable", unidad: "MXN", defecto: 10.5 },
+  descuentoViaje: { nombre: "Descuento de planta por viaje", unidad: "MXN", defecto: 10000 },
+  metaKgHa: { nombre: "Meta de rendimiento (kg pagables por ha)", unidad: "kg", defecto: 16000 },
+  rollosCintaHa: { nombre: "Rollos de cinta por hectárea", unidad: "rollos", defecto: 2.1 },
+  mermaMax: { nombre: "Merma máxima antes de alerta", unidad: "%", defecto: 15 },
+  diasSinEvaluacion: { nombre: "Días sin evaluación antes de alerta", unidad: "días", defecto: 3 },
+};
+
+export const CLAVES_PARAMETRO = Object.keys(PARAMETROS_INFO) as ClaveParametro[];
+
+/** Valor que aplica en `fecha`: el último cambio con fecha de vigencia igual o anterior. */
+export function parametroVigente(params: Parametro[], clave: ClaveParametro, fecha: string): number {
+  let mejor: Parametro | undefined;
+  for (const p of params) {
+    if (p.clave !== clave || p.desde > fecha) continue;
+    if (!mejor || p.desde >= mejor.desde) mejor = p;
+  }
+  return mejor?.valor ?? PARAMETROS_INFO[clave].defecto;
+}
+
+/** Costo por planta = costo de planta por ha ÷ plantas por ha (16,200 ÷ 60,000 = $0.27). */
+export function costoPorPlanta(params: Parametro[], fecha: string): number {
+  const porHa = parametroVigente(params, "plantasPorHa", fecha);
+  return porHa > 0 ? redondear(parametroVigente(params, "costoPlantaHa", fecha) / porHa, 4) : 0;
+}
+
+/** Errores al registrar un nuevo valor de parámetro. */
+export function validarParametro(clave: ClaveParametro, valor: number, desde: string): string | null {
+  if (!PARAMETROS_INFO[clave]) return "Parámetro desconocido.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return "Indica desde qué fecha aplica.";
+  if (!Number.isFinite(valor) || valor < 0) return "El valor debe ser un número mayor o igual a 0.";
+  return null;
+}
+
+/** Precio del producto que aplica en `fecha`: el último cambio vigente, o el precio inicial. */
+export function precioVigente(p: Producto, fecha: string): number {
+  let precio = p.precio;
+  let desde = "";
+  for (const c of p.precios ?? []) if (c.desde <= fecha && c.desde >= desde) [precio, desde] = [c.precio, c.desde];
+  return precio;
+}
+
+/* ───────────────────────── Plantas por lote ───────────────────────── */
+
+/** Tolerancia contra lo sugerido antes de pedir motivo. */
+export const TOLERANCIA_PLANTAS = 0.1;
+
+export function plantasSugeridas(ha: number, plantasPorHa: number): number {
+  return Math.round(ha * plantasPorHa);
+}
+
+/** Las plantas difieren más de ±10% de lo sugerido. */
+export function plantasFueraDeRango(plantas: number, sugeridas: number): boolean {
+  if (sugeridas <= 0) return false;
+  return Math.abs(plantas - sugeridas) / sugeridas > TOLERANCIA_PLANTAS + 1e-9;
+}
+
+export function validarPlantas(plantas: number, sugeridas: number, motivo: string | undefined): string | null {
+  if (!Number.isInteger(plantas) || plantas <= 0) return "Indica la cantidad de plantas.";
+  if (plantasFueraDeRango(plantas, sugeridas) && !motivo?.trim())
+    return "Las plantas difieren más de 10% de lo sugerido: escribe el motivo.";
+  return null;
+}
 
 /**
  * Etapa de una semana de receta. Con `semanaCosecha` (la del lote según su variedad),
@@ -157,19 +231,44 @@ export function recetaEfectiva(
   return out;
 }
 
-/** La receta de un lote plantado es su copia guardada; si aún no se planta, la vigente de su cultivo. */
-export function recetaLote(lote: Lote, recetas: Recetas, adicionales: Adicional[]): DosisPorSemana {
-  return lote.receta ?? recetaEfectiva(recetas[lote.cultivo], adicionales, lote.tablaId);
+export function recetaDe(recetas: Recetas, cultivo: Cultivo): Receta {
+  return recetas[cultivo] ?? { dosis: {} };
 }
 
-/** Paquete de planeación (semana -2) × hectáreas. */
+/** La receta de un lote plantado es su copia guardada; si aún no se planta, la vigente de su cultivo. */
+export function recetaLote(lote: Lote, recetas: Recetas, adicionales: Adicional[]): DosisPorSemana {
+  return lote.receta ?? recetaEfectiva(recetaDe(recetas, lote.cultivo), adicionales, lote.tablaId);
+}
+
+/** Cinta del paquete de planeación: el primer producto en rollos, a los rollos por ha del parámetro. */
+export interface Cinta {
+  productoId: string;
+  porHa: number;
+}
+
+export function cintaPlaneacion(productos: Producto[], rollosPorHa: number): Cinta | undefined {
+  const p = productos.find((x) => x.unidad === "rollo");
+  return p ? { productoId: p.id, porHa: rollosPorHa } : undefined;
+}
+
+/**
+ * Paquete de planeación (semana -2) × hectáreas. Con `cinta`, los rollos salen del parámetro
+ * (2.1/ha) en lugar de la receta y se piden completos en cada lote.
+ */
 export function lineasPlaneacion(
   receta: Receta,
   adicionales: Adicional[],
   tablaId: string,
   ha: number,
+  cinta?: Cinta,
 ): { productoId: string; cantidad: number }[] {
-  const sem = recetaEfectiva(receta, adicionales, tablaId)[SEMANA_PLANEACION] ?? {};
+  const sem = { ...(recetaEfectiva(receta, adicionales, tablaId)[SEMANA_PLANEACION] ?? {}) };
+  if (cinta) {
+    const extra = adicionales
+      .filter((a) => a.tablaIds.includes(tablaId) && a.productoId === cinta.productoId && a.semanas.includes(SEMANA_PLANEACION))
+      .reduce((s, a) => s + a.dosis, 0);
+    sem[cinta.productoId] = redondear(cinta.porHa + extra, 4);
+  }
   return Object.entries(sem)
     .filter(([, d]) => d > 0)
     .map(([productoId, d]) => ({ productoId, cantidad: redondear(d * ha) }));
@@ -261,10 +360,19 @@ export function hectareasDisponibles(t: Tabla, lotes: Lote[]): number {
   return redondear(Math.max(0, t.hectareas - hectareasPlaneadas(lotes, t.id)));
 }
 
-export function estatusTabla(t: Tabla, lotes: Lote[]): EstatusTabla {
+/** En cosecha: desde la semana anterior a su cosecha estimada hasta que se finaliza. */
+export function loteEnCosecha(l: Lote, semanaActual: number): boolean {
+  if (l.cancelado || l.finalizado) return false;
+  const sr = semanaRecetaLote(l, semanaActual);
+  return sr !== null && sr >= semanaCosechaLote(l) - 1;
+}
+
+export function estatusTabla(t: Tabla, lotes: Lote[], semanaActual?: number): EstatusTabla {
   const planeadas = hectareasPlaneadas(lotes, t.id);
   const plantadas = hectareasPlantadas(lotes, t.id);
   if (planeadas <= 0) return "libre";
+  if (semanaActual !== undefined && lotesDeTabla(lotes, t.id).some((l) => loteEnCosecha(l, semanaActual)))
+    return "en-cosecha";
   if (plantadas > 0) return plantadas >= t.hectareas ? "plantada" : "plantada-parcial";
   return planeadas >= t.hectareas ? "planeada" : "parcial-planeada";
 }
@@ -275,6 +383,7 @@ export const ESTATUS_TABLA_LABEL: Record<EstatusTabla, string> = {
   planeada: "Planeada completa",
   "plantada-parcial": "Plantada parcial",
   plantada: "Plantada completa",
+  "en-cosecha": "En cosecha",
 };
 
 /** Semana de cultivo de la tabla según su primer lote plantado. */
@@ -393,12 +502,14 @@ export function crearLotePlantado(p: {
   adicionales: Adicional[];
   ingeniero: string;
   nuevoId: (prefijo: string) => string;
+  cinta?: Cinta | undefined;
+  plantasPorHa?: number | undefined;
 }): { lote: Lote; pedido: PedidoPlaneacion | null } {
   const ha = redondear(p.ha);
   const semana = semanaDeFecha(p.fechaPlantacion);
   const loteId = p.nuevoId("lt");
-  const receta = p.recetas[p.variedad.cultivo];
-  const lineas = lineasPlaneacion(receta, p.adicionales, p.tabla.id, ha);
+  const receta = recetaDe(p.recetas, p.variedad.cultivo);
+  const lineas = lineasPlaneacion(receta, p.adicionales, p.tabla.id, ha, p.cinta);
   const pedido: PedidoPlaneacion | null =
     lineas.length > 0
       ? {
@@ -431,6 +542,7 @@ export function crearLotePlantado(p: {
     cultivo: p.variedad.cultivo,
     cicloDias: p.variedad.cicloDias,
     fechaCosecha: p.fechaCosecha || undefined,
+    plantas: p.plantasPorHa ? plantasSugeridas(ha, p.plantasPorHa) : undefined,
   };
   return { lote, pedido };
 }
@@ -561,7 +673,9 @@ export function cerrarSemana(lotes: Lote[], semana: number, nuevoId: () => strin
       continue;
     }
     const fPlant = plantadas / l.ha;
-    out.push({ ...l, ha: plantadas, insumos: escalar(l.insumos, fPlant) });
+    // Las plantas se dividen proporcionalmente entre lo plantado y lo arrastrado.
+    const plantasPlant = l.plantas !== undefined ? Math.round(l.plantas * fPlant) : undefined;
+    out.push({ ...l, ha: plantadas, insumos: escalar(l.insumos, fPlant), plantas: plantasPlant });
     out.push({
       id: nuevoId(),
       codigo: codigoArrastre(l),
@@ -577,6 +691,8 @@ export function cerrarSemana(lotes: Lote[], semana: number, nuevoId: () => strin
       variedadId: l.variedadId,
       cultivo: l.cultivo,
       cicloDias: l.cicloDias,
+      plantas: l.plantas !== undefined && plantasPlant !== undefined ? l.plantas - plantasPlant : undefined,
+      viveroId: l.viveroId,
     });
   }
   return out;
@@ -715,20 +831,23 @@ export function costoLineas(
   productos: Producto[],
   recepciones: Record<string, Recepcion>,
 ): number {
-  const precio = new Map(productos.map((p) => [p.id, p.precio]));
-  return lineas.reduce(
-    (s, l) => s + cantidadRecibida(l, recepciones) * (precio.get(l.productoId) ?? 0),
-    0,
-  );
+  const prod = new Map(productos.map((p) => [p.id, p]));
+  return lineas.reduce((s, l) => {
+    const p = prod.get(l.productoId);
+    // Precio vigente en la fecha de recepción (o en la semana de la línea): un cambio no recalcula lo anterior.
+    const fecha = recepciones[l.key]?.fecha ?? fechaEnSemana(l.semana);
+    return s + cantidadRecibida(l, recepciones) * (p ? precioVigente(p, fecha) : 0);
+  }, 0);
 }
 
 /** Costo de los insumos de planeación entregados al lote. */
 export function costoPlaneacionLote(l: Lote, pedidos: PedidoPlaneacion[], productos: Producto[]): number {
-  const precio = new Map(productos.map((p) => [p.id, p.precio]));
-  return insumosEntregados(l, pedidos).reduce(
-    (s, i) => s + i.cantidad * (precio.get(i.productoId) ?? 0),
-    0,
-  );
+  const prod = new Map(productos.map((p) => [p.id, p]));
+  const entrega = new Map(pedidos.map((p) => [p.id, p.fechaEntrega ?? p.fecha]));
+  return insumosEntregados(l, pedidos).reduce((s, i) => {
+    const p = prod.get(i.productoId);
+    return s + i.cantidad * (p ? precioVigente(p, entrega.get(i.pedidoId) ?? "") : 0);
+  }, 0);
 }
 
 /* ───────────────────────── Formato ───────────────────────── */
