@@ -62,7 +62,6 @@ export const Route = createFileRoute("/_authenticated/ranchos")({
   component: Ranchos,
 });
 
-const nombreVariedad = (id: string) => VARIEDADES.find((v) => v.id === id)?.nombre ?? id;
 
 const TILE: Record<EstatusTabla, string> = {
   libre: "bg-status-libre text-status-libre-foreground",
@@ -72,12 +71,12 @@ const TILE: Record<EstatusTabla, string> = {
   "plantada-parcial":
     "bg-status-plantada/60 text-status-plantada-foreground ring-1 ring-status-plantada-foreground/30",
   plantada: "bg-status-plantada text-status-plantada-foreground",
+  "en-cosecha": "bg-soil text-soil-foreground",
 };
 
 function useCostos() {
   const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
   return useMemo(() => {
-    const precio = new Map(productos.map((p) => [p.id, p.precio]));
     // Desde la primera plantación registrada hasta hoy.
     const desde = Math.min(semanaActual, ...lotes.flatMap((l) => l.avances.map((a) => a.semana)));
     const semanas = Array.from({ length: semanaActual - desde + 1 }, (_, i) => desde + i);
@@ -88,10 +87,7 @@ function useCostos() {
     for (const l of recibidas) porLote.set(l.loteId, [...(porLote.get(l.loteId) ?? []), l]);
     const costoLote = (loteId: string) => {
       const lote = lotes.find((x) => x.id === loteId);
-      const semanal = (porLote.get(loteId) ?? []).reduce(
-        (s, l) => s + cantidadRecibida(l, recepciones) * (precio.get(l.productoId) ?? 0),
-        0,
-      );
+      const semanal = costoLineas(porLote.get(loteId) ?? [], productos, recepciones);
       return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0);
     };
     const costoTabla = (tablaId: string) =>

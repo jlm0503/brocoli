@@ -19,6 +19,7 @@ const badgeVariants = cva(
         plantada: "border-transparent bg-status-plantada text-status-plantada-foreground",
         "parcial-planeada":
           "border-dashed border-status-planeada-foreground/50 bg-status-planeada/60 text-status-planeada-foreground",
+        "en-cosecha": "border-transparent bg-soil text-soil-foreground",
         "plantada-parcial":
           "border-dashed border-status-plantada-foreground/50 bg-status-plantada/60 text-status-plantada-foreground",
         comprado: "border-transparent bg-secondary text-secondary-foreground",
