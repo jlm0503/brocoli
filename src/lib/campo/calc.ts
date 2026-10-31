@@ -747,3 +747,36 @@ const num = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
 
 export const formatoMXN = (n: number) => mxn.format(n);
 export const formatoNum = (n: number) => num.format(n);
+
+/* ───────────────────────── Corrección de fechas (solo administrador) ───────────────────────── */
+
+const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Corrige las fechas de plantación (cada avance) y la de cosecha de un lote ya plantado.
+ * `fechaCosecha` vacía = se calcula con el ciclo de la variedad. Las semanas se recalculan
+ * con la nueva fecha, así que la receta y las compras del lote se recorren solas.
+ */
+export function corregirFechasLote(
+  l: Lote,
+  cambios: { avances: Record<string, string>; fechaCosecha?: string | undefined },
+  hoy: string,
+): { error: string } | { lote: Lote } {
+  if (l.avances.length === 0) return { error: "El lote aún no tiene plantación registrada." };
+  const avances = l.avances.map((a) => {
+    const fecha = cambios.avances[a.id] ?? a.fecha;
+    return { ...a, fecha, semana: semanaDeFecha(fecha) };
+  });
+  for (const a of avances) {
+    if (!FECHA_ISO.test(a.fecha)) return { error: "Indica la fecha de plantación." };
+    if (a.fecha > hoy) return { error: "La fecha de plantación no puede ser futura." };
+  }
+  avances.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const cosecha = cambios.fechaCosecha?.trim() || undefined;
+  if (cosecha) {
+    if (!FECHA_ISO.test(cosecha)) return { error: "La fecha de cosecha no es válida." };
+    if (cosecha <= avances[avances.length - 1]!.fecha)
+      return { error: "La cosecha debe ser después de la plantación." };
+  }
+  return { lote: { ...l, avances, fechaCosecha: cosecha } };
+}

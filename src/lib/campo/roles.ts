@@ -42,3 +42,8 @@ export function puedeVer(role: Role | null, path: NavPath): boolean {
   if (!role) return false;
   return NAV.find((n) => n.to === path)?.roles.includes(role) ?? false;
 }
+
+/** Solo el administrador corrige fechas de plantación y cosecha ya registradas. */
+export function puedeCorregirFechas(role: Role | null): boolean {
+  return role === "admin";
+}
