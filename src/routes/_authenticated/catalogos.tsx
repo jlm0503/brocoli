@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPinOff, MapPin, Plus, Trash2 } from "lucide-react";
+import { History, MapPinOff, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
+import { CatalogosExtra } from "@/components/campo/CatalogosExtra";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +39,13 @@ import {
   estatusTabla,
   fechaCorta,
   fechaEnSemana,
+  formatoMXN,
   formatoNum,
+  precioVigente,
   radioValidacion,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
-import type { Familia, Unidad } from "@/lib/campo/types";
+import type { Familia, Producto, Unidad } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/catalogos")({
   head: () => ({
@@ -66,8 +69,82 @@ export const Route = createFileRoute("/_authenticated/catalogos")({
 
 const UNIDADES: Unidad[] = ["kg", "L", "rollo"];
 
+const mxn2 = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
+const formatoMXN2 = (n: number) => mxn2.format(n);
+
+function CambiarPrecio({ producto, onClose }: { producto: Producto | null; onClose: () => void }) {
+  const { setPrecio, hoy } = useCampo();
+  const [precio, setP] = useState("");
+  const [desde, setDesde] = useState("");
+  const fecha = desde || hoy;
+
+  const guardar = () => {
+    if (!producto) return;
+    const err = setPrecio(producto.id, Number(precio), fecha);
+    if (err) return void toast.error(err);
+    toast.success(`${producto.nombre}: ${formatoMXN2(Number(precio))} desde el ${fechaCorta(fecha)}`);
+    setP("");
+    setDesde("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!producto} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Precio · {producto?.nombre}</DialogTitle>
+          <DialogDescription>
+            El nuevo precio aplica desde la fecha que elijas. Lo recibido antes conserva el precio que tenía.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="cp-precio">Nuevo precio por {producto?.unidad} (MXN)</Label>
+            <Input
+              id="cp-precio"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={precio}
+              onChange={(e) => setP(e.target.value)}
+              className="num"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cp-desde">Aplica desde</Label>
+            <Input id="cp-desde" type="date" value={fecha} onChange={(e) => setDesde(e.target.value)} className="num" />
+          </div>
+        </div>
+        {producto && (
+          <div className="rounded-lg bg-secondary p-3 text-xs">
+            <p className="eyebrow mb-1">Historial</p>
+            <ul className="num space-y-0.5">
+              <li>Precio inicial: {formatoMXN2(producto.precio)}</li>
+              {(producto.precios ?? []).map((c) => (
+                <li key={c.desde}>
+                  Desde el {fechaCorta(c.desde)} {c.desde.slice(0, 4)}: {formatoMXN2(c.precio)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar} disabled={precio === ""}>
+            Guardar precio
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Catalogos() {
-  const { ranchos, tablas, lotes, productos, semanaActual, setPrecio } = useCampo();
+  const { ranchos, tablas, lotes, productos, semanaActual, hoy } = useCampo();
+  const [cambiandoPrecio, setCambiandoPrecio] = useState<Producto | null>(null);
   const { eliminarRancho, eliminarTabla } = useCampo();
   const [nuevo, setNuevo] = useState(false);
   const [nuevoRancho, setNuevoRancho] = useState(false);
@@ -86,6 +163,11 @@ function Catalogos() {
           <TabsTrigger value="productos">Productos</TabsTrigger>
           <TabsTrigger value="tablas">Tablas</TabsTrigger>
           <TabsTrigger value="ranchos">Ranchos</TabsTrigger>
+          <TabsTrigger value="cultivos">Cultivos y variedades</TabsTrigger>
+          <TabsTrigger value="viveros">Viveros</TabsTrigger>
+          <TabsTrigger value="choferes">Choferes</TabsTrigger>
+          <TabsTrigger value="problemas">Problemas de calidad</TabsTrigger>
+          <TabsTrigger value="congeladora">Congeladora</TabsTrigger>
         </TabsList>
 
         <TabsContent value="productos">
@@ -113,14 +195,16 @@ function Catalogos() {
                     <TableCell className="text-muted-foreground">{p.familia}</TableCell>
                     <TableCell className="text-muted-foreground">{p.unidad}</TableCell>
                     <TableCell className="pr-5 text-right">
-                      <input
-                        type="number"
-                        min="0"
-                        value={p.precio}
-                        onChange={(e) => setPrecio(p.id, Number(e.target.value))}
-                        className="num w-24 rounded border border-transparent bg-transparent px-1.5 py-1 text-right hover:border-input focus:border-ring focus:outline-none"
-                        aria-label={`Precio de ${p.nombre}`}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setCambiandoPrecio(p)}
+                        className="num inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted"
+                        aria-label={`Cambiar precio de ${p.nombre}`}
+                      >
+                        {formatoMXN2(precioVigente(p, hoy))}
+                        {(p.precios?.length ?? 0) > 0 && <History className="size-3 text-muted-foreground" />}
+                        <Pencil className="size-3 text-muted-foreground" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -157,7 +241,7 @@ function Catalogos() {
               </TableHeader>
               <TableBody>
                 {tablas.map((t) => {
-                  const est = estatusTabla(t, lotes);
+                  const est = estatusTabla(t, lotes, semanaActual);
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="pl-5 text-muted-foreground">
@@ -244,8 +328,11 @@ function Catalogos() {
             })}
           </div>
         </TabsContent>
+
+        <CatalogosExtra />
       </Tabs>
 
+      <CambiarPrecio producto={cambiandoPrecio} onClose={() => setCambiandoPrecio(null)} />
       <NuevoProducto open={nuevo} onClose={() => setNuevo(false)} />
       <NuevoRancho open={nuevoRancho} onClose={() => setNuevoRancho(false)} />
       <NuevaTabla open={nuevaTabla} onClose={() => setNuevaTabla(false)} />
