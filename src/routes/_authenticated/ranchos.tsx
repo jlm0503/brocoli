@@ -15,6 +15,7 @@ import {
 import {
   ESTATUS_TABLA_LABEL,
   cantidadRecibida,
+  costoLineas,
   costoPlaneacionLote,
   esArrastrado,
   estatusLinea,
@@ -37,9 +38,10 @@ import {
   semanaRecetaLote,
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
-import { VARIEDADES } from "@/lib/campo/seed";
 import { useCampo } from "@/lib/campo/store";
-import type { EstatusTabla, LineaDemanda, Lote, Tabla } from "@/lib/campo/types";
+import type { EstatusTabla, LineaDemanda, Lote, Tabla, Variedad } from "@/lib/campo/types";
+
+const nombreDe = (variedades: Variedad[], id: string) => variedades.find((v) => v.id === id)?.nombre ?? id;
 
 export const Route = createFileRoute("/_authenticated/ranchos")({
   head: () => ({
@@ -103,7 +105,7 @@ function Ranchos() {
 
   const total = tablas.reduce((s, t) => s + costoTabla(t.id), 0);
   const haActivas = tablas.reduce((s, t) => s + hectareasActivas(lotes, t.id, semanaActual), 0);
-  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes) !== "libre").length;
+  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes, semanaActual) !== "libre").length;
 
   return (
     <AppShell
@@ -150,7 +152,7 @@ function Ranchos() {
               </header>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {ts.map((t) => {
-                  const est = estatusTabla(t, lotes);
+                  const est = estatusTabla(t, lotes, semanaActual);
                   const sc = semanaCultivoTabla(lotes, t.id, semanaActual);
                   const ls = lotesDeTabla(lotes, t.id);
                   const primero = ls.find((l) => l.avances.length > 0);
@@ -219,7 +221,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
       </Button>
     ) : null;
   const rancho = ranchos.find((r) => r.id === tabla.ranchoId);
-  const est = estatusTabla(tabla, lotes);
+  const est = estatusTabla(tabla, lotes, semanaActual);
   const ls = lotesDeTabla(lotes, tabla.id);
   const cosechados = lotes.filter((l) => l.tablaId === tabla.id && l.finalizado);
 
@@ -281,6 +283,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {nombreVariedad(l.variedadId)} ·{" "}
+                    {l.plantas ? `${formatoNum(l.plantas)} plantas · ` : ""}
                     {real !== null
                       ? `Plantado ${fechaCorta(fechaPlantacionLote(l))} (sem ${real}) · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!, semanaCosechaLote(l)).toLowerCase()})`
                       : esArrastrado(l, semanaActual)
