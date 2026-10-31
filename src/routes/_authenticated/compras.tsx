@@ -8,6 +8,8 @@ import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  precioVigente,
+  fechaEnSemana as fechaEnSemanaCalc,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -308,7 +310,10 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
   const tablaById = useMemo(() => new Map(tablas.map((t) => [t.id, t])), [tablas]);
 
   const costo = (fs: Consolidado[]) =>
-    fs.reduce((s, f) => s + f.cantidadPedido * (productoById.get(f.productoId)?.precio ?? 0), 0);
+    fs.reduce((s, f) => {
+      const p = productoById.get(f.productoId);
+      return s + f.cantidadPedido * (p ? precioVigente(p, fechaEnSemana(f.semana)) : 0);
+    }, 0);
   const porAtender = filas.filter((f) =>
     modo === "comprar" ? f.status === "pendiente" : f.status === "pendiente" || f.status === "comprado" || f.status === "parcial",
   ).length;

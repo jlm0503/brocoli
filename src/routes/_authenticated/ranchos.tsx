@@ -343,7 +343,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   <div className="num">
                     {formatoNum(cantidad)} {p.unidad}
                   </div>
-                  <div className="num text-xs text-muted-foreground">{formatoMXN(cantidad * p.precio)}</div>
+                  <div className="num text-xs text-muted-foreground">{formatoMXN(cantidad * precioVigente(p, hoyActual))}</div>
                 </div>
               </li>
             ))}

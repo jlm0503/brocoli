@@ -78,7 +78,10 @@ function Alertas() {
   const cerradas = alertas.filter((a) => a.status !== "abierta");
   const precio = new Map(productos.map((p) => [p.id, p]));
   const valor = (a: AlertaInsumos) =>
-    a.items.reduce((s, i) => s + i.cantidad * (precio.get(i.productoId)?.precio ?? 0), 0);
+    a.items.reduce((s, i) => {
+      const p = precio.get(i.productoId);
+      return s + i.cantidad * (p ? precioVigente(p, a.fecha) : 0);
+    }, 0);
   const tabla = (id: string) => tablas.find((t) => t.id === id)?.nombre;
   const rancho = (id: string) => ranchos.find((r) => r.id === id)?.nombre;
   const inventario = Object.entries(inventarioAlmacen).filter(([, c]) => c > 0);
