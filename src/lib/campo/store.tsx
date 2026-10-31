@@ -711,7 +711,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const sugeridas = plantasSugeridas(redondear(ha), parametroVigente(parametros, "plantasPorHa", hoy));
       const errPlantas = validarPlantas(opciones.plantas, sugeridas, opciones.motivoPlantas);
       if (errPlantas) return errPlantas;
-      if (opciones.viveroId && !viveros.some((v) => v.id === opciones.viveroId)) return "Elige el vivero.";
+      if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId)) return "Elige el vivero.";
       const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
       const necesidad = lineasPlaneacion(recetaDe(recetas, variedad.cultivo), adicionales, tablaId, redondear(ha), cinta);
       // Sin paquete de planeación (p. ej. coliflor sin receta) no hay insumos que decidir.
