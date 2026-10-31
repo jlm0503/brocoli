@@ -16,6 +16,7 @@ import {
   ESTATUS_TABLA_LABEL,
   cantidadRecibida,
   costoLineas,
+  precioVigente,
   costoPlaneacionLote,
   esArrastrado,
   estatusLinea,
@@ -211,7 +212,7 @@ function Ranchos() {
 }
 
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
-  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role, variedades } = useCampo();
+  const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role, variedades, hoy: hoyActual } = useCampo();
   const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const { porLote, costoLote, costoTabla } = useCostos();
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);

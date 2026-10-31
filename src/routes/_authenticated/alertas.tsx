@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import {
   DIAS_ALERTA_ROJA,
+  precioVigente,
   alertaVencida,
   diasEntre,
   fechaCorta,

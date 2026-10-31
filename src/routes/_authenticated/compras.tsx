@@ -8,8 +8,6 @@ import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  precioVigente,
-  fechaEnSemana as fechaEnSemanaCalc,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,6 +29,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   consolidar,
+  precioVigente,
   consolidarPlaneacion,
   fechaLimite,
   formatoMXN,
