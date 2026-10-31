@@ -31,6 +31,16 @@ import {
   semanaRealLote,
   hoyEnMexico,
   ponerAlDia,
+  cintaPlaneacion,
+  costoLineas,
+  costoPorPlanta,
+  loteEnCosecha,
+  parametroVigente,
+  plantasFueraDeRango,
+  plantasSugeridas,
+  precioVigente,
+  validarPlantas,
+  validarVariedad,
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas, puestoPrincipal } from "@/lib/campo/roles";
 import { diferencias, porId } from "@/lib/campo/sync";
@@ -42,7 +52,7 @@ import {
   TABLAS_INICIALES,
   VARIEDADES,
 } from "@/lib/campo/seed";
-import type { Adicional, Lote, PedidoPlaneacion, Producto, Receta, Recetas, Tabla } from "@/lib/campo/types";
+import type { Adicional, LineaDemanda, Lote, Parametro, PedidoPlaneacion, Producto, Receta, Recetas, Tabla } from "@/lib/campo/types";
 
 const R = (brocoli: Receta): Recetas => ({ brocoli, coliflor: { dosis: {} } });
 
@@ -283,8 +293,8 @@ describe("Datos reales cargados", () => {
   });
 
   it("paquete de planeación de brócoli: GOAL 2XL 1 L, Dual Gold 1 L, cintilla 2 rollos, Silifosca 300 kg por ha", () => {
-    expect(RECETAS_INICIALES.brocoli.dosis[-2]).toEqual({ goal: 1, dualgold: 1, cintilla: 2, silifosca: 300 });
-    expect(RECETAS_INICIALES.coliflor.dosis).toEqual({});
+    expect(RECETAS_INICIALES["brocoli"]!.dosis[-2]).toEqual({ goal: 1, dualgold: 1, cintilla: 2, silifosca: 300 });
+    expect(RECETAS_INICIALES["coliflor"]!.dosis).toEqual({});
   });
 
   it("arranca sin ranchos, tablas ni plantaciones (el usuario los captura)", () => {
@@ -408,5 +418,81 @@ describe("Cuentas y datos guardados", () => {
     const r = ponerAlDia([l], 44, 46, () => `n${++n}`);
     expect(r.find((x) => x.id === "l1")!.ha).toBe(4);
     expect(r.filter((x) => x.origenId === "l1")[0]!.ha).toBe(2);
+  });
+});
+
+describe("Fase 1 · plantas, cinta y parámetros con vigencia", () => {
+  const params: Parametro[] = [
+    { id: "a", clave: "plantasPorHa", valor: 60000, desde: "2026-01-01" },
+    { id: "b", clave: "costoPlantaHa", valor: 16200, desde: "2026-01-01" },
+    { id: "c", clave: "rollosCintaHa", valor: 2.1, desde: "2026-01-01" },
+  ];
+
+  it("caso de prueba: tabla de 12 ha, lote 1-A de 6 ha → 360,000 plantas sugeridas y 12.6 rollos", () => {
+    expect(plantasSugeridas(6, parametroVigente(params, "plantasPorHa", "2026-10-31"))).toBe(360000);
+    const cinta = cintaPlaneacion(productos, parametroVigente(params, "rollosCintaHa", "2026-10-31"));
+    const lineas = lineasPlaneacion({ dosis: { [-2]: { cinta: 2, yeso: 500 } } }, [], "t1", 6, cinta);
+    expect(lineas.find((l) => l.productoId === "cinta")?.cantidad).toBe(12.6);
+    expect(lineas.find((l) => l.productoId === "yeso")?.cantidad).toBe(3000);
+  });
+
+  it("la cinta se pide aunque la receta del cultivo esté vacía", () => {
+    const cinta = cintaPlaneacion(productos, 2.1);
+    expect(lineasPlaneacion({ dosis: {} }, [], "t1", 10, cinta)).toEqual([{ productoId: "cinta", cantidad: 21 }]);
+  });
+
+  it("plantas: más de ±10% de lo sugerido pide motivo obligatorio", () => {
+    expect(plantasFueraDeRango(396000, 360000)).toBe(false); // +10% exacto
+    expect(plantasFueraDeRango(396001, 360000)).toBe(true);
+    expect(plantasFueraDeRango(324000, 360000)).toBe(false); // −10% exacto
+    expect(plantasFueraDeRango(320000, 360000)).toBe(true);
+    expect(validarPlantas(300000, 360000, "")).toMatch(/motivo/);
+    expect(validarPlantas(300000, 360000, "Faltó planta en el vivero")).toBeNull();
+    expect(validarPlantas(360000, 360000, undefined)).toBeNull();
+  });
+
+  it("costo por planta = 16,200 ÷ 60,000 = $0.27", () => {
+    expect(costoPorPlanta(params, "2026-10-31")).toBe(0.27);
+  });
+
+  it("un parámetro aplica desde su fecha de vigencia y no cambia lo anterior", () => {
+    const ps: Parametro[] = [...params, { id: "d", clave: "plantasPorHa", valor: 55000, desde: "2026-11-09" }];
+    expect(parametroVigente(ps, "plantasPorHa", "2026-11-08")).toBe(60000);
+    expect(parametroVigente(ps, "plantasPorHa", "2026-11-09")).toBe(55000);
+    expect(parametroVigente([], "precioKg", "2026-11-09")).toBe(10.5);
+  });
+
+  it("un cambio de precio aplica desde su fecha; lo recibido antes conserva su precio", () => {
+    const urea: Producto = { ...productos[0]!, precio: 10, precios: [{ desde: "2026-11-02", precio: 12 }] };
+    expect(precioVigente(urea, "2026-11-01")).toBe(10);
+    expect(precioVigente(urea, "2026-11-02")).toBe(12);
+    const linea = (semana: number): LineaDemanda => ({
+      key: `l|urea|${semana}`, loteId: "l", tablaId: "t1", ranchoId: "r", productoId: "urea", semana, semanaReceta: 3, cantidad: 100,
+    });
+    // Semana 44 (26 oct) recibida a $10; semana 45 (2 nov) a $12.
+    expect(costoLineas([linea(44)], [urea], {})).toBe(1000);
+    expect(costoLineas([linea(45)], [urea], {})).toBe(1200);
+  });
+
+  it("al arrastrar, las plantas se dividen proporcionalmente (6 ha / 360,000 → 4 ha 240,000 + 2 ha 120,000)", () => {
+    const a = lote({ id: "a", ha: 6, semanaPlaneada: 44, avances: [av(44, 4)], plantas: 360000 });
+    const [plantado, arrastrado] = cerrarSemana([a], 44, () => "nuevo");
+    expect(plantado!.plantas).toBe(240000);
+    expect(arrastrado!.plantas).toBe(120000);
+  });
+
+  it("estatus En cosecha: Tlaloc (12 semanas) desde su semana de receta 11 hasta finalizarse", () => {
+    const l = lote({ id: "a", ha: 12, semanaPlaneada: 30, avances: [av(30, 12)] });
+    expect(loteEnCosecha(l, 40)).toBe(false); // semana 10
+    expect(loteEnCosecha(l, 41)).toBe(true); // semana 11
+    expect(estatusTabla(t12, [l], 42)).toBe("en-cosecha");
+    expect(estatusTabla(t12, [l], 39)).toBe("plantada");
+  });
+
+  it("una variedad nueva necesita cultivo existente, nombre y días a cosecha", () => {
+    const cultivos = [{ id: "fresa", nombre: "Fresa" }];
+    expect(validarVariedad({ nombre: "Albión", cultivo: "fresa", cicloDias: 0 }, [], cultivos)).toMatch(/días/);
+    expect(validarVariedad({ nombre: "Albión", cultivo: "maiz", cicloDias: 90 }, [], cultivos)).toMatch(/cultivo/);
+    expect(validarVariedad({ nombre: "Albión", cultivo: "fresa", cicloDias: 90 }, [], cultivos)).toBeNull();
   });
 });
