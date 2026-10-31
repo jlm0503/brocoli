@@ -295,7 +295,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       productos: de<Producto>("productos"),
       recetas: { ...RECETAS_VACIAS, ...mapa<Recetas[Cultivo]>("recetas") } as Recetas,
       cultivos: de<CultivoCat>("cultivos"),
-      variedades: de<Variedad>("variedades"),
+      variedades: de<Variedad>("variedades").sort(
+        (a, b) => a.cultivo.localeCompare(b.cultivo) || a.nombre.localeCompare(b.nombre),
+      ),
       viveros: de<Vivero>("viveros"),
       choferes: de<Chofer>("choferes"),
       congeladoras: de<Congeladora>("congeladoras"),
