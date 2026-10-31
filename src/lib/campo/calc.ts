@@ -778,5 +778,7 @@ export function corregirFechasLote(
     if (cosecha <= avances[avances.length - 1]!.fecha)
       return { error: "La cosecha debe ser después de la plantación." };
   }
-  return { lote: { ...l, avances, fechaCosecha: cosecha } };
+  // Si se plantó en la semana que se planeó (p. ej. plantación ya hecha), la semana planeada se recorre igual.
+  const semanaPlaneada = l.semanaPlaneada === semanaRealLote(l) ? avances[0]!.semana : l.semanaPlaneada;
+  return { lote: { ...l, avances, semanaPlaneada, fechaCosecha: cosecha } };
 }

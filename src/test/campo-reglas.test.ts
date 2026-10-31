@@ -359,6 +359,7 @@ describe("Corrección de fechas (solo administrador)", () => {
     const r = corregirFechasLote(plantado, { avances: { a1: "2026-10-08" } }, "2026-10-30");
     if ("error" in r) throw new Error(r.error);
     expect(semanaRealLote(r.lote)).toBe(41);
+    expect(r.lote.semanaPlaneada).toBe(41);
     expect(fechaCosechaLote(r.lote)).toBe("2026-12-17");
   });
 
