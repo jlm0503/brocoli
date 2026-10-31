@@ -26,8 +26,12 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  CULTIVO_LABEL,
   FAMILIAS,
+  SEMANA_PLANEACION,
+  cintaPlaneacion,
+  nombreCultivo,
+  precioVigente,
+  recetaDe,
   SEMANAS_RECETA,
   etapa,
   formatoMXN,
@@ -69,21 +73,27 @@ const ETAPA_CORTA: Record<string, string> = {
 };
 
 function Paquete() {
-  const { productos, recetas, variedades, setDosis } = useCampo();
+  const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
   const [cultivo, setCultivo] = useState<Cultivo>("brocoli");
-  const receta = recetas[cultivo];
+  const receta = recetaDe(recetas, cultivo);
+  const cinta = cintaPlaneacion(productos, parametro("rollosCintaHa"));
+  const precioHoy = (p: (typeof productos)[number]) => precioVigente(p, hoy);
+  /** Dosis por ha de la celda; la cinta de la semana -2 sale del parámetro de rollos por ha. */
+  const dosis = (w: number, pid: string) =>
+    w === SEMANA_PLANEACION && pid === cinta?.productoId ? cinta.porHa : (receta.dosis[w]?.[pid] ?? 0);
   const SEMANAS = useMemo(() => semanasReceta(cultivo, variedades), [cultivo, variedades]);
   const vacia = Object.values(receta.dosis).every((sem) => Object.values(sem).every((d) => !(d > 0)));
   const sinPrecio = productos.filter(
-    (p) => p.precio <= 0 && SEMANAS.some((w) => (receta.dosis[w]?.[p.id] ?? 0) > 0),
+    (p) => precioHoy(p) <= 0 && SEMANAS.some((w) => dosis(w, p.id) > 0),
   );
 
   const costoSemana = useMemo(
     () =>
       SEMANAS.map((w) =>
-        productos.reduce((s, p) => s + (receta.dosis[w]?.[p.id] ?? 0) * p.precio, 0),
+        productos.reduce((s, p) => s + dosis(w, p.id) * precioHoy(p), 0),
       ),
-    [productos, receta, SEMANAS],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [productos, receta, SEMANAS, cinta?.porHa, hoy],
   );
   const costoCiclo = costoSemana.reduce((s, c) => s + c, 0);
   const costoPlaneacion = costoSemana[0] ?? 0;
@@ -99,9 +109,9 @@ function Paquete() {
     >
       <Tabs value={cultivo} onValueChange={(v) => setCultivo(v as Cultivo)} className="mb-4">
         <TabsList>
-          {(Object.keys(CULTIVO_LABEL) as Cultivo[]).map((c) => (
-            <TabsTrigger key={c} value={c}>
-              {CULTIVO_LABEL[c]}
+          {cultivos.map((c) => (
+            <TabsTrigger key={c.id} value={c.id}>
+              {c.nombre}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -115,8 +125,8 @@ function Paquete() {
       </p>
       {vacia && (
         <div className="mb-6 rounded-xl border border-dashed border-soil/50 bg-soil-soft/50 p-4 text-sm">
-          Receta de {CULTIVO_LABEL[cultivo].toLowerCase()} pendiente. Mientras esté vacía, sus lotes no
-          generan pedidos ni compras.
+          Receta de {nombreCultivo(cultivos, cultivo).toLowerCase()} pendiente. Mientras esté vacía, sus
+          lotes solo piden la cinta en el paquete de planeación.
         </div>
       )}
       {sinPrecio.length > 0 && (
@@ -178,7 +188,7 @@ function Paquete() {
                       <td className="sticky left-0 z-10 bg-card px-4 py-1.5 whitespace-nowrap">
                         <span className="num mr-2 text-xs text-muted-foreground">{p.codigo}</span>
                         <span className="font-medium">{p.nombre}</span>
-                        {p.precio <= 0 && (
+                        {precioHoy(p) <= 0 && (
                           <span className="ml-2 text-[0.65rem] text-destructive">sin precio</span>
                         )}
                       </td>
@@ -186,7 +196,18 @@ function Paquete() {
                         {p.unidad === "rollo" ? "rollos" : p.unidad}/ha
                       </td>
                       {SEMANAS.map((w) => {
-                        const v = receta.dosis[w]?.[p.id] ?? 0;
+                        const v = dosis(w, p.id);
+                        if (w === SEMANA_PLANEACION && p.id === cinta?.productoId)
+                          return (
+                            <td key={w} className="bg-soil-soft/40 px-0.5 py-1">
+                              <span
+                                title="Se toma de Parámetros (rollos de cinta por hectárea)"
+                                className="num block w-full min-w-11 rounded bg-soil-soft px-0.5 py-1.5 text-center text-xs text-soil-foreground"
+                              >
+                                {formatoNum(v)}
+                              </span>
+                            </td>
+                          );
                         return (
                           <td key={w} className={`px-0.5 py-1 ${w < 0 ? "bg-soil-soft/40" : ""}`}>
                             <input
@@ -223,8 +244,9 @@ function Paquete() {
         </table>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Rollos de cintilla: consumibles, se piden completos por lote y su costo se carga al 100% al
-        lote. Las semanas sin productos se quedan vacías.
+        Rollos de {cinta ? productos.find((p) => p.id === cinta.productoId)?.nombre.toLowerCase() : "cinta"} en la
+        semana -2: salen de Parámetros ({formatoNum(cinta?.porHa ?? 0)} por ha), se piden completos en cada lote y
+        su costo se carga al 100% al lote. Las semanas sin productos se quedan vacías.
       </p>
 
       <Adicionales />
