@@ -10,6 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
@@ -22,39 +25,55 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAlertasRoute = AuthenticatedAlertasRouteImport.update({
-  id: '/_authenticated/alertas',
-  path: '/alertas',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAlertasRoute = AuthenticatedAlertasRouteImport.update({
+  id: '/alertas',
+  path: '/alertas',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCatalogosRoute = AuthenticatedCatalogosRouteImport.update({
-  id: '/_authenticated/catalogos',
+  id: '/catalogos',
   path: '/catalogos',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
-  id: '/_authenticated/compras',
+  id: '/compras',
   path: '/compras',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
-  id: '/_authenticated/paquete',
+  id: '/paquete',
   path: '/paquete',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPlaneacionRoute = AuthenticatedPlaneacionRouteImport.update({
-  id: '/_authenticated/planeacion',
+  id: '/planeacion',
   path: '/planeacion',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRanchosRoute = AuthenticatedRanchosRouteImport.update({
-  id: '/_authenticated/ranchos',
+  id: '/ranchos',
   path: '/ranchos',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
@@ -64,6 +83,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
@@ -74,6 +95,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
@@ -85,6 +109,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
+    | '/reset-password'
     | '/alertas'
     | '/catalogos'
     | '/compras'
@@ -94,6 +120,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
+    | '/reset-password'
     | '/alertas'
     | '/catalogos'
     | '/compras'
@@ -103,6 +131,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/reset-password'
     | '/_authenticated/alertas'
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
@@ -113,12 +144,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
-  AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
-  AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
-  AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
-  AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
-  AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,59 +158,98 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/alertas': {
       id: '/_authenticated/alertas'
       path: '/alertas'
       fullPath: '/alertas'
       preLoaderRoute: typeof AuthenticatedAlertasRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/catalogos': {
       id: '/_authenticated/catalogos'
       path: '/catalogos'
       fullPath: '/catalogos'
       preLoaderRoute: typeof AuthenticatedCatalogosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/compras': {
       id: '/_authenticated/compras'
       path: '/compras'
       fullPath: '/compras'
       preLoaderRoute: typeof AuthenticatedComprasRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/paquete': {
       id: '/_authenticated/paquete'
       path: '/paquete'
       fullPath: '/paquete'
       preLoaderRoute: typeof AuthenticatedPaqueteRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/planeacion': {
       id: '/_authenticated/planeacion'
       path: '/planeacion'
       fullPath: '/planeacion'
       preLoaderRoute: typeof AuthenticatedPlaneacionRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ranchos': {
       id: '/_authenticated/ranchos'
       path: '/ranchos'
       fullPath: '/ranchos'
       preLoaderRoute: typeof AuthenticatedRanchosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
+  AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
+  AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
+  AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
+  AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
