@@ -10,6 +10,7 @@ import {
   lineasSolicitud,
   lotesParaSolicitud,
   siguienteFolio,
+  validarPlantasSolicitud,
   validarRecepcionPlanta,
   validarSolicitud,
 } from "@/lib/campo/calc";
@@ -135,5 +136,26 @@ describe("Fase 2 · cuenta de planta", () => {
     expect(nov.saldoPeriodo).toBe(-10000);
     expect(nov.saldoAcumulado).toBe(40000);
     expect(nov.relacion).toBeNull();
+  });
+});
+
+describe("Fase 2 · plantas capturadas en la solicitud", () => {
+  it("las plantas indicadas en la solicitud mandan sobre las del lote", () => {
+    const [l] = lineasSolicitud([lote({ id: "a", ha: 5, plantas: 300000 })], {
+      ranchos: [],
+      tablas: [],
+      variedades: [],
+      plantasPorHa: 60000,
+      plantas: { a: 310000 },
+    });
+    expect(l!.plantas).toBe(310000);
+  });
+
+  it("más de ±10% de ha × 60,000 pide motivo; dentro del rango no", () => {
+    const a = lote({ id: "a", ha: 5 });
+    expect(validarPlantasSolicitud([a], { a: 330000 }, {}, 60000)).toBeNull(); // 66,000/ha = +10%
+    expect(validarPlantasSolicitud([a], { a: 350000 }, {}, 60000)).toMatch(/1-A.*motivo/);
+    expect(validarPlantasSolicitud([a], { a: 350000 }, { a: "Más densidad" }, 60000)).toBeNull();
+    expect(validarPlantasSolicitud([a], { a: NaN }, {}, 60000)).toMatch(/plantas/);
   });
 });
