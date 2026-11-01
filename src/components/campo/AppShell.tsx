@@ -8,7 +8,9 @@ import {
   ClipboardList,
   FlaskConical,
   Hourglass,
+  FileText,
   LayoutGrid,
+  Wallet,
   Loader2,
   LogOut,
   ShieldAlert,
@@ -33,6 +35,8 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/alertas": BellRing,
   "/usuarios": Users,
   "/parametros": SlidersHorizontal,
+  "/solicitudes": FileText,
+  "/cuenta-planta": Wallet,
 };
 
 interface AppShellProps {
