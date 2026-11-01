@@ -22,6 +22,7 @@ import {
   lineasSolicitud,
   lotesParaSolicitud,
   siguienteFolio,
+  validarPlantasSolicitud,
   validarRecepcionPlanta,
   validarSolicitud,
   corregirFechasLote,
@@ -174,6 +175,10 @@ interface CampoContextValue {
     loteIds: string[];
     viveroId: string;
     observaciones?: string | undefined;
+    /** Plantas por lote capturadas en la solicitud (por ha o total). */
+    plantas?: Record<string, number> | undefined;
+    /** Motivo por lote cuando las plantas difieren más de ±10% de lo sugerido. */
+    motivos?: Record<string, string> | undefined;
   }) => { error: string } | { solicitud: SolicitudPlanta };
   marcarSolicitudEnviada: (id: string) => void;
   recibirPlanta: (
@@ -1028,7 +1033,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   );
 
   const generarSolicitud = useCallback<CampoContextValue["generarSolicitud"]>(
-    ({ loteIds, viveroId, observaciones }) => {
+    ({ loteIds, viveroId, observaciones, plantas = {}, motivos = {} }) => {
       const disponibles = lotesParaSolicitud(lotes, solicitudes);
       const seleccion = lotes.filter((l) => loteIds.includes(l.id));
       const err = validarSolicitud(seleccion, viveroId, disponibles);
@@ -1036,26 +1041,28 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const v = viveros.find((x) => x.id === viveroId);
       if (!v) return { error: "Elige el vivero." };
       const plantasPorHa = parametroVigente(parametros, "plantasPorHa", hoy);
+      const errPlantas = validarPlantasSolicitud(seleccion, plantas, motivos, plantasPorHa);
+      if (errPlantas) return { error: errPlantas };
       const solicitud: SolicitudPlanta = {
         id: nuevoId("sp"),
         folio: siguienteFolio(solicitudes),
         fecha: hoy,
         viveroId,
         vivero: { nombre: v.nombre, contacto: v.contacto ?? "", telefono: v.telefono ?? "", correo: v.correo ?? "" },
-        lineas: lineasSolicitud(seleccion, { ranchos, tablas, variedades, plantasPorHa }),
+        lineas: lineasSolicitud(seleccion, { ranchos, tablas, variedades, plantasPorHa, plantas }),
         ingeniero,
         observaciones: observaciones?.trim() || undefined,
         status: "generada",
       };
       const ids = new Set(loteIds);
-      // El lote se queda con su vivero y sus plantas (si no las tenía, las sugeridas).
+      // El lote se queda con su vivero y las plantas que se pidieron.
       setLotes((ls) =>
         ls.map((l) => {
           if (!ids.has(l.id)) return l;
           const linea = solicitud.lineas.find((x) => x.loteId === l.id)!;
-          return l.viveroId === viveroId && l.plantas !== undefined
-            ? l
-            : { ...l, viveroId, plantas: l.plantas ?? linea.plantas };
+          const motivo = motivos[l.id]?.trim();
+          if (l.viveroId === viveroId && l.plantas === linea.plantas && !motivo) return l;
+          return { ...l, viveroId, plantas: linea.plantas, motivoPlantas: motivo || l.motivoPlantas };
         }),
       );
       setSolicitudes((ss) => [...ss, solicitud]);

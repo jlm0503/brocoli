@@ -23,8 +23,10 @@ import {
   folioSolicitud,
   formatoNum,
   lotesParaSolicitud,
+  plantasFueraDeRango,
   plantasSugeridas,
   totalesSolicitud,
+  validarPlantasSolicitud,
   validarRecepcionPlanta,
 } from "@/lib/campo/calc";
 import { descargarSolicitud } from "@/lib/campo/pdf-solicitud";
@@ -57,7 +59,29 @@ export function GenerarSolicitudDialog({
   const seleccion = candidatos.filter((l) => (elegidos ?? candidatos.map((c) => c.id)).includes(l.id));
   const [observaciones, setObs] = useState("");
   const plantasPorHa = parametro("plantasPorHa");
-  const plantasDe = (l: Lote) => l.plantas ?? plantasSugeridas(l.ha, plantasPorHa);
+  /** Lo capturado por lote: plantas por ha y total, ligados entre sí. */
+  const [captura, setCaptura] = useState<Record<string, { porHa: string; total: string }>>({});
+  const [motivos, setMotivos] = useState<Record<string, string>>({});
+  const totalCapturado = (l: Lote) => {
+    const t = captura[l.id]?.total;
+    return t === undefined ? undefined : t === "" ? NaN : Math.round(Number(t));
+  };
+  const plantasDe = (l: Lote) => totalCapturado(l) ?? l.plantas ?? plantasSugeridas(l.ha, plantasPorHa);
+  const editar = (l: Lote, campo: "porHa" | "total", valor: string) => {
+    const n = Number(valor);
+    const ok = valor !== "" && Number.isFinite(n) && n >= 0;
+    setCaptura((c) => ({
+      ...c,
+      [l.id]:
+        campo === "total"
+          ? { total: valor, porHa: ok && l.ha > 0 ? String(Math.round(n / l.ha)) : "" }
+          : { porHa: valor, total: ok ? String(Math.round(n * l.ha)) : "" },
+    }));
+  };
+  const plantasEnviadas = Object.fromEntries(
+    seleccion.filter((l) => captura[l.id] !== undefined).map((l) => [l.id, totalCapturado(l)!]),
+  );
+  const errorPlantas = validarPlantasSolicitud(seleccion, plantasEnviadas, motivos, plantasPorHa);
   const nombreTabla = (id: string) => tablas.find((t) => t.id === id)?.nombre ?? "";
   const nombreRancho = (id: string) => ranchos.find((r) => r.id === id)?.nombre ?? "";
   const nombreVariedad = (id: string) => variedades.find((v) => v.id === id)?.nombre ?? "";
@@ -69,7 +93,13 @@ export function GenerarSolicitudDialog({
     });
 
   const generar = async () => {
-    const r = generarSolicitud({ loteIds: seleccion.map((l) => l.id), viveroId, observaciones });
+    const r = generarSolicitud({
+      loteIds: seleccion.map((l) => l.id),
+      viveroId,
+      observaciones,
+      plantas: plantasEnviadas,
+      motivos,
+    });
     if ("error" in r) return void toast.error(r.error);
     toast.success(`Solicitud ${folioSolicitud(r.solicitud.folio)} generada`);
     onClose();
@@ -171,9 +201,22 @@ export function GenerarSolicitudDialog({
                         </span>
                         <span className="num text-right text-xs">
                           {formatoNum(l.ha)} ha
-                          <span className="block text-muted-foreground">{formatoNum(plantasDe(l))} plantas</span>
+                          <span className="block text-muted-foreground">
+                            {Number.isFinite(plantasDe(l)) ? formatoNum(plantasDe(l)) : "—"} plantas
+                          </span>
                         </span>
                       </label>
+                      {seleccion.some((x) => x.id === l.id) && (
+                        <PlantasLote
+                          lote={l}
+                          plantas={plantasDe(l)}
+                          sugeridas={plantasSugeridas(l.ha, plantasPorHa)}
+                          captura={captura[l.id]}
+                          onChange={(campo, v) => editar(l, campo, v)}
+                          motivo={motivos[l.id] ?? l.motivoPlantas ?? ""}
+                          onMotivo={(v) => setMotivos((m) => ({ ...m, [l.id]: v }))}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -181,9 +224,10 @@ export function GenerarSolicitudDialog({
               {seleccion.length > 0 && (
                 <p className="num text-right text-sm">
                   Total: {formatoNum(seleccion.reduce((s, l) => s + l.ha, 0))} ha ·{" "}
-                  {formatoNum(seleccion.reduce((s, l) => s + plantasDe(l), 0))} plantas
+                  {formatoNum(seleccion.reduce((s, l) => s + (Number.isFinite(plantasDe(l)) ? plantasDe(l) : 0), 0))} plantas
                 </p>
               )}
+              {errorPlantas && <p className="text-sm text-destructive">{errorPlantas}</p>}
             </div>
 
             <div className="space-y-2">
@@ -197,12 +241,84 @@ export function GenerarSolicitudDialog({
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={generar} disabled={seleccion.length === 0 || !viveroId}>
+          <Button onClick={generar} disabled={seleccion.length === 0 || !viveroId || !!errorPlantas}>
             <FileDown /> Generar PDF
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Plantas de un lote en la solicitud: por hectárea o total (una calcula la otra). */
+function PlantasLote({
+  lote,
+  plantas,
+  sugeridas,
+  captura,
+  onChange,
+  motivo,
+  onMotivo,
+}: {
+  lote: Lote;
+  plantas: number;
+  sugeridas: number;
+  captura: { porHa: string; total: string } | undefined;
+  onChange: (campo: "porHa" | "total", valor: string) => void;
+  motivo: string;
+  onMotivo: (v: string) => void;
+}) {
+  const porHa = captura?.porHa ?? (lote.ha > 0 ? String(Math.round(plantas / lote.ha)) : "");
+  const total = captura?.total ?? String(plantas);
+  const fuera = Number.isFinite(plantas) && plantasFueraDeRango(plantas, sugeridas);
+  return (
+    <div className="space-y-2 px-3 pb-3 pl-10">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`sp-ha-${lote.id}`} className="text-xs text-muted-foreground">
+            Plantas por ha
+          </Label>
+          <Input
+            id={`sp-ha-${lote.id}`}
+            type="number"
+            inputMode="numeric"
+            min="0"
+            step="1"
+            value={porHa}
+            onChange={(e) => onChange("porHa", e.target.value)}
+            className="num h-9"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`sp-total-${lote.id}`} className="text-xs text-muted-foreground">
+            Total de plantas
+          </Label>
+          <Input
+            id={`sp-total-${lote.id}`}
+            type="number"
+            inputMode="numeric"
+            min="0"
+            step="1"
+            value={total}
+            onChange={(e) => onChange("total", e.target.value)}
+            className="num h-9"
+          />
+        </div>
+      </div>
+      {fuera && (
+        <div className="space-y-1">
+          <Label htmlFor={`sp-motivo-${lote.id}`} className="text-xs text-soil-foreground">
+            Difiere más de 10% de lo sugerido ({formatoNum(sugeridas)}). Motivo:
+          </Label>
+          <Input
+            id={`sp-motivo-${lote.id}`}
+            value={motivo}
+            onChange={(e) => onMotivo(e.target.value)}
+            className="h-9"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
