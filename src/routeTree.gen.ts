@@ -16,10 +16,12 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
+import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authenticated/cuenta-planta'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
 import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
 import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
+import { Route as AuthenticatedSolicitudesRouteImport } from './routes/_authenticated/solicitudes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
@@ -56,6 +58,12 @@ const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
   path: '/compras',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCuentaPlantaRoute =
+  AuthenticatedCuentaPlantaRouteImport.update({
+    id: '/cuenta-planta',
+    path: '/cuenta-planta',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
   id: '/paquete',
   path: '/paquete',
@@ -76,6 +84,12 @@ const AuthenticatedRanchosRoute = AuthenticatedRanchosRouteImport.update({
   path: '/ranchos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSolicitudesRoute =
+  AuthenticatedSolicitudesRouteImport.update({
+    id: '/solicitudes',
+    path: '/solicitudes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -89,10 +103,12 @@ export interface FileRoutesByFullPath {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
+  '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
@@ -102,10 +118,12 @@ export interface FileRoutesByTo {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
+  '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
@@ -117,10 +135,12 @@ export interface FileRoutesById {
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
+  '/_authenticated/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
   '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
   '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
+  '/_authenticated/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
@@ -132,10 +152,12 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/cuenta-planta'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
     | '/ranchos'
+    | '/solicitudes'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -145,10 +167,12 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/cuenta-planta'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
     | '/ranchos'
+    | '/solicitudes'
     | '/usuarios'
   id:
     | '__root__'
@@ -159,10 +183,12 @@ export interface FileRouteTypes {
     | '/_authenticated/alertas'
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
+    | '/_authenticated/cuenta-planta'
     | '/_authenticated/paquete'
     | '/_authenticated/parametros'
     | '/_authenticated/planeacion'
     | '/_authenticated/ranchos'
+    | '/_authenticated/solicitudes'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
@@ -224,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedComprasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cuenta-planta': {
+      id: '/_authenticated/cuenta-planta'
+      path: '/cuenta-planta'
+      fullPath: '/cuenta-planta'
+      preLoaderRoute: typeof AuthenticatedCuentaPlantaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/paquete': {
       id: '/_authenticated/paquete'
       path: '/paquete'
@@ -252,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRanchosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/solicitudes': {
+      id: '/_authenticated/solicitudes'
+      path: '/solicitudes'
+      fullPath: '/solicitudes'
+      preLoaderRoute: typeof AuthenticatedSolicitudesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -266,10 +306,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedCuentaPlantaRoute: typeof AuthenticatedCuentaPlantaRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
   AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
   AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
+  AuthenticatedSolicitudesRoute: typeof AuthenticatedSolicitudesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
@@ -277,10 +319,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
+  AuthenticatedCuentaPlantaRoute: AuthenticatedCuentaPlantaRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
+  AuthenticatedSolicitudesRoute: AuthenticatedSolicitudesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
