@@ -51,7 +51,15 @@ import {
   validarTabla,
 } from "./calc";
 import { useSesion } from "./sesion";
-import { COLECCIONES, diferencias, porId, type Coleccion, type Mapa } from "./sync";
+import {
+  COLECCIONES,
+  conciliarRemotos,
+  diferencias,
+  porId,
+  type CambioRemoto,
+  type Coleccion,
+  type Mapa,
+} from "./sync";
 import { puedeCorregirFechas } from "./roles";
 import type {
   Adicional,
@@ -271,6 +279,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   /** Lo último que se sabe guardado en la nube, por colección. */
   const guardado = useRef<Partial<Record<Coleccion, Mapa>>>({});
+  /** Cambios de otras personas que la pantalla todavía no refleja, por colección. */
+  const remotos = useRef<Partial<Record<Coleccion, Map<string, CambioRemoto>>>>({});
   const simulando = historial.length > 0;
   const simulandoRef = useRef(simulando);
   simulandoRef.current = simulando;
@@ -333,6 +343,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       lotesAlDia = ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt"));
     }
 
+    remotos.current = {};
     guardado.current = {
       productos: porId(datos.productos),
       recetas: { ...datos.recetas },
@@ -417,8 +428,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!activo || !user) return;
     for (const c of COLECCIONES) {
-      const antes = guardado.current[c] ?? {};
       const ahora = mapas[c];
+      const pendientes = remotos.current[c];
+      const antes = pendientes
+        ? conciliarRemotos(guardado.current[c] ?? {}, ahora, pendientes, Date.now())
+        : (guardado.current[c] ?? {});
+      guardado.current[c] = antes;
       const { guardar, borrar } = diferencias(antes, ahora);
       if (guardar.length === 0 && borrar.length === 0) continue;
       guardado.current[c] = ahora;
@@ -439,10 +454,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     const aplicar = (col: string, id: string, data: unknown) => {
       if (simulandoRef.current || !(COLECCIONES as readonly string[]).includes(col)) return;
       const c = col as Coleccion;
-      const base = { ...(guardado.current[c] ?? {}) };
-      if (data === undefined) delete base[id];
-      else base[id] = data;
-      guardado.current[c] = base;
+      // No se toca lo guardado aquí: se concilia cuando la pantalla ya refleja el cambio.
+      (remotos.current[c] ??= new Map()).set(id, { data, llegada: Date.now() });
       const lista = <T extends { id: string }>(xs: T[]) =>
         data === undefined ? xs.filter((x) => x.id !== id) : xs.some((x) => x.id === id) ? xs.map((x) => (x.id === id ? (data as T) : x)) : [...xs, data as T];
       const registro = <T,>(r: Record<string, T>) => {
