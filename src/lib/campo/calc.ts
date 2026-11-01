@@ -997,7 +997,14 @@ export function validarSolicitud(
 /** Renglones de la solicitud (copia de los datos del lote). Sin plantas capturadas, se usan las sugeridas. */
 export function lineasSolicitud(
   seleccion: Lote[],
-  ctx: { ranchos: Rancho[]; tablas: Tabla[]; variedades: Variedad[]; plantasPorHa: number },
+  ctx: {
+    ranchos: Rancho[];
+    tablas: Tabla[];
+    variedades: Variedad[];
+    plantasPorHa: number;
+    /** Plantas capturadas en la solicitud por lote (por ha o total); mandan sobre las del lote. */
+    plantas?: Record<string, number> | undefined;
+  },
 ): LineaSolicitud[] {
   return seleccion.map((l) => ({
     loteId: l.id,
@@ -1008,10 +1015,30 @@ export function lineasSolicitud(
     lote: l.codigo,
     variedad: ctx.variedades.find((v) => v.id === l.variedadId)?.nombre ?? "",
     ha: l.ha,
-    plantas: l.plantas ?? plantasSugeridas(l.ha, ctx.plantasPorHa),
+    plantas: ctx.plantas?.[l.id] ?? l.plantas ?? plantasSugeridas(l.ha, ctx.plantasPorHa),
     semanaPlantacion: l.semanaPlaneada,
     fechaEntrega: l.fechaEntregaPlanta ?? fechaEnSemana(l.semanaPlaneada, 0),
   }));
+}
+
+/**
+ * Plantas capturadas en la solicitud: enteras y mayores a 0; si difieren más de ±10% de
+ * ha × plantas por ha vigente, piden motivo (la misma regla que al planear).
+ */
+export function validarPlantasSolicitud(
+  seleccion: Lote[],
+  plantas: Record<string, number>,
+  motivos: Record<string, string>,
+  plantasPorHa: number,
+): string | null {
+  for (const l of seleccion) {
+    const n = plantas[l.id];
+    if (n === undefined) continue;
+    const motivo = motivos[l.id] ?? l.motivoPlantas;
+    const err = validarPlantas(n, plantasSugeridas(l.ha, plantasPorHa), motivo);
+    if (err) return `Lote ${l.codigo}: ${err.charAt(0).toLowerCase()}${err.slice(1)}`;
+  }
+  return null;
 }
 
 export function totalesSolicitud(s: Pick<SolicitudPlanta, "lineas">): { ha: number; plantas: number; recibidas: number } {
