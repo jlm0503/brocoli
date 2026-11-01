@@ -16,12 +16,12 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
 - [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
 
-## Fase 2 — Solicitud de planta (PDF) y cuenta de planta (en curso)
-- [ ] Solicitud de planta por lote o consolidada (vivero + semana), folio SP-0001, PDF, compartir, reimprimir
-- [ ] Estatus Generada / Enviada / Planta recibida (cantidad, fecha, foto, diferencia) / Cancelada; arrastrados no generan
-- [ ] Cuenta de planta: cargos al recibir planta, abonos por viaje evaluado (llegan en Fase 4), indicadores, gráfica mensual
-- [ ] Costo real de planta en el costo del lote
-- [ ] Caso de prueba Fase 2 (300,000 plantas → $81,000; 2 viajes → saldo $61,000, 24.7%)
+## Fase 2 — Solicitud de planta (PDF) y cuenta de planta (lista, esperando confirmación)
+- [x] Solicitud de planta por lote o consolidada (vivero + semana), folio SP-0001, PDF, compartir, reimprimir
+- [x] Estatus Generada / Enviada / Planta recibida (cantidad, fecha, foto, diferencia) / Cancelada; arrastrados no generan
+- [x] Cuenta de planta: cargos al recibir planta, abonos por viaje evaluado (llegan en Fase 4), indicadores, gráfica mensual
+- [x] Costo real de planta en el costo del lote
+- [x] Caso de prueba Fase 2 (300,000 plantas → $81,000; 2 viajes → saldo $61,000, 24.7%)
 - [ ] Logo real de Ultra Farms (lo da el usuario) y qué fechas abarca una "temporada"
 ## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones
 ## Fase 4 — Cosecha: salidas, evaluación, panel, liquidación semanal, rendimiento, calidad
