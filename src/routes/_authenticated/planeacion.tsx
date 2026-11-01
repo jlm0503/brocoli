@@ -683,7 +683,12 @@ function PlanearDialog({
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
   const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa"));
-  const plantas = plantasTxt === "" ? sugeridas : Math.round(Number(plantasTxt));
+  const plantas =
+    porHaTxt !== null
+      ? Math.round(Number(porHaTxt) * (haNum > 0 ? haNum : 0))
+      : plantasTxt === ""
+        ? sugeridas
+        : Math.round(Number(plantasTxt));
   const fueraDeRango = plantasFueraDeRango(plantas, sugeridas);
   const entregaPlanta = fechaEntrega || fechaEnSemana(w, 0);
   const cinta = useMemo(() => cintaPlaneacion(productos, parametro("rollosCintaHa")), [productos, parametro]);
@@ -820,10 +825,7 @@ function PlanearDialog({
               min="0"
               value={porHaTxt !== null ? porHaTxt : haNum > 0 && plantas > 0 ? Math.round(plantas / haNum) : ""}
               onChange={(e) => {
-                const v = e.target.value;
-                setPorHaTxt(v);
-                const n = Number(v);
-                setPlantasTxt(v !== "" && Number.isFinite(n) && haNum > 0 ? String(Math.round(n * haNum)) : "0");
+                setPorHaTxt(e.target.value);
               }}
               className="num"
             />
@@ -837,7 +839,7 @@ function PlanearDialog({
               inputMode="numeric"
               step="1000"
               min="0"
-              value={plantasTxt === "" ? (sugeridas > 0 ? sugeridas : "") : plantasTxt}
+              value={porHaTxt !== null ? (plantas > 0 ? plantas : "") : plantasTxt === "" ? (sugeridas > 0 ? sugeridas : "") : plantasTxt}
               onChange={(e) => {
                 setPlantasTxt(e.target.value);
                 setPorHaTxt(null);
