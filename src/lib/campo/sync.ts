@@ -22,6 +22,7 @@ export const COLECCIONES = [
   "congeladoras",
   "problemas",
   "parametros",
+  "solicitudes",
 ] as const;
 export type Coleccion = (typeof COLECCIONES)[number];
 
