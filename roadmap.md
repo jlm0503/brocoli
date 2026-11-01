@@ -22,3 +22,5 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 5 — Cierre de ciclo, históricos, captura histórica
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
+
+Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).
