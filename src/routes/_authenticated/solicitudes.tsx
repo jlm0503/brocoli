@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { VerEvidencia } from "@/components/campo/Evidencia";
-import { GenerarSolicitudDialog, RecibirPlantaDialog } from "@/components/campo/SolicitudPlanta";
+import { GenerarSolicitudDialog, RecibirPlantaDialog, usePdfSolicitud } from "@/components/campo/SolicitudPlanta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import {
   lotesParaSolicitud,
   totalesSolicitud,
 } from "@/lib/campo/calc";
-import { compartirSolicitud, descargarSolicitud } from "@/lib/campo/pdf-solicitud";
+import { entregarPdf } from "@/lib/campo/pdf-solicitud";
 import { useCampo } from "@/lib/campo/store";
 import type { EstatusSolicitud, SolicitudPlanta } from "@/lib/campo/types";
 
@@ -100,23 +100,19 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
   const dif = s.status === "recibida" ? tot.recibidas - tot.plantas : 0;
   const abierta = s.status === "generada" || s.status === "enviada";
 
-  const pdf = async () => {
-    try {
-      await descargarSolicitud(s);
-    } catch {
-      toast.error("No se pudo crear el PDF.");
-    }
+  // El PDF se arma de antemano: así el botón lo entrega al instante y el celular no pierde el toque.
+  const blob = usePdfSolicitud(s);
+  const pdf = () => {
+    if (blob) void entregarPdf(blob, s);
   };
-  const compartir = async () => {
-    try {
-      const ok = await compartirSolicitud(s);
+  const compartir = () => {
+    if (!blob) return;
+    void entregarPdf(blob, s, true).then((ok) => {
       if (ok && s.status === "generada") {
         marcarSolicitudEnviada(s.id);
         toast.success(`${folioSolicitud(s.folio)} marcada como enviada al vivero`);
       } else if (!ok) toast("Se descargó el PDF para que lo mandes por WhatsApp o correo.");
-    } catch {
-      toast.error("No se pudo crear el PDF.");
-    }
+    });
   };
 
   return (
@@ -174,11 +170,11 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
       {s.observaciones && <p className="mt-2 text-xs text-muted-foreground">“{s.observaciones}”</p>}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <Button size="sm" variant="outline" onClick={pdf}>
+        <Button size="sm" variant="outline" onClick={pdf} disabled={!blob}>
           <FileDown /> {s.status === "generada" ? "PDF" : "Reimprimir"}
         </Button>
         {s.status !== "cancelada" && (
-          <Button size="sm" variant="outline" onClick={compartir}>
+          <Button size="sm" variant="outline" onClick={compartir} disabled={!blob}>
             <Share2 /> Compartir
           </Button>
         )}
