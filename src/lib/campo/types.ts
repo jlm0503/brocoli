@@ -52,7 +52,6 @@ export type ClaveParametro =
   | "descuentoViaje"
   | "metaKgHa"
   | "rollosCintaHa"
-  | "mermaMax"
   | "diasSinEvaluacion";
 
 /** Valor de un parámetro que aplica desde `desde` (yyyy-mm-dd) hasta el siguiente cambio. */
