@@ -124,40 +124,39 @@ export async function pdfSolicitud(s: SolicitudPlanta): Promise<Blob> {
   return doc.output("blob");
 }
 
-const nombreArchivo = (s: SolicitudPlanta) => `${folioSolicitud(s.folio)} ${s.vivero.nombre}.pdf`.replace(/[\\/:*?"<>|]/g, "");
+export const nombreArchivo = (s: SolicitudPlanta) =>
+  `${folioSolicitud(s.folio)} ${s.vivero.nombre}.pdf`.replace(/[\\/:*?"<>|]/g, "");
 
-export async function descargarSolicitud(s: SolicitudPlanta): Promise<void> {
-  const blob = await pdfSolicitud(s);
+function descargarBlob(blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = nombreArchivo(s);
+  a.download = nombre;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
 /**
- * Abre el menú de compartir del teléfono (WhatsApp, correo…). Si el navegador no lo permite,
- * descarga el PDF. Regresa `true` solo si se compartió.
+ * Entrega el PDF ya armado. Se llama directo desde el botón (sin esperar nada antes) para que
+ * el teléfono no pierda el toque: en celular abre el menú de compartir (Guardar en Archivos,
+ * WhatsApp, correo) y la app no se cierra; en computadora lo descarga.
+ * Regresa `true` si se compartió.
  */
-export async function compartirSolicitud(s: SolicitudPlanta): Promise<boolean> {
-  const blob = await pdfSolicitud(s);
-  const file = new File([blob], nombreArchivo(s), { type: "application/pdf" });
+export async function entregarPdf(blob: Blob, s: SolicitudPlanta, preferirCompartir = false): Promise<boolean> {
+  const nombre = nombreArchivo(s);
+  const file = new File([blob], nombre, { type: "application/pdf" });
+  const tactil = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-  if (nav.share && nav.canShare?.({ files: [file] })) {
+  if ((tactil || preferirCompartir) && nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({
-        files: [file],
-        title: `Solicitud de planta ${folioSolicitud(s.folio)}`,
-        text: `Ultra Farms de México · Solicitud de planta ${folioSolicitud(s.folio)}`,
-      });
+      await nav.share({ files: [file], title: `Solicitud de planta ${folioSolicitud(s.folio)}` });
       return true;
-    } catch {
-      return false;
+    } catch (e) {
+      if ((e as DOMException).name === "AbortError") return false;
     }
   }
-  await descargarSolicitud(s);
+  descargarBlob(blob, nombre);
   return false;
 }

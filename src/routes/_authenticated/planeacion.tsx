@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
-import { GenerarSolicitudDialog } from "@/components/campo/SolicitudPlanta";
+import { GenerarSolicitudDialog, SolicitudListaDialog } from "@/components/campo/SolicitudPlanta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -70,7 +70,7 @@ import {
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { useCampo } from "@/lib/campo/store";
-import type { CultivoCat, Lote, OpcionTardia, Producto, Tabla, Variedad } from "@/lib/campo/types";
+import type { CultivoCat, Lote, OpcionTardia, Producto, SolicitudPlanta, Tabla, Variedad } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/planeacion")({
   head: () => ({
@@ -110,6 +110,7 @@ function Planeacion() {
   const [planeando, setPlaneando] = useState<Tabla | null>(null);
   const [registrando, setRegistrando] = useState(false);
   const [solicitando, setSolicitando] = useState(false);
+  const [lista, setLista] = useState<SolicitudPlanta | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
   const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado);
@@ -195,7 +196,12 @@ function Planeacion() {
         key={planeando ? `${planeando.id}-${lotes.length}` : "cerrado"}
         tabla={planeando}
         onClose={() => setPlaneando(null)}
+        onPlaneado={(sol) => {
+          setPlaneando(null);
+          setLista(sol);
+        }}
       />
+      {lista && <SolicitudListaDialog solicitud={lista} onClose={() => setLista(null)} />}
       {solicitando && <GenerarSolicitudDialog open onClose={() => setSolicitando(false)} />}
       <RegistrarPlantacionDialog
         key={registrando ? `reg-${rancho}` : "reg-cerrado"}
@@ -632,7 +638,16 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
   );
 }
 
-function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () => void }) {
+function PlanearDialog({
+  tabla,
+  onClose,
+  onPlaneado,
+}: {
+  tabla: Tabla | null;
+  onClose: () => void;
+  /** Al planear: si hay vivero, la solicitud de planta del lote para descargar el PDF. */
+  onPlaneado: (solicitud: SolicitudPlanta | null) => void;
+}) {
   const {
     semanaActual,
     recetas,
@@ -651,6 +666,8 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const variedad = variedades.find((v) => v.id === variedadId) ?? variedades[0];
   const cultivo = variedad?.cultivo ?? "";
   const [plantasTxt, setPlantasTxt] = useState("");
+  /** Plantas por ha mientras se escriben (el total se calcula con las hectáreas). */
+  const [porHaTxt, setPorHaTxt] = useState<string | null>(null);
   const [motivoPlantas, setMotivoPlantas] = useState("");
   const [viveroId, setViveroId] = useState("");
   const [fechaEntrega, setFechaEntrega] = useState("");
@@ -666,7 +683,12 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
   const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa"));
-  const plantas = plantasTxt === "" ? sugeridas : Math.round(Number(plantasTxt));
+  const plantas =
+    porHaTxt !== null
+      ? Math.round(Number(porHaTxt) * (haNum > 0 ? haNum : 0))
+      : plantasTxt === ""
+        ? sugeridas
+        : Math.round(Number(plantasTxt));
   const fueraDeRango = plantasFueraDeRango(plantas, sugeridas);
   const entregaPlanta = fechaEntrega || fechaEnSemana(w, 0);
   const cinta = useMemo(() => cintaPlaneacion(productos, parametro("rollosCintaHa")), [productos, parametro]);
@@ -697,7 +719,7 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
   const confirmar = () => {
     if (!tabla) return;
     if (!variedad) return void toast.error("Primero agrega una variedad en Catálogos.");
-    const err = planearLote(tabla.id, w, haNum, {
+    const r = planearLote(tabla.id, w, haNum, {
       variedadId: variedad.id,
       plantas,
       motivoPlantas: fueraDeRango ? motivoPlantas : undefined,
@@ -707,8 +729,8 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
       motivo,
       usarLoteIds: usar,
     });
-    if (err) {
-      toast.error(err);
+    if ("error" in r) {
+      toast.error(r.error);
       return;
     }
     toast.success(
@@ -716,7 +738,7 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
         ? `${tabla.nombre}: lote de ${formatoNum(haNum)} ha de ${variedad.nombre} para la semana ${w}.`
         : `${tabla.nombre}: lote de ${formatoNum(haNum)} ha de ${variedad.nombre} para la semana ${w}. Pedido de planeación enviado a Compras.`,
     );
-    onClose();
+    onPlaneado(r.solicitud);
   };
 
   const faltaDecision =
@@ -794,15 +816,34 @@ function PlanearDialog({ tabla, onClose }: { tabla: Tabla | null; onClose: () =>
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="plantas-planear">Cantidad de plantas</Label>
+            <Label htmlFor="plantas-ha-planear">Plantas por ha</Label>
+            <Input
+              id="plantas-ha-planear"
+              type="number"
+              inputMode="numeric"
+              step="1000"
+              min="0"
+              value={porHaTxt !== null ? porHaTxt : haNum > 0 && plantas > 0 ? Math.round(plantas / haNum) : ""}
+              onChange={(e) => {
+                setPorHaTxt(e.target.value);
+              }}
+              className="num"
+            />
+            <p className="text-xs text-muted-foreground">O escribe el total de plantas.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plantas-planear">Total de plantas</Label>
             <Input
               id="plantas-planear"
               type="number"
               inputMode="numeric"
               step="1000"
               min="0"
-              value={plantasTxt === "" ? (sugeridas > 0 ? sugeridas : "") : plantasTxt}
-              onChange={(e) => setPlantasTxt(e.target.value)}
+              value={porHaTxt !== null ? (plantas > 0 ? plantas : "") : plantasTxt === "" ? (sugeridas > 0 ? sugeridas : "") : plantasTxt}
+              onChange={(e) => {
+                setPlantasTxt(e.target.value);
+                setPorHaTxt(null);
+              }}
               className="num"
             />
             <p className="text-xs text-muted-foreground">

@@ -202,7 +202,7 @@ interface CampoContextValue {
     semana: number,
     ha: number,
     opciones: OpcionesPlaneacion,
-  ) => string | null;
+  ) => { error: string } | { solicitud: SolicitudPlanta | null };
   cancelarLote: (loteId: string) => void;
   /** Solo administrador: corrige fechas de plantación (por avance) y cosecha (vacía = ciclo). */
   corregirFechas: (
@@ -749,24 +749,25 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const planearLote = useCallback<CampoContextValue["planearLote"]>(
     (tablaId, semana, ha, opciones) => {
+      const fallo = (error: string) => ({ error });
       const t = tablas.find((x) => x.id === tablaId);
-      if (!t) return "Tabla no encontrada.";
+      if (!t) return fallo("Tabla no encontrada.");
       const variedad = variedades.find((v) => v.id === opciones.variedadId);
-      if (!variedad) return "Elige la variedad que se va a plantar.";
+      if (!variedad) return fallo("Elige la variedad que se va a plantar.");
       const err = validarApartado(t, lotes, semana, ha, semanaActual);
-      if (err) return err;
+      if (err) return fallo(err);
       const sugeridas = plantasSugeridas(redondear(ha), parametroVigente(parametros, "plantasPorHa", hoy));
       const errPlantas = validarPlantas(opciones.plantas, sugeridas, opciones.motivoPlantas);
-      if (errPlantas) return errPlantas;
-      if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId)) return "Elige el vivero.";
+      if (errPlantas) return fallo(errPlantas);
+      if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId)) return fallo("Elige el vivero.");
       const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
       const necesidad = lineasPlaneacion(recetaDe(recetas, variedad.cultivo), adicionales, tablaId, redondear(ha), cinta);
       // Sin paquete de planeación (p. ej. coliflor sin receta) no hay insumos que decidir.
       const tardia = esPlaneacionTardia(semana, semanaActual) && necesidad.length > 0;
       const opcion = tardia ? opciones.opcion : undefined;
-      if (tardia && !opcion) return "Elige qué hacer con los insumos de planeación.";
+      if (tardia && !opcion) return fallo("Elige qué hacer con los insumos de planeación.");
       if (opcion === "pedir-nuevos" && !opciones.motivo?.trim())
-        return "Escribe el motivo para pedir insumos nuevos.";
+        return fallo("Escribe el motivo para pedir insumos nuevos.");
 
       const loteId = nuevoId("lt");
       const codigo = siguienteCodigo(t, lotes);
@@ -781,7 +782,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           : [],
       );
       if (opcion === "usar-pendientes" && usar.size === 0)
-        return "Selecciona al menos un lote pendiente para usar sus insumos.";
+        return fallo("Selecciona al menos un lote pendiente para usar sus insumos.");
       for (const l of lotes) if (usar.has(l.id)) reasignados = [...reasignados, ...insumosEntregados(l, pedidos)];
 
       const porPedir = opcion === "usar-pendientes" ? descontar(necesidad, reasignados) : necesidad;
@@ -844,9 +845,29 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           },
         ]);
       }
-      return null;
+      // Con vivero, la solicitud de planta nace junto con el lote.
+      const v = viveros.find((x) => x.id === nuevo.viveroId);
+      const solicitud: SolicitudPlanta | null = v
+        ? {
+            id: nuevoId("sp"),
+            folio: siguienteFolio(solicitudes),
+            fecha: hoy,
+            viveroId: v.id,
+            vivero: { nombre: v.nombre, contacto: v.contacto ?? "", telefono: v.telefono ?? "", correo: v.correo ?? "" },
+            lineas: lineasSolicitud([nuevo], {
+              ranchos,
+              tablas,
+              variedades,
+              plantasPorHa: parametroVigente(parametros, "plantasPorHa", hoy),
+            }),
+            ingeniero,
+            status: "generada",
+          }
+        : null;
+      if (solicitud) setSolicitudes((ss) => [...ss, solicitud]);
+      return { solicitud };
     },
-    [tablas, variedades, viveros, lotes, pedidos, recetas, adicionales, semanaActual, hoy, ingeniero, productos, parametros],
+    [tablas, variedades, viveros, lotes, pedidos, recetas, adicionales, semanaActual, hoy, ingeniero, productos, parametros, solicitudes, ranchos],
   );
 
   const cancelarLote = useCallback(

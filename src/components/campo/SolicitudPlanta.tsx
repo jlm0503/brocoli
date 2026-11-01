@@ -1,5 +1,5 @@
-import { FileDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CheckCircle2, FileDown, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { FotoInput } from "@/components/campo/Evidencia";
@@ -29,7 +29,7 @@ import {
   validarPlantasSolicitud,
   validarRecepcionPlanta,
 } from "@/lib/campo/calc";
-import { descargarSolicitud } from "@/lib/campo/pdf-solicitud";
+import { entregarPdf, pdfSolicitud } from "@/lib/campo/pdf-solicitud";
 import { useCampo } from "@/lib/campo/store";
 import type { Lote, SolicitudPlanta } from "@/lib/campo/types";
 
@@ -92,7 +92,8 @@ export function GenerarSolicitudDialog({
       return on ? [...new Set([...base, id])] : base.filter((x) => x !== id);
     });
 
-  const generar = async () => {
+  const [hecha, setHecha] = useState<SolicitudPlanta | null>(null);
+  const generar = () => {
     const r = generarSolicitud({
       loteIds: seleccion.map((l) => l.id),
       viveroId,
@@ -101,14 +102,10 @@ export function GenerarSolicitudDialog({
       motivos,
     });
     if ("error" in r) return void toast.error(r.error);
-    toast.success(`Solicitud ${folioSolicitud(r.solicitud.folio)} generada`);
-    onClose();
-    try {
-      await descargarSolicitud(r.solicitud);
-    } catch {
-      toast.error("No se pudo crear el PDF. Descárgalo desde Solicitudes de planta.");
-    }
+    setHecha(r.solicitud);
   };
+
+  if (hecha) return <SolicitudListaDialog solicitud={hecha} onClose={onClose} />;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -243,6 +240,85 @@ export function GenerarSolicitudDialog({
           </Button>
           <Button onClick={generar} disabled={seleccion.length === 0 || !viveroId || !!errorPlantas}>
             <FileDown /> Generar PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Arma el PDF de la solicitud en cuanto se muestra, para que el botón lo entregue al instante. */
+export function usePdfSolicitud(s: SolicitudPlanta | null): Blob | null {
+  const [blob, setBlob] = useState<Blob | null>(null);
+  useEffect(() => {
+    if (!s) return;
+    let vivo = true;
+    setBlob(null);
+    pdfSolicitud(s)
+      .then((b) => vivo && setBlob(b))
+      .catch(() => toast.error("No se pudo crear el PDF."));
+    return () => {
+      vivo = false;
+    };
+  }, [s]);
+  return blob;
+}
+
+/** Solicitud ya generada: descargar o compartir el PDF y cerrar para seguir planeando. */
+export function SolicitudListaDialog({ solicitud, onClose }: { solicitud: SolicitudPlanta; onClose: () => void }) {
+  const { marcarSolicitudEnviada } = useCampo();
+  const blob = usePdfSolicitud(solicitud);
+  const tot = totalesSolicitud(solicitud);
+  const entregar = (compartir: boolean) => {
+    if (!blob) return;
+    void entregarPdf(blob, solicitud, compartir).then((compartida) => {
+      if (compartida) {
+        marcarSolicitudEnviada(solicitud.id);
+        toast.success(`${folioSolicitud(solicitud.folio)} marcada como enviada al vivero`);
+      }
+    });
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display text-2xl">
+            <CheckCircle2 className="size-6 text-primary" /> Solicitud {folioSolicitud(solicitud.folio)} lista
+          </DialogTitle>
+          <DialogDescription>
+            Para {solicitud.vivero.nombre}. También queda guardada en Solicitudes de planta para reimprimirla.
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="space-y-1.5 text-sm">
+          {solicitud.lineas.map((l) => (
+            <li key={l.loteId} className="flex justify-between gap-3 rounded-md bg-secondary/60 px-3 py-2">
+              <span>
+                {l.tabla} · lote {l.lote}
+                <span className="block text-xs text-muted-foreground">
+                  {l.variedad} · sem {l.semanaPlantacion} · entrega {fechaCorta(l.fechaEntrega)}
+                </span>
+              </span>
+              <span className="num text-right">
+                {formatoNum(l.plantas)}
+                <span className="block text-xs text-muted-foreground">{formatoNum(l.ha)} ha</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="num text-right text-sm">
+          Total: {formatoNum(tot.ha)} ha · {formatoNum(tot.plantas)} plantas
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button onClick={() => entregar(false)} disabled={!blob}>
+            {blob ? <FileDown /> : <Loader2 className="animate-spin" />} Descargar PDF
+          </Button>
+          <Button variant="outline" onClick={() => entregar(true)} disabled={!blob}>
+            Compartir al vivero
+          </Button>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" className="w-full" onClick={onClose}>
+            Cerrar y seguir planeando
           </Button>
         </DialogFooter>
       </DialogContent>
