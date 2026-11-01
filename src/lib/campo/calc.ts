@@ -64,9 +64,8 @@ export const PARAMETROS_INFO: Record<ClaveParametro, { nombre: string; unidad: s
   costoPlantaHa: { nombre: "Costo de planta por hectárea", unidad: "MXN", defecto: 16200 },
   precioKg: { nombre: "Precio por kg pagable", unidad: "MXN", defecto: 10.5 },
   descuentoViaje: { nombre: "Descuento de planta por viaje", unidad: "MXN", defecto: 10000 },
-  metaKgHa: { nombre: "Meta de rendimiento (kg pagables por ha)", unidad: "kg", defecto: 16000 },
+  metaKgHa: { nombre: "Meta de rendimiento por ha (alerta si cierra abajo)", unidad: "kg", defecto: 16000 },
   rollosCintaHa: { nombre: "Rollos de cinta por hectárea", unidad: "rollos", defecto: 2.1 },
-  mermaMax: { nombre: "Merma máxima antes de alerta", unidad: "%", defecto: 15 },
   diasSinEvaluacion: { nombre: "Días sin evaluación antes de alerta", unidad: "días", defecto: 3 },
 };
 
