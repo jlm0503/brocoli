@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, CalendarCheck, CalendarClock, CornerDownRight, Lock, Package, Plus, X } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CalendarClock, CornerDownRight, FileText, Lock, Package, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
+import { GenerarSolicitudDialog } from "@/components/campo/SolicitudPlanta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,6 +54,7 @@ import {
   plantasSugeridas,
   recetaDe,
   lotesDeTabla,
+  lotesParaSolicitud,
   pendientesConInsumos,
   pendientesLote,
   plantadasLote,
@@ -107,6 +109,7 @@ function Planeacion() {
   const rancho = ranchos.some((r) => r.id === ranchoElegido) ? ranchoElegido : (ranchos[0]?.id ?? "");
   const [planeando, setPlaneando] = useState<Tabla | null>(null);
   const [registrando, setRegistrando] = useState(false);
+  const [solicitando, setSolicitando] = useState(false);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho);
   const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado);
@@ -128,9 +131,14 @@ function Planeacion() {
       description={`Planea la tabla completa o por lotes en distintas semanas, idealmente con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana pasa a un lote pendiente.`}
       actions={
         tablas.length > 0 && (
-          <Button variant="outline" onClick={() => setRegistrando(true)}>
-            <CalendarCheck /> Registrar plantación ya hecha
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setSolicitando(true)}>
+              <FileText /> Generar solicitud de planta
+            </Button>
+            <Button variant="outline" onClick={() => setRegistrando(true)}>
+              <CalendarCheck /> Registrar plantación ya hecha
+            </Button>
+          </div>
         )
       }
     >
@@ -188,6 +196,7 @@ function Planeacion() {
         tabla={planeando}
         onClose={() => setPlaneando(null)}
       />
+      {solicitando && <GenerarSolicitudDialog open onClose={() => setSolicitando(false)} />}
       <RegistrarPlantacionDialog
         key={registrando ? `reg-${rancho}` : "reg-cerrado"}
         open={registrando}
@@ -419,7 +428,11 @@ function estadoLote(l: Lote, semanaActual: number): string {
 }
 
 function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }) {
-  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote, role, variedades, viveros } = useCampo();
+  const { semanaActual, lotes, pedidos, registrarAvance, cancelarLote, role, variedades, viveros, solicitudes } = useCampo();
+  const [solicitandoLote, setSolicitandoLote] = useState<Lote | null>(null);
+  const puedenPedir = new Set(lotesParaSolicitud(lotes, solicitudes).map((l) => l.id));
+  const solicitudDe = (loteId: string) =>
+    solicitudes.find((s) => s.status !== "cancelada" && s.lineas.some((x) => x.loteId === loteId));
   const nombreVariedad = (id: string) => variedades.find((v) => v.id === id)?.nombre ?? id;
   const [ha, setHa] = useState("");
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
@@ -537,6 +550,28 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                         {sem === "verde" ? "Planeación entregada" : `Planeación límite sem ${pedido.semanaPlantacion - 1}`}
                       </Badge>
                     )}
+                    {(() => {
+                      const sp = solicitudDe(l.id);
+                      if (sp)
+                        return (
+                          <Badge variant={sp.status === "recibida" ? "recibido" : "comprado"} className="px-1.5 py-0 text-[0.65rem]">
+                            <FileText className="mr-1 size-3" />
+                            SP-{String(sp.folio).padStart(4, "0")}
+                            {sp.status === "recibida" ? " · planta recibida" : ""}
+                          </Badge>
+                        );
+                      if (!puedenPedir.has(l.id)) return null;
+                      return (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 px-1.5 text-[0.65rem]"
+                          onClick={() => setSolicitandoLote(l)}
+                        >
+                          <FileText className="size-3" /> Solicitar planta
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </li>
               );
@@ -590,6 +625,9 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
         )}
       </div>
       <CorregirFechasDialog lote={corrigiendo} onClose={() => setCorrigiendo(null)} />
+      {solicitandoLote && (
+        <GenerarSolicitudDialog open lote={solicitandoLote} onClose={() => setSolicitandoLote(null)} />
+      )}
     </article>
   );
 }

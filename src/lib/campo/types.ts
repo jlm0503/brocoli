@@ -260,3 +260,58 @@ export interface LineaDemanda {
   semanaReceta: number;
   cantidad: number;
 }
+
+/* ───────────── Fase 2: solicitud de planta ───────────── */
+
+export type EstatusSolicitud = "generada" | "enviada" | "recibida" | "cancelada";
+
+/** Renglón de la solicitud: copia de los datos del lote al generarla. */
+export interface LineaSolicitud {
+  loteId: string;
+  ranchoId: string;
+  tablaId: string;
+  rancho: string;
+  tabla: string;
+  lote: string;
+  variedad: string;
+  ha: number;
+  plantas: number;
+  semanaPlantacion: number;
+  fechaEntrega: string;
+  /** Plantas que realmente llegaron (al marcar "Planta recibida"). */
+  plantasRecibidas?: number | undefined;
+}
+
+export interface SolicitudPlanta {
+  id: string;
+  /** Consecutivo: 1 → SP-0001 */
+  folio: number;
+  fecha: string;
+  viveroId: string;
+  vivero: { nombre: string; contacto: string; telefono: string; correo: string };
+  lineas: LineaSolicitud[];
+  ingeniero: string;
+  observaciones?: string | undefined;
+  status: EstatusSolicitud;
+  fechaEnvio?: string | undefined;
+  /** Al recibir la planta: fecha, foto de la remisión y valores vigentes ese día. */
+  recepcion?:
+    | { fecha: string; foto: string; costoPlanta: number; plantasPorHa: number }
+    | undefined;
+  fechaCancelacion?: string | undefined;
+}
+
+/** Movimiento de la cuenta de planta. Cargo = planta recibida; abono = descuento por viaje evaluado. */
+export interface MovimientoPlanta {
+  fecha: string;
+  tipo: "cargo" | "abono";
+  monto: number;
+  plantas?: number | undefined;
+  ha?: number | undefined;
+  loteId?: string | undefined;
+  ranchoId?: string | undefined;
+  tablaId?: string | undefined;
+  lote?: string | undefined;
+  tabla?: string | undefined;
+  folio?: number | undefined;
+}

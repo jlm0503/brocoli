@@ -15,6 +15,13 @@
       "when": 1793486040017,
       "tag": "0001_catalogos_fase1_parametros",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793569712968,
+      "tag": "0002_solicitudes_de_planta",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,12 @@ import {
   cerrarSemana,
   cintaPlaneacion,
   codigoDisponible,
+  costoPorPlanta,
+  lineasSolicitud,
+  lotesParaSolicitud,
+  siguienteFolio,
+  validarRecepcionPlanta,
+  validarSolicitud,
   corregirFechasLote,
   crearLotePlantado,
   descontar,
@@ -81,6 +87,7 @@ import type {
   Recetas,
   Recepcion,
   Role,
+  SolicitudPlanta,
   Tabla,
   Variedad,
   Vivero,
@@ -116,6 +123,7 @@ interface Instantanea {
   alertas: AlertaInsumos[];
   inventarioAlmacen: Record<string, number>;
   recepciones: Record<string, Recepcion>;
+  solicitudes: SolicitudPlanta[];
 }
 
 /** Catálogos sencillos que el administrador captura en Catálogos. */
@@ -160,6 +168,19 @@ interface CampoContextValue {
   alertas: AlertaInsumos[];
   inventarioAlmacen: Record<string, number>;
   recepciones: Record<string, Recepcion>;
+  solicitudes: SolicitudPlanta[];
+  /** Genera la solicitud de planta de uno o varios lotes (mismo vivero y semana de plantación). */
+  generarSolicitud: (p: {
+    loteIds: string[];
+    viveroId: string;
+    observaciones?: string | undefined;
+  }) => { error: string } | { solicitud: SolicitudPlanta };
+  marcarSolicitudEnviada: (id: string) => void;
+  recibirPlanta: (
+    id: string,
+    datos: { recibidas: Record<string, number>; fecha: string; foto: string | undefined },
+  ) => string | null;
+  cancelarSolicitud: (id: string) => string | null;
   setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number) => void;
   /** Cambia el precio de un producto a partir de `desde`; lo anterior conserva su precio. */
   setPrecio: (productoId: string, precio: number, desde: string) => string | null;
@@ -275,6 +296,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const [alertas, setAlertas] = useState<AlertaInsumos[]>([]);
   const [inventarioAlmacen, setInventario] = useState<Record<string, number>>({});
   const [recepciones, setRecepciones] = useState<Record<string, Recepcion>>({});
+  const [solicitudes, setSolicitudes] = useState<SolicitudPlanta[]>([]);
   const ingeniero = nombre || "Ingeniero";
 
   /** Lo último que se sabe guardado en la nube, por colección. */
@@ -322,6 +344,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       alertas: de<AlertaInsumos>("alertas"),
       recepciones: mapa<Recepcion>("recepciones"),
       inventario: mapa<number>("inventario"),
+      solicitudes: de<SolicitudPlanta>("solicitudes"),
     };
 
     // Cierre de las semanas que pasaron: lo hace solo quien llegue primero.
@@ -363,6 +386,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       congeladoras: porId(datos.congeladoras),
       problemas: porId(datos.problemas),
       parametros: porId(datos.parametros),
+      solicitudes: porId(datos.solicitudes),
     };
     setHoy(hoyReal);
     setSemanaActual(semanaReal);
@@ -384,6 +408,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setCongeladoras(datos.congeladoras);
     setProblemas(datos.problemas);
     setParametros(datos.parametros);
+    setSolicitudes(datos.solicitudes);
     setCargado(true);
   }, []);
 
@@ -419,10 +444,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       congeladoras: porId(congeladoras),
       problemas: porId(problemas),
       parametros: porId(parametros),
+      solicitudes: porId(solicitudes),
     }),
     [
       productos, recetas, adicionales, ranchos, tablas, lotes, pedidos, tardias, alertas, recepciones, inventarioAlmacen,
-      cultivos, variedades, viveros, choferes, congeladoras, problemas, parametros,
+      cultivos, variedades, viveros, choferes, congeladoras, problemas, parametros, solicitudes,
     ],
   );
   useEffect(() => {
@@ -481,6 +507,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       else if (c === "congeladoras") setCongeladoras(lista);
       else if (c === "problemas") setProblemas(lista);
       else if (c === "parametros") setParametros(lista);
+      else if (c === "solicitudes") setSolicitudes(lista);
       else if (c === "recetas") setRecetas((r) => registro(r as unknown as Record<string, Recetas[Cultivo]>) as unknown as Recetas);
     };
     const canal = supabase
@@ -1000,15 +1027,102 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [alertas, lotes, hoy],
   );
 
+  const generarSolicitud = useCallback<CampoContextValue["generarSolicitud"]>(
+    ({ loteIds, viveroId, observaciones }) => {
+      const disponibles = lotesParaSolicitud(lotes, solicitudes);
+      const seleccion = lotes.filter((l) => loteIds.includes(l.id));
+      const err = validarSolicitud(seleccion, viveroId, disponibles);
+      if (err) return { error: err };
+      const v = viveros.find((x) => x.id === viveroId);
+      if (!v) return { error: "Elige el vivero." };
+      const plantasPorHa = parametroVigente(parametros, "plantasPorHa", hoy);
+      const solicitud: SolicitudPlanta = {
+        id: nuevoId("sp"),
+        folio: siguienteFolio(solicitudes),
+        fecha: hoy,
+        viveroId,
+        vivero: { nombre: v.nombre, contacto: v.contacto ?? "", telefono: v.telefono ?? "", correo: v.correo ?? "" },
+        lineas: lineasSolicitud(seleccion, { ranchos, tablas, variedades, plantasPorHa }),
+        ingeniero,
+        observaciones: observaciones?.trim() || undefined,
+        status: "generada",
+      };
+      const ids = new Set(loteIds);
+      // El lote se queda con su vivero y sus plantas (si no las tenía, las sugeridas).
+      setLotes((ls) =>
+        ls.map((l) => {
+          if (!ids.has(l.id)) return l;
+          const linea = solicitud.lineas.find((x) => x.loteId === l.id)!;
+          return l.viveroId === viveroId && l.plantas !== undefined
+            ? l
+            : { ...l, viveroId, plantas: l.plantas ?? linea.plantas };
+        }),
+      );
+      setSolicitudes((ss) => [...ss, solicitud]);
+      return { solicitud };
+    },
+    [lotes, solicitudes, viveros, parametros, hoy, ranchos, tablas, variedades, ingeniero],
+  );
+
+  const marcarSolicitudEnviada = useCallback(
+    (id: string) => {
+      setSolicitudes((ss) =>
+        ss.map((s) => (s.id === id && s.status === "generada" ? { ...s, status: "enviada", fechaEnvio: hoy } : s)),
+      );
+    },
+    [hoy],
+  );
+
+  const recibirPlanta = useCallback<CampoContextValue["recibirPlanta"]>(
+    (id, datos) => {
+      const s = solicitudes.find((x) => x.id === id);
+      if (!s || s.status === "cancelada" || s.status === "recibida") return "Esta solicitud ya no se puede recibir.";
+      const err = validarRecepcionPlanta(datos.recibidas, s.lineas, datos.fecha, hoy, datos.foto);
+      if (err) return err;
+      setSolicitudes((ss) =>
+        ss.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "recibida",
+                lineas: x.lineas.map((l) => ({ ...l, plantasRecibidas: datos.recibidas[l.loteId] })),
+                recepcion: {
+                  fecha: datos.fecha,
+                  foto: datos.foto!,
+                  costoPlanta: costoPorPlanta(parametros, datos.fecha),
+                  plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
+                },
+              }
+            : x,
+        ),
+      );
+      return null;
+    },
+    [solicitudes, hoy, parametros],
+  );
+
+  const cancelarSolicitud = useCallback(
+    (id: string) => {
+      const s = solicitudes.find((x) => x.id === id);
+      if (!s) return "Solicitud no encontrada.";
+      if (s.status === "recibida") return "La planta ya se recibió; no se puede cancelar.";
+      setSolicitudes((ss) =>
+        ss.map((x) => (x.id === id ? { ...x, status: "cancelada", fechaCancelacion: hoy } : x)),
+      );
+      return null;
+    },
+    [solicitudes, hoy],
+  );
+
   const avanzarSemana = useCallback(() => {
     setHistorial((h) => [
       ...h,
-      { semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones },
+      { semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones, solicitudes },
     ]);
     setLotes((ls) => finalizarCosechados(cerrarSemana(ls, semanaActual, () => nuevoId("lt")), semanaActual + 1));
     setSemanaActual((w) => w + 1);
     setHoy(fechaEnSemana(semanaActual + 1, 2));
-  }, [semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones]);
+  }, [semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones, solicitudes]);
 
   const restaurar = useCallback((i: Instantanea) => {
     setSemanaActual(i.semanaActual);
@@ -1019,6 +1133,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setAlertas(i.alertas);
     setInventario(i.inventarioAlmacen);
     setRecepciones(i.recepciones);
+    setSolicitudes(i.solicitudes);
   }, []);
 
   /** Termina la simulación: se vuelve a lo guardado en la nube. */
@@ -1069,6 +1184,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       alertas,
       inventarioAlmacen,
       recepciones,
+      solicitudes,
+      generarSolicitud,
+      marcarSolicitudEnviada,
+      recibirPlanta,
+      cancelarSolicitud,
       setDosis,
       setPrecio,
       agregarProducto,
@@ -1124,6 +1244,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       alertas,
       inventarioAlmacen,
       recepciones,
+      solicitudes,
+      generarSolicitud,
+      marcarSolicitudEnviada,
+      recibirPlanta,
+      cancelarSolicitud,
       setDosis,
       setPrecio,
       agregarProducto,

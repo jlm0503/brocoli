@@ -6,10 +6,13 @@ import type {
   CultivoCat,
   DosisPorSemana,
   EstatusRecepcion,
+  EstatusSolicitud,
   EstatusTabla,
   InsumoAsignado,
   LineaDemanda,
+  LineaSolicitud,
   Lote,
+  MovimientoPlanta,
   Parametro,
   PedidoPlaneacion,
   Producto,
@@ -19,6 +22,7 @@ import type {
   Recepcion,
   Rancho,
   Semaforo,
+  SolicitudPlanta,
   Tabla,
   Variedad,
 } from "./types";
@@ -937,4 +941,204 @@ export function ponerAlDia(
   let ls = lotes;
   for (let w = semanaGuardada; w < semanaActual; w++) ls = finalizarCosechados(cerrarSemana(ls, w, nuevoId), w + 1);
   return finalizarCosechados(ls, semanaActual);
+}
+
+/* ───────────────────────── Fase 2 · Solicitud de planta ───────────────────────── */
+
+export const ESTATUS_SOLICITUD_LABEL: Record<EstatusSolicitud, string> = {
+  generada: "Generada",
+  enviada: "Enviada al vivero",
+  recibida: "Planta recibida",
+  cancelada: "Cancelada",
+};
+
+export function folioSolicitud(n: number): string {
+  return `SP-${String(n).padStart(4, "0")}`;
+}
+
+export function siguienteFolio(solicitudes: SolicitudPlanta[]): number {
+  return solicitudes.reduce((m, s) => Math.max(m, s.folio), 0) + 1;
+}
+
+/** Lotes que ya están en una solicitud vigente (no cancelada). */
+function lotesSolicitados(solicitudes: SolicitudPlanta[]): Set<string> {
+  return new Set(solicitudes.filter((s) => s.status !== "cancelada").flatMap((s) => s.lineas.map((l) => l.loteId)));
+}
+
+/**
+ * Lotes a los que se les puede pedir planta: planeados, sin plantar, no arrastrados (un arrastre
+ * ya tiene su planta pedida en el lote de origen) y sin otra solicitud vigente.
+ */
+export function lotesParaSolicitud(lotes: Lote[], solicitudes: SolicitudPlanta[]): Lote[] {
+  const ya = lotesSolicitados(solicitudes);
+  return lotes.filter(
+    (l) => !l.cancelado && !l.finalizado && !l.origenId && plantadasLote(l) === 0 && !ya.has(l.id),
+  );
+}
+
+/** Errores al generar una solicitud: un vivero y todos los lotes de la misma semana de plantación. */
+export function validarSolicitud(
+  seleccion: Lote[],
+  viveroId: string,
+  disponibles: Lote[],
+): string | null {
+  if (!viveroId) return "Elige el vivero.";
+  if (seleccion.length === 0) return "Elige al menos un lote.";
+  const ok = new Set(disponibles.map((l) => l.id));
+  const fuera = seleccion.find((l) => !ok.has(l.id));
+  if (fuera) return `El lote ${fuera.codigo} ya tiene solicitud o no puede pedir planta.`;
+  if (new Set(seleccion.map((l) => l.semanaPlaneada)).size > 1)
+    return "Una solicitud consolidada lleva lotes de la misma semana de plantación.";
+  const otro = seleccion.find((l) => l.viveroId && l.viveroId !== viveroId);
+  if (otro) return `El lote ${otro.codigo} es de otro vivero.`;
+  return null;
+}
+
+/** Renglones de la solicitud (copia de los datos del lote). Sin plantas capturadas, se usan las sugeridas. */
+export function lineasSolicitud(
+  seleccion: Lote[],
+  ctx: { ranchos: Rancho[]; tablas: Tabla[]; variedades: Variedad[]; plantasPorHa: number },
+): LineaSolicitud[] {
+  return seleccion.map((l) => ({
+    loteId: l.id,
+    ranchoId: l.ranchoId,
+    tablaId: l.tablaId,
+    rancho: ctx.ranchos.find((r) => r.id === l.ranchoId)?.nombre ?? "",
+    tabla: ctx.tablas.find((t) => t.id === l.tablaId)?.nombre ?? "",
+    lote: l.codigo,
+    variedad: ctx.variedades.find((v) => v.id === l.variedadId)?.nombre ?? "",
+    ha: l.ha,
+    plantas: l.plantas ?? plantasSugeridas(l.ha, ctx.plantasPorHa),
+    semanaPlantacion: l.semanaPlaneada,
+    fechaEntrega: l.fechaEntregaPlanta ?? fechaEnSemana(l.semanaPlaneada, 0),
+  }));
+}
+
+export function totalesSolicitud(s: Pick<SolicitudPlanta, "lineas">): { ha: number; plantas: number; recibidas: number } {
+  return {
+    ha: redondear(s.lineas.reduce((a, l) => a + l.ha, 0)),
+    plantas: s.lineas.reduce((a, l) => a + l.plantas, 0),
+    recibidas: s.lineas.reduce((a, l) => a + (l.plantasRecibidas ?? 0), 0),
+  };
+}
+
+/** Diferencia contra lo solicitado (negativo = llegaron menos). */
+export function diferenciaPlantas(l: LineaSolicitud): number {
+  return (l.plantasRecibidas ?? l.plantas) - l.plantas;
+}
+
+/** Errores al marcar la planta como recibida. */
+export function validarRecepcionPlanta(
+  recibidas: Record<string, number>,
+  lineas: LineaSolicitud[],
+  fecha: string,
+  hoy: string,
+  foto: string | undefined,
+): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return "Indica la fecha en que llegó la planta.";
+  if (fecha > hoy) return "La fecha de recepción no puede ser futura.";
+  for (const l of lineas) {
+    const n = recibidas[l.loteId];
+    if (n === undefined || !Number.isInteger(n) || n < 0) return `Indica las plantas recibidas del lote ${l.lote}.`;
+  }
+  if (!foto) return "La foto de la remisión es obligatoria.";
+  return null;
+}
+
+/* ───────────────────────── Fase 2 · Cuenta de planta ───────────────────────── */
+
+/** Cargos de planta: cada renglón recibido = plantas × costo por planta vigente el día que llegó. */
+export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[] {
+  return solicitudes
+    .filter((s) => s.status === "recibida" && s.recepcion)
+    .flatMap((s) =>
+      s.lineas
+        .filter((l) => (l.plantasRecibidas ?? 0) > 0)
+        .map((l) => ({
+          fecha: s.recepcion!.fecha,
+          tipo: "cargo" as const,
+          monto: redondear(l.plantasRecibidas! * s.recepcion!.costoPlanta),
+          plantas: l.plantasRecibidas!,
+          ha: s.recepcion!.plantasPorHa > 0 ? redondear(l.plantasRecibidas! / s.recepcion!.plantasPorHa, 4) : 0,
+          loteId: l.loteId,
+          ranchoId: l.ranchoId,
+          tablaId: l.tablaId,
+          lote: l.lote,
+          tabla: l.tabla,
+          folio: s.folio,
+        })),
+    );
+}
+
+/** Costo real de la planta de un lote (plantas recibidas × costo por planta). */
+export function costoPlantaLote(loteId: string, cargos: MovimientoPlanta[]): number {
+  return cargos.filter((c) => c.tipo === "cargo" && c.loteId === loteId).reduce((s, c) => s + c.monto, 0);
+}
+
+export interface ResumenCuentaPlanta {
+  plantas: number;
+  haEquivalentes: number;
+  cargos: number;
+  descuentos: number;
+  viajes: number;
+  saldoPeriodo: number;
+  /** Desde el inicio hasta el fin del periodo. Positivo = debo; negativo = me descontaron de más. */
+  saldoAcumulado: number;
+  /** Descuentos ÷ cargos (%), con un decimal. */
+  relacion: number | null;
+}
+
+/** Indicadores de la cuenta de planta entre `desde` y `hasta` (incluidos). La cuenta nunca se cierra. */
+export function cuentaPlanta(movs: MovimientoPlanta[], desde: string, hasta: string): ResumenCuentaPlanta {
+  const enPeriodo = movs.filter((m) => m.fecha >= desde && m.fecha <= hasta);
+  const cargos = enPeriodo.filter((m) => m.tipo === "cargo");
+  const abonos = enPeriodo.filter((m) => m.tipo === "abono");
+  const suma = (xs: MovimientoPlanta[]) => redondear(xs.reduce((s, m) => s + m.monto, 0));
+  const totalCargos = suma(cargos);
+  const totalAbonos = suma(abonos);
+  const hastaFin = movs.filter((m) => m.fecha <= hasta);
+  return {
+    plantas: cargos.reduce((s, m) => s + (m.plantas ?? 0), 0),
+    haEquivalentes: redondear(cargos.reduce((s, m) => s + (m.ha ?? 0), 0)),
+    cargos: totalCargos,
+    descuentos: totalAbonos,
+    viajes: abonos.length,
+    saldoPeriodo: redondear(totalCargos - totalAbonos),
+    saldoAcumulado: redondear(
+      suma(hastaFin.filter((m) => m.tipo === "cargo")) - suma(hastaFin.filter((m) => m.tipo === "abono")),
+    ),
+    relacion: totalCargos > 0 ? redondear((totalAbonos / totalCargos) * 100, 1) : null,
+  };
+}
+
+/** Por mes del periodo: cargos, descuentos y saldo acumulado al cierre de cada mes. */
+export function cuentaMensual(
+  movs: MovimientoPlanta[],
+  desde: string,
+  hasta: string,
+): { mes: string; etiqueta: string; cargos: number; descuentos: number; saldo: number }[] {
+  const out: { mes: string; etiqueta: string; cargos: number; descuentos: number; saldo: number }[] = [];
+  let y = Number(desde.slice(0, 4));
+  let m = Number(desde.slice(5, 7));
+  const finY = Number(hasta.slice(0, 4));
+  const finM = Number(hasta.slice(5, 7));
+  while (y < finY || (y === finY && m <= finM)) {
+    const mes = `${y}-${String(m).padStart(2, "0")}`;
+    const ini = `${mes}-01`;
+    const fin = `${mes}-31`;
+    const r = cuentaPlanta(movs, ini < desde ? desde : ini, fin > hasta ? hasta : fin);
+    out.push({
+      mes,
+      etiqueta: `${MESES[m - 1]} ${String(y).slice(2)}`,
+      cargos: r.cargos,
+      descuentos: r.descuentos,
+      saldo: r.saldoAcumulado,
+    });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
 }

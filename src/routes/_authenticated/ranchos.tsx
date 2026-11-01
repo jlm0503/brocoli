@@ -15,7 +15,9 @@ import {
 import {
   ESTATUS_TABLA_LABEL,
   cantidadRecibida,
+  cargosPlanta,
   costoLineas,
+  costoPlantaLote,
   precioVigente,
   costoPlaneacionLote,
   esArrastrado,
@@ -78,8 +80,10 @@ const TILE: Record<EstatusTabla, string> = {
 };
 
 function useCostos() {
-  const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual } = useCampo();
+  const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes } = useCampo();
   return useMemo(() => {
+    const cargos = cargosPlanta(solicitudes);
+    const plantaLote = (loteId: string) => costoPlantaLote(loteId, cargos);
     // Desde la primera plantación registrada hasta hoy.
     const desde = Math.min(semanaActual, ...lotes.flatMap((l) => l.avances.map((a) => a.semana)));
     const semanas = Array.from({ length: semanaActual - desde + 1 }, (_, i) => desde + i);
@@ -91,12 +95,13 @@ function useCostos() {
     const costoLote = (loteId: string) => {
       const lote = lotes.find((x) => x.id === loteId);
       const semanal = costoLineas(porLote.get(loteId) ?? [], productos, recepciones);
-      return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0);
+      // Planta: costo real (plantas recibidas × costo por planta). Los descuentos por viaje no se cargan al lote.
+      return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0) + plantaLote(loteId);
     };
     const costoTabla = (tablaId: string) =>
       lotes.filter((l) => l.tablaId === tablaId).reduce((s, l) => s + costoLote(l.id), 0);
-    return { porLote, costoLote, costoTabla };
-  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual]);
+    return { porLote, costoLote, costoTabla, plantaLote };
+  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes]);
 }
 
 function Ranchos() {
@@ -114,7 +119,7 @@ function Ranchos() {
       path="/ranchos"
       eyebrow={`Administrador · semana ${semanaActual}`}
       title="Estatus de ranchos y costos"
-      description="Cada tabla con sus lotes, semana de cultivo y el dinero en insumos entregados a la fecha (planeación + semanal)."
+      description="Cada tabla con sus lotes, semana de cultivo y el dinero invertido a la fecha: insumos entregados (planeación + semanal) y planta recibida."
     >
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
@@ -214,7 +219,7 @@ function Ranchos() {
 function ResumenTabla({ tabla }: { tabla: Tabla }) {
   const { ranchos, productos, lotes, pedidos, recepciones, semanaActual, role, variedades, hoy: hoyActual } = useCampo();
   const nombreVariedad = (id: string) => nombreDe(variedades, id);
-  const { porLote, costoLote, costoTabla } = useCostos();
+  const { porLote, costoLote, costoTabla, plantaLote } = useCostos();
   const [corrigiendo, setCorrigiendo] = useState<Lote | null>(null);
   const editar = puedeCorregirFechas(role);
   const botonFechas = (l: Lote) =>
@@ -287,6 +292,7 @@ function ResumenTabla({ tabla }: { tabla: Tabla }) {
                   <p className="mt-1 text-xs text-muted-foreground">
                     {nombreVariedad(l.variedadId)} ·{" "}
                     {l.plantas ? `${formatoNum(l.plantas)} plantas · ` : ""}
+                    {plantaLote(l.id) > 0 ? `planta ${formatoMXN(plantaLote(l.id))} · ` : ""}
                     {real !== null
                       ? `Plantado ${fechaCorta(fechaPlantacionLote(l))} (sem ${real}) · ${formatoNum(plantadasLote(l))} ha · semana de receta ${sr} (${etapa(sr!, semanaCosechaLote(l)).toLowerCase()})`
                       : esArrastrado(l, semanaActual)
