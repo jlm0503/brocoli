@@ -13,8 +13,8 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Entregar N / Comprar N+2 con rollos redondeados y estatus por renglón
 - [ ] Receta de coliflor (la manda el usuario)
 - [ ] Nombre real de la congeladora (lo da el usuario)
-- [ ] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
-- [ ] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
+- [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
+- [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
 
 ## Fase 2 — Solicitud de planta (PDF) y cuenta de planta
 ## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones
