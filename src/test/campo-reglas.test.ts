@@ -43,7 +43,7 @@ import {
   validarVariedad,
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas, puestoPrincipal } from "@/lib/campo/roles";
-import { diferencias, porId } from "@/lib/campo/sync";
+import { conciliarRemotos, diferencias, porId, type CambioRemoto } from "@/lib/campo/sync";
 import {
   LOTES_INICIALES,
   PEDIDOS_INICIALES,
@@ -411,6 +411,20 @@ describe("Cuentas y datos guardados", () => {
     const r = diferencias(porId([a, b]), porId([a, b2, c]));
     expect(r.guardar.map(([id]) => id)).toEqual(["b", "c"]);
     expect(diferencias(porId([a, b]), porId([a])).borrar).toEqual(["b"]);
+  });
+
+  it("un pedido que llegó de otra persona y la pantalla aún no muestra nunca se borra", () => {
+    const a = { id: "a" };
+    const b = { id: "b" };
+    const pendientes = new Map<string, CambioRemoto>([["b", { data: b, llegada: 0 }]]);
+    // Llegaron a y b, pero la pantalla solo pinta a todavía.
+    const antes = conciliarRemotos(porId([a]), porId([a]), pendientes, 100);
+    expect(diferencias(antes, porId([a])).borrar).toEqual([]);
+    expect(pendientes.has("b")).toBe(true);
+    // Ya se pinta b: se da por guardado, sin volver a escribirlo.
+    const luego = conciliarRemotos(antes, porId([a, b]), pendientes, 200);
+    expect(diferencias(luego, porId([a, b]))).toEqual({ guardar: [], borrar: [] });
+    expect(pendientes.size).toBe(0);
   });
 
   it("hoy es la fecha de Ciudad de México: el 31 oct 02:34 UTC todavía es 30 oct (semana 44)", () => {
