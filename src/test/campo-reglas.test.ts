@@ -269,6 +269,11 @@ describe("Variedades y ciclo", () => {
     expect(lineasSemana([col], R(receta), [], [44, 46])).toEqual([]);
   });
 
+  it("coliflor sin receta: el pedido de planeación lleva solo la cinta, 2.1 rollos por ha", () => {
+    const lineas = lineasPlaneacion({ dosis: {} }, [], "t1", 6, { productoId: "cintilla", porHa: 2.1 });
+    expect(lineas).toEqual([{ productoId: "cintilla", cantidad: 12.6 }]);
+  });
+
   it("dos semanas después de la cosecha el lote se finaliza y la tabla queda libre", () => {
     const t: Tabla = { id: "t1", ranchoId: "r", nombre: "Tabla 7", hectareas: 6.5 };
     const viejo = lote({ id: "v", ha: 6.5, semanaPlaneada: 25, avances: [av(25, 6.5)], fechaCosecha: "2026-09-15" });
