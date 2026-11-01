@@ -2,6 +2,7 @@ import { Link, Navigate } from "@tanstack/react-router";
 import {
   BellRing,
   BookOpen,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -15,7 +16,7 @@ import {
   Sprout,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
@@ -46,6 +47,7 @@ interface AppShellProps {
 export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
   const { ready, semanaActual, hoy, semanasAdelantadas } = useCampo();
   const { lista, user, role, nombre, salir } = useSesion();
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   if (!lista) return <div className="min-h-screen bg-background" />;
   if (!user) return <Navigate to="/auth" />;
@@ -73,14 +75,33 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
           </div>
         </div>
 
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:pb-0">
+        <div className="px-3 pb-3 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuAbierto((v) => !v)}
+            aria-expanded={menuAbierto}
+            className="flex w-full items-center justify-between gap-3 rounded-md bg-sidebar-accent px-3 py-2.5 text-sm font-medium"
+          >
+            <span className="flex items-center gap-3">
+              {(() => {
+                const Icon = ICONS[path];
+                return <Icon className="size-4" />;
+              })()}
+              {NAV.find((n) => n.to === path)?.label ?? "Menú"}
+            </span>
+            <ChevronDown className={`size-4 transition-transform ${menuAbierto ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+
+        <nav className={`${menuAbierto ? "flex" : "hidden"} flex-col gap-1 px-3 pb-3 lg:flex lg:pb-0`}>
           {items.map((item) => {
             const Icon = ICONS[item.to];
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className="flex shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm text-ink-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-ink-foreground"
+                onClick={() => setMenuAbierto(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-ink-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-ink-foreground"
                 activeProps={{
                   className: "!bg-sidebar-primary !text-sidebar-primary-foreground font-medium",
                 }}
