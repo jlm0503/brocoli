@@ -1338,3 +1338,24 @@ export function cuentaMensual(
   }
   return out;
 }
+
+/* ───────────────────────── Lo que llega a cada rancho ───────────────────────── */
+
+/** Pedidos de planeación que deben llegar al rancho en la semana (2 semanas antes de plantar). */
+export function pedidosQueLleganEnSemana(pedidos: PedidoPlaneacion[], semana: number): PedidoPlaneacion[] {
+  return pedidos.filter((p) => p.status !== "cancelado" && semanaEntregaIdeal(p) === semana);
+}
+
+/** Planta que el vivero entrega en la semana: renglones de solicitudes vigentes, con su folio y estatus. */
+export function plantaQueLlegaEnSemana(
+  solicitudes: SolicitudPlanta[],
+  semana: number,
+): (LineaSolicitud & { folio: number; vivero: string; status: EstatusSolicitud })[] {
+  return solicitudes
+    .filter((s) => s.status !== "cancelada")
+    .flatMap((s) =>
+      s.lineas
+        .filter((l) => semanaDeFecha(l.fechaEntrega) === semana)
+        .map((l) => ({ ...l, folio: s.folio, vivero: s.vivero.nombre, status: s.status })),
+    );
+}

@@ -35,12 +35,14 @@ export type NavPath =
   | "/usuarios"
   | "/parametros"
   | "/solicitudes"
-  | "/cuenta-planta";
+  | "/cuenta-planta"
+  | "/llegadas";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin"] },
   { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero"] },
   { to: "/solicitudes", label: "Solicitudes de planta", roles: ["admin", "ingeniero"] },
+  { to: "/llegadas", label: "Lo que llega al rancho", roles: ["admin", "ingeniero"] },
   { to: "/compras", label: "Compras y entregas", roles: ["admin", "compras"] },
   { to: "/cuenta-planta", label: "Cuenta de planta", roles: ["admin"] },
   { to: "/alertas", label: "Alertas y reportes", roles: ["admin"] },
