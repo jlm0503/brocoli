@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Sprout,
+  Truck,
   Users,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -38,6 +39,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/parametros": SlidersHorizontal,
   "/solicitudes": FileText,
   "/cuenta-planta": Wallet,
+  "/llegadas": Truck,
 };
 
 interface AppShellProps {
