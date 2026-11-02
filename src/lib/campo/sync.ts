@@ -33,9 +33,13 @@ export function porId<T extends { id: string }>(xs: T[]): Record<string, T> {
 }
 
 /** Qué hay que guardar y qué borrar para pasar de `antes` a `ahora`. */
-export function diferencias(antes: Mapa, ahora: Mapa): { guardar: [string, unknown][]; borrar: string[] } {
+export function diferencias(
+  antes: Mapa,
+  ahora: Mapa,
+): { guardar: [string, unknown][]; borrar: string[] } {
   const guardar: [string, unknown][] = [];
-  for (const [id, v] of Object.entries(ahora)) if (!(id in antes) || antes[id] !== v) guardar.push([id, v]);
+  for (const [id, v] of Object.entries(ahora))
+    if (!(id in antes) || antes[id] !== v) guardar.push([id, v]);
   const borrar = Object.keys(antes).filter((id) => !(id in ahora));
   return { guardar, borrar };
 }

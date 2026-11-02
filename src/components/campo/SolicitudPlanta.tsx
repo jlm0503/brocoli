@@ -15,9 +15,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  entregasSolicitud,
+  faltantesSolicitud,
   fechaCorta,
   fechaEnSemana,
   folioSolicitud,
@@ -44,7 +52,8 @@ export function GenerarSolicitudDialog({
   lote?: Lote | null;
   onClose: () => void;
 }) {
-  const { lotes, solicitudes, viveros, tablas, ranchos, variedades, parametro, generarSolicitud } = useCampo();
+  const { lotes, solicitudes, viveros, tablas, ranchos, variedades, parametro, generarSolicitud } =
+    useCampo();
   const disponibles = useMemo(() => lotesParaSolicitud(lotes, solicitudes), [lotes, solicitudes]);
   const semanas = [...new Set(disponibles.map((l) => l.semanaPlaneada))].sort((a, b) => a - b);
   const [semanaTxt, setSemana] = useState(String(lote?.semanaPlaneada ?? semanas[0] ?? ""));
@@ -53,10 +62,14 @@ export function GenerarSolicitudDialog({
   const [viveroElegido, setVivero] = useState(
     lote?.viveroId ?? deSemana.find((l) => l.viveroId)?.viveroId ?? viveros[0]?.id ?? "",
   );
-  const viveroId = viveros.some((v) => v.id === viveroElegido) ? viveroElegido : (viveros[0]?.id ?? "");
+  const viveroId = viveros.some((v) => v.id === viveroElegido)
+    ? viveroElegido
+    : (viveros[0]?.id ?? "");
   const candidatos = deSemana.filter((l) => !l.viveroId || l.viveroId === viveroId);
   const [elegidos, setElegidos] = useState<string[] | null>(lote ? [lote.id] : null);
-  const seleccion = candidatos.filter((l) => (elegidos ?? candidatos.map((c) => c.id)).includes(l.id));
+  const seleccion = candidatos.filter((l) =>
+    (elegidos ?? candidatos.map((c) => c.id)).includes(l.id),
+  );
   const [observaciones, setObs] = useState("");
   const plantasPorHa = parametro("plantasPorHa");
   /** Lo capturado por lote: plantas por ha y total, ligados entre sí. */
@@ -66,7 +79,8 @@ export function GenerarSolicitudDialog({
     const t = captura[l.id]?.total;
     return t === undefined ? undefined : t === "" ? NaN : Math.round(Number(t));
   };
-  const plantasDe = (l: Lote) => totalCapturado(l) ?? l.plantas ?? plantasSugeridas(l.ha, plantasPorHa);
+  const plantasDe = (l: Lote) =>
+    totalCapturado(l) ?? l.plantas ?? plantasSugeridas(l.ha, plantasPorHa);
   const editar = (l: Lote, campo: "porHa" | "total", valor: string) => {
     const n = Number(valor);
     const ok = valor !== "" && Number.isFinite(n) && n >= 0;
@@ -113,8 +127,8 @@ export function GenerarSolicitudDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Generar solicitud de planta</DialogTitle>
           <DialogDescription>
-            Por lote o consolidada: todos los lotes del mismo vivero y semana de plantación. Los lotes
-            arrastrados no piden planta nueva.
+            Por lote o consolidada: todos los lotes del mismo vivero y semana de plantación. Los
+            lotes arrastrados no piden planta nueva.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,7 +190,9 @@ export function GenerarSolicitudDialog({
             <div className="space-y-2">
               <Label>Lotes</Label>
               {candidatos.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hay lotes de este vivero en esa semana.</p>
+                <p className="text-sm text-muted-foreground">
+                  No hay lotes de este vivero en esa semana.
+                </p>
               ) : (
                 <ul className="divide-y divide-border rounded-lg border border-border">
                   {candidatos.map((l) => (
@@ -221,7 +237,13 @@ export function GenerarSolicitudDialog({
               {seleccion.length > 0 && (
                 <p className="num text-right text-sm">
                   Total: {formatoNum(seleccion.reduce((s, l) => s + l.ha, 0))} ha ·{" "}
-                  {formatoNum(seleccion.reduce((s, l) => s + (Number.isFinite(plantasDe(l)) ? plantasDe(l) : 0), 0))} plantas
+                  {formatoNum(
+                    seleccion.reduce(
+                      (s, l) => s + (Number.isFinite(plantasDe(l)) ? plantasDe(l) : 0),
+                      0,
+                    ),
+                  )}{" "}
+                  plantas
                 </p>
               )}
               {errorPlantas && <p className="text-sm text-destructive">{errorPlantas}</p>}
@@ -229,7 +251,12 @@ export function GenerarSolicitudDialog({
 
             <div className="space-y-2">
               <Label htmlFor="sp-obs">Observaciones</Label>
-              <Textarea id="sp-obs" value={observaciones} onChange={(e) => setObs(e.target.value)} rows={2} />
+              <Textarea
+                id="sp-obs"
+                value={observaciones}
+                onChange={(e) => setObs(e.target.value)}
+                rows={2}
+              />
             </div>
           </div>
         )}
@@ -238,7 +265,10 @@ export function GenerarSolicitudDialog({
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={generar} disabled={seleccion.length === 0 || !viveroId || !!errorPlantas}>
+          <Button
+            onClick={generar}
+            disabled={seleccion.length === 0 || !viveroId || !!errorPlantas}
+          >
             <FileDown /> Generar PDF
           </Button>
         </DialogFooter>
@@ -265,7 +295,13 @@ export function usePdfSolicitud(s: SolicitudPlanta | null): Blob | null {
 }
 
 /** Solicitud ya generada: descargar o compartir el PDF y cerrar para seguir planeando. */
-export function SolicitudListaDialog({ solicitud, onClose }: { solicitud: SolicitudPlanta; onClose: () => void }) {
+export function SolicitudListaDialog({
+  solicitud,
+  onClose,
+}: {
+  solicitud: SolicitudPlanta;
+  onClose: () => void;
+}) {
   const { marcarSolicitudEnviada } = useCampo();
   const blob = usePdfSolicitud(solicitud);
   const tot = totalesSolicitud(solicitud);
@@ -283,15 +319,20 @@ export function SolicitudListaDialog({ solicitud, onClose }: { solicitud: Solici
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-2xl">
-            <CheckCircle2 className="size-6 text-primary" /> Solicitud {folioSolicitud(solicitud.folio)} lista
+            <CheckCircle2 className="size-6 text-primary" /> Solicitud{" "}
+            {folioSolicitud(solicitud.folio)} lista
           </DialogTitle>
           <DialogDescription>
-            Para {solicitud.vivero.nombre}. También queda guardada en Solicitudes de planta para reimprimirla.
+            Para {solicitud.vivero.nombre}. También queda guardada en Solicitudes de planta para
+            reimprimirla.
           </DialogDescription>
         </DialogHeader>
         <ul className="space-y-1.5 text-sm">
           {solicitud.lineas.map((l) => (
-            <li key={l.loteId} className="flex justify-between gap-3 rounded-md bg-secondary/60 px-3 py-2">
+            <li
+              key={l.loteId}
+              className="flex justify-between gap-3 rounded-md bg-secondary/60 px-3 py-2"
+            >
               <span>
                 {l.tabla} · lote {l.lote}
                 <span className="block text-xs text-muted-foreground">
@@ -398,28 +439,48 @@ function PlantasLote({
   );
 }
 
-/** Captura la planta que llegó: cantidad real por lote, fecha y foto de la remisión. */
-export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: SolicitudPlanta | null; onClose: () => void }) {
+/** Captura la planta que llegó (toda o una parte): cantidad por lote, fecha y foto del ticket del vivero. */
+export function RecibirPlantaDialog({
+  solicitud,
+  onClose,
+}: {
+  solicitud: SolicitudPlanta | null;
+  onClose: () => void;
+}) {
   const { hoy, recibirPlanta } = useCampo();
   const [fecha, setFecha] = useState(hoy);
+  const faltan = solicitud ? faltantesSolicitud(solicitud) : {};
   const [cant, setCant] = useState<Record<string, string>>(() =>
-    Object.fromEntries((solicitud?.lineas ?? []).map((l) => [l.loteId, String(l.plantas)])),
+    Object.fromEntries(Object.entries(faltan).map(([id, n]) => [id, String(n)])),
   );
   const [foto, setFoto] = useState<string | undefined>();
+  const [cerrar, setCerrar] = useState(false);
   if (!solicitud) return null;
 
   const recibidas = Object.fromEntries(
-    solicitud.lineas.map((l) => [l.loteId, cant[l.loteId] === "" ? NaN : Number(cant[l.loteId] ?? l.plantas)]),
+    solicitud.lineas.map((l) => [
+      l.loteId,
+      cant[l.loteId] === "" ? NaN : Number(cant[l.loteId] ?? faltan[l.loteId]),
+    ]),
   );
   const error = validarRecepcionPlanta(recibidas, solicitud.lineas, fecha, hoy, foto);
   const tot = totalesSolicitud(solicitud);
-  const totalRecibido = solicitud.lineas.reduce((s, l) => s + (Number.isFinite(recibidas[l.loteId]) ? recibidas[l.loteId]! : 0), 0);
+  const ahora = solicitud.lineas.reduce(
+    (s, l) => s + (Number.isFinite(recibidas[l.loteId]) ? recibidas[l.loteId]! : 0),
+    0,
+  );
+  const totalRecibido = tot.recibidas + ahora;
   const dif = totalRecibido - tot.plantas;
+  const previas = entregasSolicitud(solicitud).length;
 
   const guardar = () => {
-    const err = recibirPlanta(solicitud.id, { recibidas, fecha, foto });
+    const err = recibirPlanta(solicitud.id, { recibidas, fecha, foto, cerrar });
     if (err) return void toast.error(err);
-    toast.success(`Planta de ${folioSolicitud(solicitud.folio)} recibida`);
+    toast.success(
+      dif < 0 && !cerrar
+        ? `Entrega registrada en ${folioSolicitud(solicitud.folio)}. Faltan ${formatoNum(-dif)} plantas por llegar.`
+        : `Planta de ${folioSolicitud(solicitud.folio)} recibida`,
+    );
     onClose();
   };
 
@@ -431,7 +492,9 @@ export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: Solicit
             Planta recibida · {folioSolicitud(solicitud.folio)}
           </DialogTitle>
           <DialogDescription>
-            Captura lo que realmente llegó. El cargo a la cuenta de planta se hace con estas plantas.
+            Captura lo que llegó en esta entrega. Si el vivero mandó solo una parte, registra lo que
+            llegó y la solicitud queda abierta para lo que falta.
+            {previas > 0 && ` Ya van ${previas} entrega${previas > 1 ? "s" : ""}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -447,53 +510,66 @@ export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: Solicit
             />
           </div>
           <ul className="space-y-3">
-            {solicitud.lineas.map((l) => {
-              const n = recibidas[l.loteId]!;
-              const d = Number.isFinite(n) ? n - l.plantas : 0;
-              return (
-                <li key={l.loteId} className="grid grid-cols-[1fr_9rem] items-end gap-3">
-                  <Label htmlFor={`rp-${l.loteId}`} className="flex-col items-start gap-0.5">
-                    <span>
-                      {l.tabla} · lote {l.lote}
-                    </span>
-                    <span className="num text-xs font-normal text-muted-foreground">
-                      Solicitadas {formatoNum(l.plantas)}
-                      {d !== 0 && (
-                        <span className={d < 0 ? "text-destructive" : "text-primary"}>
-                          {" "}
-                          · {d > 0 ? "+" : ""}
-                          {formatoNum(d)}
-                        </span>
-                      )}
-                    </span>
-                  </Label>
-                  <Input
-                    id={`rp-${l.loteId}`}
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    step="1"
-                    value={cant[l.loteId] ?? String(l.plantas)}
-                    onChange={(e) => setCant((c) => ({ ...c, [l.loteId]: e.target.value }))}
-                    className="num"
-                  />
-                </li>
-              );
-            })}
+            {solicitud.lineas.map((l) => (
+              <li key={l.loteId} className="grid grid-cols-[1fr_9rem] items-end gap-3">
+                <Label htmlFor={`rp-${l.loteId}`} className="flex-col items-start gap-0.5">
+                  <span>
+                    {l.tabla} · lote {l.lote}
+                  </span>
+                  <span className="num text-xs font-normal text-muted-foreground">
+                    Solicitadas {formatoNum(l.plantas)}
+                    {(l.plantasRecibidas ?? 0) > 0 &&
+                      ` · ya llegaron ${formatoNum(l.plantasRecibidas!)}`}
+                    {" · "}faltan {formatoNum(faltan[l.loteId] ?? 0)}
+                  </span>
+                </Label>
+                <Input
+                  id={`rp-${l.loteId}`}
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={cant[l.loteId] ?? String(faltan[l.loteId] ?? 0)}
+                  onChange={(e) => setCant((c) => ({ ...c, [l.loteId]: e.target.value }))}
+                  className="num"
+                />
+              </li>
+            ))}
           </ul>
           <p className="num rounded-lg bg-secondary p-3 text-sm">
-            Recibidas {formatoNum(totalRecibido)} de {formatoNum(tot.plantas)} solicitadas
+            Con esta entrega: {formatoNum(totalRecibido)} de {formatoNum(tot.plantas)} solicitadas
             {dif !== 0 && (
-              <span className={dif < 0 ? "font-medium text-destructive" : "font-medium text-primary"}>
+              <span
+                className={dif < 0 ? "font-medium text-destructive" : "font-medium text-primary"}
+              >
                 {" "}
-                · diferencia {dif > 0 ? "+" : ""}
-                {formatoNum(dif)}
+                · {dif < 0 ? `faltan ${formatoNum(-dif)}` : `+${formatoNum(dif)} de más`}
               </span>
             )}
           </p>
+          {dif < 0 && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <Checkbox
+                checked={cerrar}
+                onCheckedChange={(c) => setCerrar(c === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Ya no llegará más planta de esta solicitud
+                <span className="block text-xs text-muted-foreground">
+                  Si no lo marcas, queda como recibida parcial esperando lo que falta.
+                </span>
+              </span>
+            </label>
+          )}
           <div className="space-y-2">
-            <Label>Foto de la remisión</Label>
-            <FotoInput foto={foto} setFoto={setFoto} texto="Tomar o subir foto de la remisión" alt="Remisión" />
+            <Label>Foto del ticket del vivero</Label>
+            <FotoInput
+              foto={foto}
+              setFoto={setFoto}
+              texto="Tomar o subir foto del ticket"
+              alt="Ticket del vivero"
+            />
           </div>
           {error && foto && <p className="text-sm text-destructive">{error}</p>}
         </div>

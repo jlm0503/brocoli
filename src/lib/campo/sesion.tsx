@@ -30,7 +30,8 @@ interface SesionValue {
 // Una sola instancia del contexto entre recargas en caliente (ver store.tsx).
 const KEY = "__campoSesion__";
 const g = globalThis as unknown as Record<string, Context<SesionValue | null>>;
-const SesionContext: Context<SesionValue | null> = g[KEY] ?? (g[KEY] = createContext<SesionValue | null>(null));
+const SesionContext: Context<SesionValue | null> =
+  g[KEY] ?? (g[KEY] = createContext<SesionValue | null>(null));
 
 export function SesionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -50,7 +51,9 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("nombre").eq("id", u.id).maybeSingle(),
     ]);
     setRole(puestoPrincipal((roles.data ?? []).map((r) => r.role)));
-    setNombre(perfil.data?.nombre || (u.user_metadata?.["nombre"] as string | undefined) || u.email || "");
+    setNombre(
+      perfil.data?.nombre || (u.user_metadata?.["nombre"] as string | undefined) || u.email || "",
+    );
   }, []);
 
   useEffect(() => {

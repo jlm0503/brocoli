@@ -1,6 +1,9 @@
 import type { Role } from "./types";
 
-export const ROLES: Record<Role, { nombre: string; persona: string; descripcion: string; home: string }> = {
+export const ROLES: Record<
+  Role,
+  { nombre: string; persona: string; descripcion: string; home: string }
+> = {
   admin: {
     nombre: "Administrador",
     persona: "Dueño",
@@ -16,7 +19,8 @@ export const ROLES: Record<Role, { nombre: string; persona: string; descripcion:
   compras: {
     nombre: "Compras",
     persona: "Vicky",
-    descripcion: "Surte pedidos de planeación, lo de esta semana y compra para dentro de 2 semanas.",
+    descripcion:
+      "Surte pedidos de planeación, lo de esta semana y compra para dentro de 2 semanas.",
     home: "/compras",
   },
 };

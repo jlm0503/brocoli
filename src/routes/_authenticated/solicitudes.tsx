@@ -5,12 +5,17 @@ import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { VerEvidencia } from "@/components/campo/Evidencia";
-import { GenerarSolicitudDialog, RecibirPlantaDialog, usePdfSolicitud } from "@/components/campo/SolicitudPlanta";
+import {
+  GenerarSolicitudDialog,
+  RecibirPlantaDialog,
+  usePdfSolicitud,
+} from "@/components/campo/SolicitudPlanta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ESTATUS_SOLICITUD_LABEL,
   diferenciaPlantas,
+  entregasSolicitud,
   fechaCorta,
   folioSolicitud,
   formatoNum,
@@ -27,10 +32,14 @@ export const Route = createFileRoute("/_authenticated/solicitudes")({
       { title: "Solicitudes de planta · Brócoli" },
       {
         name: "description",
-        content: "Genera la solicitud de planta en PDF para el vivero, compártela y registra la planta recibida.",
+        content:
+          "Genera la solicitud de planta en PDF para el vivero, compártela y registra la planta recibida.",
       },
       { property: "og:title", content: "Solicitudes de planta · Brócoli" },
-      { property: "og:description", content: "Solicitudes de planta al vivero con folio, estatus y recepción." },
+      {
+        property: "og:description",
+        content: "Solicitudes de planta al vivero con folio, estatus y recepción.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -41,6 +50,7 @@ export const Route = createFileRoute("/_authenticated/solicitudes")({
 const VARIANTE: Record<EstatusSolicitud, "pendiente" | "comprado" | "recibido" | "cancelado"> = {
   generada: "pendiente",
   enviada: "comprado",
+  parcial: "comprado",
   recibida: "recibido",
   cancelada: "cancelado",
 };
@@ -51,7 +61,9 @@ function Solicitudes() {
   const [recibiendo, setRecibiendo] = useState<SolicitudPlanta | null>(null);
   const lista = [...solicitudes].sort((a, b) => b.folio - a.folio);
   const sinSolicitud = lotesParaSolicitud(lotes, solicitudes);
-  const porRecibir = solicitudes.filter((s) => s.status === "generada" || s.status === "enviada");
+  const porRecibir = solicitudes.filter(
+    (s) => s.status === "generada" || s.status === "enviada" || s.status === "parcial",
+  );
 
   return (
     <AppShell
@@ -66,10 +78,15 @@ function Solicitudes() {
       }
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Lotes sin solicitud" value={String(sinSolicitud.length)} hint="Planeados, sin plantar" tone="soil" />
+        <Stat
+          label="Lotes sin solicitud"
+          value={String(sinSolicitud.length)}
+          hint="Planeados, sin plantar"
+          tone="soil"
+        />
         <Stat
           label="Por recibir"
-          value={`${formatoNum(porRecibir.reduce((s, x) => s + totalesSolicitud(x).plantas, 0))} plantas`}
+          value={`${formatoNum(porRecibir.reduce((s, x) => s + totalesSolicitud(x).plantas - totalesSolicitud(x).recibidas, 0))} plantas`}
           hint={`${porRecibir.length} solicitudes`}
         />
         <Stat label="Solicitudes" value={String(solicitudes.length)} tone="primary" />
@@ -77,7 +94,8 @@ function Solicitudes() {
 
       {lista.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/60 p-8 text-center text-sm text-muted-foreground">
-          Aún no hay solicitudes. Genera la primera con el botón de arriba o desde cada lote en Planeación.
+          Aún no hay solicitudes. Genera la primera con el botón de arriba o desde cada lote en
+          Planeación.
         </div>
       ) : (
         <ul className="grid gap-4 lg:grid-cols-2">
@@ -88,7 +106,9 @@ function Solicitudes() {
       )}
 
       {generando && <GenerarSolicitudDialog open onClose={() => setGenerando(false)} />}
-      {recibiendo && <RecibirPlantaDialog solicitud={recibiendo} onClose={() => setRecibiendo(null)} />}
+      {recibiendo && (
+        <RecibirPlantaDialog solicitud={recibiendo} onClose={() => setRecibiendo(null)} />
+      )}
     </AppShell>
   );
 }
@@ -99,6 +119,8 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
   const semanas = [...new Set(s.lineas.map((l) => l.semanaPlantacion))].join(", ");
   const dif = s.status === "recibida" ? tot.recibidas - tot.plantas : 0;
   const abierta = s.status === "generada" || s.status === "enviada";
+  const parcial = s.status === "parcial";
+  const entregas = entregasSolicitud(s);
 
   // El PDF se arma de antemano: así el botón lo entrega al instante y el celular no pierde el toque.
   const blob = usePdfSolicitud(s);
@@ -132,7 +154,10 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
         {s.lineas.map((l) => {
           const d = diferenciaPlantas(l);
           return (
-            <li key={l.loteId} className="flex justify-between gap-3 rounded-md bg-secondary/60 px-3 py-2">
+            <li
+              key={l.loteId}
+              className="flex justify-between gap-3 rounded-md bg-secondary/60 px-3 py-2"
+            >
               <span>
                 {l.tabla} · lote {l.lote}
                 <span className="block text-xs text-muted-foreground">
@@ -142,7 +167,9 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
               <span className="num text-right">
                 {formatoNum(l.plantas)}
                 {l.plantasRecibidas !== undefined && (
-                  <span className={`block text-xs ${d < 0 ? "text-destructive" : d > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  <span
+                    className={`block text-xs ${d < 0 ? "text-destructive" : d > 0 ? "text-primary" : "text-muted-foreground"}`}
+                  >
                     recibidas {formatoNum(l.plantasRecibidas)}
                     {d !== 0 && ` (${d > 0 ? "+" : ""}${formatoNum(d)})`}
                   </span>
@@ -155,6 +182,12 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
       <p className="num mt-2 text-right text-sm">
         {formatoNum(tot.ha)} ha · {formatoNum(tot.plantas)} plantas
       </p>
+      {parcial && (
+        <p className="num mt-1 text-right text-xs font-medium text-soil-foreground">
+          Llegaron {formatoNum(tot.recibidas)} · faltan{" "}
+          {formatoNum(Math.max(0, tot.plantas - tot.recibidas))} plantas
+        </p>
+      )}
       {s.status === "recibida" && s.recepcion && (
         <p className="mt-1 text-right text-xs text-muted-foreground">
           Recibida {fechaCorta(s.recepcion.fecha)}
@@ -183,17 +216,31 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             <Send /> Marcar enviada
           </Button>
         )}
-        {abierta && (
+        {(abierta || parcial) && (
           <Button size="sm" onClick={onRecibir}>
-            <PackageCheck /> Planta recibida
+            <PackageCheck /> {parcial ? "Recibir lo que falta" : "Planta recibida"}
           </Button>
         )}
-        {s.recepcion?.foto && (
-          <VerEvidencia foto={s.recepcion.foto} title="Ver remisión">
+        {entregas.map((e, i) => (
+          <VerEvidencia key={i} foto={e.foto} title={`Ticket del vivero · ${fechaCorta(e.fecha)}`}>
             <span className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm hover:bg-secondary">
-              <ImageIcon className="size-4" /> Remisión
+              <ImageIcon className="size-4" /> Ticket
+              {entregas.length > 1 ? ` ${fechaCorta(e.fecha)}` : ""}
             </span>
           </VerEvidencia>
+        ))}
+        {parcial && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const err = cancelarSolicitud(s.id);
+              if (err) toast.error(err);
+              else toast(`${folioSolicitud(s.folio)} cerrada con la planta que llegó.`);
+            }}
+          >
+            <X /> Ya no llegará más
+          </Button>
         )}
         {abierta && (
           <Button
@@ -203,7 +250,10 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             onClick={() => {
               const err = cancelarSolicitud(s.id);
               if (err) toast.error(err);
-              else toast(`${folioSolicitud(s.folio)} cancelada. Sus lotes pueden pedir planta de nuevo.`);
+              else
+                toast(
+                  `${folioSolicitud(s.folio)} cancelada. Sus lotes pueden pedir planta de nuevo.`,
+                );
             }}
           >
             <X /> Cancelar

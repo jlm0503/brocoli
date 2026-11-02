@@ -21,7 +21,9 @@ import {
   costoPorPlanta,
   lineasSolicitud,
   lotesParaSolicitud,
+  registrarEntregaPlanta,
   siguienteFolio,
+  solicitudesAlCancelarLote,
   validarPlantasSolicitud,
   validarRecepcionPlanta,
   validarSolicitud,
@@ -131,8 +133,7 @@ interface Instantanea {
 export type CatalogoSimple = "cultivos" | "viveros" | "choferes" | "congeladoras" | "problemas";
 
 export type ResolucionAlerta =
-  | { tipo: "reubicar"; loteId: string }
-  | { tipo: "recolectar"; quien: string; foto: string };
+  { tipo: "reubicar"; loteId: string } | { tipo: "recolectar"; quien: string; foto: string };
 
 interface CampoContextValue {
   ready: boolean;
@@ -183,7 +184,12 @@ interface CampoContextValue {
   marcarSolicitudEnviada: (id: string) => void;
   recibirPlanta: (
     id: string,
-    datos: { recibidas: Record<string, number>; fecha: string; foto: string | undefined },
+    datos: {
+      recibidas: Record<string, number>;
+      fecha: string;
+      foto: string | undefined;
+      cerrar?: boolean;
+    },
   ) => string | null;
   cancelarSolicitud: (id: string) => string | null;
   setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number) => void;
@@ -267,12 +273,21 @@ async function escribir(coleccion: Coleccion, antes: Mapa, ahora: Mapa, userId: 
   const { guardar, borrar } = diferencias(antes, ahora);
   if (guardar.length > 0) {
     const { error } = await supabase.from("registros").upsert(
-      guardar.map(([id, data]) => ({ coleccion, id, data: JSON.parse(JSON.stringify(data)) as Json, updated_by: userId })),
+      guardar.map(([id, data]) => ({
+        coleccion,
+        id,
+        data: JSON.parse(JSON.stringify(data)) as Json,
+        updated_by: userId,
+      })),
     );
     if (error) throw error;
   }
   if (borrar.length > 0) {
-    const { error } = await supabase.from("registros").delete().eq("coleccion", coleccion).in("id", borrar);
+    const { error } = await supabase
+      .from("registros")
+      .delete()
+      .eq("coleccion", coleccion)
+      .in("id", borrar);
     if (error) throw error;
   }
 }
@@ -320,9 +335,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       toast.error("No se pudieron cargar los datos. Revisa tu conexión y recarga.");
       return;
     }
-    const de = <T,>(c: string) => filas.filter((f) => f.coleccion === c).map((f) => f.data as unknown as T);
+    const de = <T,>(c: string) =>
+      filas.filter((f) => f.coleccion === c).map((f) => f.data as unknown as T);
     const mapa = <T,>(c: string) =>
-      Object.fromEntries(filas.filter((f) => f.coleccion === c).map((f) => [f.id, f.data as unknown as T]));
+      Object.fromEntries(
+        filas.filter((f) => f.coleccion === c).map((f) => [f.id, f.data as unknown as T]),
+      );
     const hoyReal = hoyEnMexico();
     const semanaReal = semanaDeFecha(hoyReal);
     const semanaGuardada =
@@ -452,8 +470,25 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       solicitudes: porId(solicitudes),
     }),
     [
-      productos, recetas, adicionales, ranchos, tablas, lotes, pedidos, tardias, alertas, recepciones, inventarioAlmacen,
-      cultivos, variedades, viveros, choferes, congeladoras, problemas, parametros, solicitudes,
+      productos,
+      recetas,
+      adicionales,
+      ranchos,
+      tablas,
+      lotes,
+      pedidos,
+      tardias,
+      alertas,
+      recepciones,
+      inventarioAlmacen,
+      cultivos,
+      variedades,
+      viveros,
+      choferes,
+      congeladoras,
+      problemas,
+      parametros,
+      solicitudes,
     ],
   );
   useEffect(() => {
@@ -488,7 +523,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       // No se toca lo guardado aquí: se concilia cuando la pantalla ya refleja el cambio.
       (remotos.current[c] ??= new Map()).set(id, { data, llegada: Date.now() });
       const lista = <T extends { id: string }>(xs: T[]) =>
-        data === undefined ? xs.filter((x) => x.id !== id) : xs.some((x) => x.id === id) ? xs.map((x) => (x.id === id ? (data as T) : x)) : [...xs, data as T];
+        data === undefined
+          ? xs.filter((x) => x.id !== id)
+          : xs.some((x) => x.id === id)
+            ? xs.map((x) => (x.id === id ? (data as T) : x))
+            : [...xs, data as T];
       const registro = <T,>(r: Record<string, T>) => {
         const n = { ...r };
         if (data === undefined) delete n[id];
@@ -513,7 +552,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       else if (c === "problemas") setProblemas(lista);
       else if (c === "parametros") setParametros(lista);
       else if (c === "solicitudes") setSolicitudes(lista);
-      else if (c === "recetas") setRecetas((r) => registro(r as unknown as Record<string, Recetas[Cultivo]>) as unknown as Recetas);
+      else if (c === "recetas")
+        setRecetas(
+          (r) => registro(r as unknown as Record<string, Recetas[Cultivo]>) as unknown as Recetas,
+        );
     };
     const canal = supabase
       .channel(`registros-${Math.random().toString(36).slice(2)}`)
@@ -535,20 +577,26 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const ready = lista && (!user || !role || cargado);
 
-  const setDosis = useCallback((cultivo: Cultivo, productoId: string, semana: number, valor: number) => {
-    setRecetas((rs) => {
-      const r = recetaDe(rs, cultivo);
-      return {
-        ...rs,
-        [cultivo]: {
-          dosis: {
-            ...r.dosis,
-            [semana]: { ...(r.dosis[semana] ?? {}), [productoId]: Math.max(0, Number.isFinite(valor) ? valor : 0) },
+  const setDosis = useCallback(
+    (cultivo: Cultivo, productoId: string, semana: number, valor: number) => {
+      setRecetas((rs) => {
+        const r = recetaDe(rs, cultivo);
+        return {
+          ...rs,
+          [cultivo]: {
+            dosis: {
+              ...r.dosis,
+              [semana]: {
+                ...(r.dosis[semana] ?? {}),
+                [productoId]: Math.max(0, Number.isFinite(valor) ? valor : 0),
+              },
+            },
           },
-        },
-      };
-    });
-  }, []);
+        };
+      });
+    },
+    [],
+  );
 
   const setPrecio = useCallback((productoId: string, precio: number, desde: string) => {
     if (!Number.isFinite(precio) || precio < 0) return "El precio debe ser mayor o igual a 0.";
@@ -558,9 +606,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         p.id === productoId
           ? {
               ...p,
-              precios: [...(p.precios ?? []).filter((c) => c.desde !== desde), { desde, precio }].sort((a, b) =>
-                a.desde.localeCompare(b.desde),
-              ),
+              precios: [
+                ...(p.precios ?? []).filter((c) => c.desde !== desde),
+                { desde, precio },
+              ].sort((a, b) => a.desde.localeCompare(b.desde)),
             }
           : p,
       ),
@@ -586,16 +635,20 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const simples = useMemo(
-    () => ({
-      cultivos: [cultivos, setCultivos],
-      viveros: [viveros, setViveros],
-      choferes: [choferes, setChoferes],
-      congeladoras: [congeladoras, setCongeladoras],
-      problemas: [problemas, setProblemas],
-    }) as unknown as Record<
-      CatalogoSimple,
-      [{ id: string; nombre: string }[], (f: (xs: { id: string; nombre: string }[]) => { id: string; nombre: string }[]) => void]
-    >,
+    () =>
+      ({
+        cultivos: [cultivos, setCultivos],
+        viveros: [viveros, setViveros],
+        choferes: [choferes, setChoferes],
+        congeladoras: [congeladoras, setCongeladoras],
+        problemas: [problemas, setProblemas],
+      }) as unknown as Record<
+        CatalogoSimple,
+        [
+          { id: string; nombre: string }[],
+          (f: (xs: { id: string; nombre: string }[]) => { id: string; nombre: string }[]) => void,
+        ]
+      >,
     [cultivos, viveros, choferes, congeladoras, problemas],
   );
 
@@ -604,7 +657,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const [xs, set] = simples[col];
       const err = validarNombreCatalogo(item.nombre, xs);
       if (err) return err;
-      const limpio = Object.fromEntries(Object.entries(item).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v]));
+      const limpio = Object.fromEntries(
+        Object.entries(item).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v]),
+      );
       set((ys) => [...ys, { ...limpio, nombre: item.nombre.trim(), id: nuevoId(col.slice(0, 2)) }]);
       return null;
     },
@@ -624,11 +679,15 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const eliminarSimple = useCallback<CampoContextValue["eliminarSimple"]>(
     (col, id) => {
-      if (col === "cultivos" && (variedades.some((v) => v.cultivo === id) || lotes.some((l) => l.cultivo === id)))
+      if (
+        col === "cultivos" &&
+        (variedades.some((v) => v.cultivo === id) || lotes.some((l) => l.cultivo === id))
+      )
         return "Este cultivo tiene variedades o lotes; no se puede eliminar.";
       if (col === "viveros" && lotes.some((l) => l.viveroId === id && !l.cancelado))
         return "Este vivero ya tiene lotes; no se puede eliminar.";
-      if (col === "congeladoras" && congeladoras.length <= 1) return "Debe quedar al menos una congeladora.";
+      if (col === "congeladoras" && congeladoras.length <= 1)
+        return "Debe quedar al menos una congeladora.";
       simples[col][1]((ys) => ys.filter((y) => y.id !== id));
       return null;
     },
@@ -647,7 +706,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const eliminarVariedad = useCallback(
     (id: string) => {
-      if (lotes.some((l) => l.variedadId === id)) return "Esta variedad ya tiene lotes; no se puede eliminar.";
+      if (lotes.some((l) => l.variedadId === id))
+        return "Esta variedad ya tiene lotes; no se puede eliminar.";
       setVariedades((vs) => vs.filter((v) => v.id !== id));
       return null;
     },
@@ -657,7 +717,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const agregarProducto = useCallback(
     (p: Omit<Producto, "id">) => {
       if (!p.nombre.trim()) return "Escribe el nombre del producto.";
-      if (!codigoDisponible(productos, p.codigo)) return `El código ${p.codigo} ya existe o está vacío.`;
+      if (!codigoDisponible(productos, p.codigo))
+        return `El código ${p.codigo} ya existe o está vacío.`;
       setProductos((ps) => [
         ...ps,
         { ...p, codigo: p.codigo.trim().toUpperCase(), nombre: p.nombre.trim(), id: nuevoId("pr") },
@@ -668,7 +729,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   );
 
   const guardarAdicional = useCallback((a: Adicional) => {
-    setAdicionales((as) => (as.some((x) => x.id === a.id) ? as.map((x) => (x.id === a.id ? a : x)) : [...as, a]));
+    setAdicionales((as) =>
+      as.some((x) => x.id === a.id) ? as.map((x) => (x.id === a.id ? a : x)) : [...as, a],
+    );
   }, []);
 
   const eliminarAdicional = useCallback((id: string) => {
@@ -687,7 +750,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const eliminarRancho = useCallback(
     (id: string) => {
-      if (tablas.some((t) => t.ranchoId === id)) return "Primero elimina las tablas de este rancho.";
+      if (tablas.some((t) => t.ranchoId === id))
+        return "Primero elimina las tablas de este rancho.";
       setRanchos((rs) => rs.filter((r) => r.id !== id));
       return null;
     },
@@ -700,7 +764,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (err) return err;
       setTablas((ts) => [
         ...ts,
-        { id: nuevoId("tb"), ranchoId: t.ranchoId, nombre: t.nombre.trim(), hectareas: redondear(t.hectareas) },
+        {
+          id: nuevoId("tb"),
+          ranchoId: t.ranchoId,
+          nombre: t.nombre.trim(),
+          hectareas: redondear(t.hectareas),
+        },
       ]);
       return null;
     },
@@ -712,7 +781,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (lotes.some((l) => l.tablaId === id && !l.cancelado))
         return "Esta tabla ya tiene lotes; no se puede eliminar.";
       setTablas((ts) => ts.filter((t) => t.id !== id));
-      setAdicionales((as) => as.map((a) => ({ ...a, tablaIds: a.tablaIds.filter((x) => x !== id) })).filter((a) => a.tablaIds.length > 0));
+      setAdicionales((as) =>
+        as
+          .map((a) => ({ ...a, tablaIds: a.tablaIds.filter((x) => x !== id) }))
+          .filter((a) => a.tablaIds.length > 0),
+      );
       return null;
     },
     [lotes],
@@ -737,14 +810,28 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         adicionales,
         ingeniero,
         nuevoId,
-        cinta: cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", p.fechaPlantacion)),
+        cinta: cintaPlaneacion(
+          productos,
+          parametroVigente(parametros, "rollosCintaHa", p.fechaPlantacion),
+        ),
         plantasPorHa: parametroVigente(parametros, "plantasPorHa", p.fechaPlantacion),
       });
       setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
       if (pedido) setPedidos((ps) => [...ps, pedido]);
       return null;
     },
-    [tablas, variedades, lotes, hoy, recetas, adicionales, semanaActual, ingeniero, productos, parametros],
+    [
+      tablas,
+      variedades,
+      lotes,
+      hoy,
+      recetas,
+      adicionales,
+      semanaActual,
+      ingeniero,
+      productos,
+      parametros,
+    ],
   );
 
   const planearLote = useCallback<CampoContextValue["planearLote"]>(
@@ -756,12 +843,22 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!variedad) return fallo("Elige la variedad que se va a plantar.");
       const err = validarApartado(t, lotes, semana, ha, semanaActual);
       if (err) return fallo(err);
-      const sugeridas = plantasSugeridas(redondear(ha), parametroVigente(parametros, "plantasPorHa", hoy));
+      const sugeridas = plantasSugeridas(
+        redondear(ha),
+        parametroVigente(parametros, "plantasPorHa", hoy),
+      );
       const errPlantas = validarPlantas(opciones.plantas, sugeridas, opciones.motivoPlantas);
       if (errPlantas) return fallo(errPlantas);
-      if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId)) return fallo("Elige el vivero.");
+      if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId))
+        return fallo("Elige el vivero.");
       const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
-      const necesidad = lineasPlaneacion(recetaDe(recetas, variedad.cultivo), adicionales, tablaId, redondear(ha), cinta);
+      const necesidad = lineasPlaneacion(
+        recetaDe(recetas, variedad.cultivo),
+        adicionales,
+        tablaId,
+        redondear(ha),
+        cinta,
+      );
       // Sin paquete de planeación (p. ej. coliflor sin receta) no hay insumos que decidir.
       const tardia = esPlaneacionTardia(semana, semanaActual) && necesidad.length > 0;
       const opcion = tardia ? opciones.opcion : undefined;
@@ -783,7 +880,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       );
       if (opcion === "usar-pendientes" && usar.size === 0)
         return fallo("Selecciona al menos un lote pendiente para usar sus insumos.");
-      for (const l of lotes) if (usar.has(l.id)) reasignados = [...reasignados, ...insumosEntregados(l, pedidos)];
+      for (const l of lotes)
+        if (usar.has(l.id)) reasignados = [...reasignados, ...insumosEntregados(l, pedidos)];
 
       const porPedir = opcion === "usar-pendientes" ? descontar(necesidad, reasignados) : necesidad;
       const pedido: PedidoPlaneacion | null =
@@ -813,7 +911,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         semanaPlaneada: semana,
         ingeniero,
         avances: [],
-        insumos: [...reasignados, ...(pedido?.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) ?? [])],
+        insumos: [
+          ...reasignados,
+          ...(pedido?.lineas.map((x) => ({ ...x, pedidoId: pedido.id })) ?? []),
+        ],
         variedadId: variedad.id,
         cultivo: variedad.cultivo,
         cicloDias: variedad.cicloDias,
@@ -841,7 +942,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
             semanasAnticipacion: semanasAnticipacion(semana, semanaActual),
             opcion,
             motivo: opciones.motivo?.trim() || undefined,
-            lotesUsados: opcion === "usar-pendientes" ? lotes.filter((l) => usar.has(l.id)).map((l) => l.codigo) : undefined,
+            lotesUsados:
+              opcion === "usar-pendientes"
+                ? lotes.filter((l) => usar.has(l.id)).map((l) => l.codigo)
+                : undefined,
           },
         ]);
       }
@@ -853,7 +957,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
             folio: siguienteFolio(solicitudes),
             fecha: hoy,
             viveroId: v.id,
-            vivero: { nombre: v.nombre, contacto: v.contacto ?? "", telefono: v.telefono ?? "", correo: v.correo ?? "" },
+            vivero: {
+              nombre: v.nombre,
+              contacto: v.contacto ?? "",
+              telefono: v.telefono ?? "",
+              correo: v.correo ?? "",
+            },
             lineas: lineasSolicitud([nuevo], {
               ranchos,
               tablas,
@@ -867,7 +976,22 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (solicitud) setSolicitudes((ss) => [...ss, solicitud]);
       return { solicitud };
     },
-    [tablas, variedades, viveros, lotes, pedidos, recetas, adicionales, semanaActual, hoy, ingeniero, productos, parametros, solicitudes, ranchos],
+    [
+      tablas,
+      variedades,
+      viveros,
+      lotes,
+      pedidos,
+      recetas,
+      adicionales,
+      semanaActual,
+      hoy,
+      ingeniero,
+      productos,
+      parametros,
+      solicitudes,
+      ranchos,
+    ],
   );
 
   const cancelarLote = useCallback(
@@ -898,13 +1022,20 @@ export function CampoProvider({ children }: { children: ReactNode }) {
             const quitar = sumarPorProducto(sinEntregar.filter((i) => i.pedidoId === p.id));
             if (quitar.size === 0) return p;
             const lineas = p.lineas
-              .map((x) => ({ ...x, cantidad: redondear(x.cantidad - (quitar.get(x.productoId) ?? 0)) }))
+              .map((x) => ({
+                ...x,
+                cantidad: redondear(x.cantidad - (quitar.get(x.productoId) ?? 0)),
+              }))
               .filter((x) => x.cantidad > 0);
             return lineas.length === 0 ? { ...p, status: "cancelado" as const } : { ...p, lineas };
           }),
         );
       }
-      setLotes((ls) => ls.map((x) => (x.id === loteId ? { ...x, cancelado: true, insumos: [] } : x)));
+      // Sus solicitudes de planta sin recibir se cancelan (en una consolidada solo sale este lote).
+      setSolicitudes((ss) => solicitudesAlCancelarLote(ss, loteId, hoy));
+      setLotes((ls) =>
+        ls.map((x) => (x.id === loteId ? { ...x, cancelado: true, insumos: [] } : x)),
+      );
     },
     [lotes, pedidos, hoy],
   );
@@ -916,7 +1047,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!l) return "Lote no encontrado.";
       const r = corregirFechasLote(l, cambios, hoy);
       if ("error" in r) return r.error;
-      setLotes((ls) => finalizarCosechados(ls.map((x) => (x.id === loteId ? r.lote : x)), semanaActual));
+      setLotes((ls) =>
+        finalizarCosechados(
+          ls.map((x) => (x.id === loteId ? r.lote : x)),
+          semanaActual,
+        ),
+      );
       return null;
     },
     [role, lotes, hoy, semanaActual],
@@ -927,7 +1063,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const deTabla = lotesDeTabla(lotes, tablaId);
       const err = validarAvance(deTabla, ha, semanaActual);
       if (err) return err;
-      const reparto = new Map(repartirAvance(deTabla, ha, semanaActual).map((r) => [r.loteId, r.ha]));
+      const reparto = new Map(
+        repartirAvance(deTabla, ha, semanaActual).map((r) => [r.loteId, r.ha]),
+      );
       const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
       const nuevosPedidos: PedidoPlaneacion[] = [];
       setLotes((ls) =>
@@ -937,10 +1075,17 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           let next: Lote = {
             ...l,
             // Al plantarse, el lote guarda una copia de la receta vigente.
-            receta: l.receta ?? recetaEfectiva(recetaDe(recetas, l.cultivo), adicionales, l.tablaId),
+            receta:
+              l.receta ?? recetaEfectiva(recetaDe(recetas, l.cultivo), adicionales, l.tablaId),
             avances: [...l.avances, { id: nuevoId("av"), fecha: hoy, semana: semanaActual, ha: h }],
           };
-          const lineas = lineasPlaneacion(recetaDe(recetas, l.cultivo), adicionales, l.tablaId, l.ha, cinta);
+          const lineas = lineasPlaneacion(
+            recetaDe(recetas, l.cultivo),
+            adicionales,
+            l.tablaId,
+            l.ha,
+            cinta,
+          );
           if (l.sinInsumos && l.avances.length === 0 && lineas.length > 0) {
             // Sus insumos se usaron en otro lote: al plantarse genera su propio pedido.
             const pedido: PedidoPlaneacion = {
@@ -976,7 +1121,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const entregarPedido = useCallback(
     (pedidoId: string, foto: string) => {
       setPedidos((ps) =>
-        ps.map((p) => (p.id === pedidoId ? { ...p, status: "entregado", foto, fechaEntrega: hoy } : p)),
+        ps.map((p) =>
+          p.id === pedidoId ? { ...p, status: "entregado", foto, fechaEntrega: hoy } : p,
+        ),
       );
     },
     [hoy],
@@ -985,7 +1132,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const reabrirPedido = useCallback((pedidoId: string) => {
     setPedidos((ps) =>
       ps.map((p) =>
-        p.id === pedidoId ? { ...p, status: "pendiente", foto: undefined, fechaEntrega: undefined } : p,
+        p.id === pedidoId
+          ? { ...p, status: "pendiente", foto: undefined, fechaEntrega: undefined }
+          : p,
       ),
     );
   }, []);
@@ -1029,7 +1178,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         );
         setAlertas((as) =>
           as.map((x) =>
-            x.id === alertaId ? { ...x, status: "reubicada", destinoLoteId: destino.id, fechaCierre: hoy } : x,
+            x.id === alertaId
+              ? { ...x, status: "reubicada", destinoLoteId: destino.id, fechaCierre: hoy }
+              : x,
           ),
         );
         return null;
@@ -1038,13 +1189,20 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!r.foto) return "La foto es obligatoria.";
       setInventario((inv) => {
         const next = { ...inv };
-        for (const i of a.items) next[i.productoId] = redondear((next[i.productoId] ?? 0) + i.cantidad);
+        for (const i of a.items)
+          next[i.productoId] = redondear((next[i.productoId] ?? 0) + i.cantidad);
         return next;
       });
       setAlertas((as) =>
         as.map((x) =>
           x.id === alertaId
-            ? { ...x, status: "recolectada", recolecto: r.quien.trim(), foto: r.foto, fechaCierre: hoy }
+            ? {
+                ...x,
+                status: "recolectada",
+                recolecto: r.quien.trim(),
+                foto: r.foto,
+                fechaCierre: hoy,
+              }
             : x,
         ),
       );
@@ -1069,7 +1227,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         folio: siguienteFolio(solicitudes),
         fecha: hoy,
         viveroId,
-        vivero: { nombre: v.nombre, contacto: v.contacto ?? "", telefono: v.telefono ?? "", correo: v.correo ?? "" },
+        vivero: {
+          nombre: v.nombre,
+          contacto: v.contacto ?? "",
+          telefono: v.telefono ?? "",
+          correo: v.correo ?? "",
+        },
         lineas: lineasSolicitud(seleccion, { ranchos, tablas, variedades, plantasPorHa, plantas }),
         ingeniero,
         observaciones: observaciones?.trim() || undefined,
@@ -1083,7 +1246,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           const linea = solicitud.lineas.find((x) => x.loteId === l.id)!;
           const motivo = motivos[l.id]?.trim();
           if (l.viveroId === viveroId && l.plantas === linea.plantas && !motivo) return l;
-          return { ...l, viveroId, plantas: linea.plantas, motivoPlantas: motivo || l.motivoPlantas };
+          return {
+            ...l,
+            viveroId,
+            plantas: linea.plantas,
+            motivoPlantas: motivo || l.motivoPlantas,
+          };
         }),
       );
       setSolicitudes((ss) => [...ss, solicitud]);
@@ -1095,7 +1263,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const marcarSolicitudEnviada = useCallback(
     (id: string) => {
       setSolicitudes((ss) =>
-        ss.map((s) => (s.id === id && s.status === "generada" ? { ...s, status: "enviada", fechaEnvio: hoy } : s)),
+        ss.map((s) =>
+          s.id === id && s.status === "generada" ? { ...s, status: "enviada", fechaEnvio: hoy } : s,
+        ),
       );
     },
     [hoy],
@@ -1104,25 +1274,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const recibirPlanta = useCallback<CampoContextValue["recibirPlanta"]>(
     (id, datos) => {
       const s = solicitudes.find((x) => x.id === id);
-      if (!s || s.status === "cancelada" || s.status === "recibida") return "Esta solicitud ya no se puede recibir.";
+      if (!s || s.status === "cancelada" || s.status === "recibida")
+        return "Esta solicitud ya no se puede recibir.";
       const err = validarRecepcionPlanta(datos.recibidas, s.lineas, datos.fecha, hoy, datos.foto);
       if (err) return err;
+      const entrega = {
+        fecha: datos.fecha,
+        foto: datos.foto!,
+        recibidas: datos.recibidas,
+        costoPlanta: costoPorPlanta(parametros, datos.fecha),
+        plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
+      };
       setSolicitudes((ss) =>
-        ss.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                status: "recibida",
-                lineas: x.lineas.map((l) => ({ ...l, plantasRecibidas: datos.recibidas[l.loteId] })),
-                recepcion: {
-                  fecha: datos.fecha,
-                  foto: datos.foto!,
-                  costoPlanta: costoPorPlanta(parametros, datos.fecha),
-                  plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
-                },
-              }
-            : x,
-        ),
+        ss.map((x) => (x.id === id ? registrarEntregaPlanta(x, entrega, datos.cerrar) : x)),
       );
       return null;
     },
@@ -1134,6 +1298,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const s = solicitudes.find((x) => x.id === id);
       if (!s) return "Solicitud no encontrada.";
       if (s.status === "recibida") return "La planta ya se recibió; no se puede cancelar.";
+      if (s.status === "parcial") {
+        // Ya llegó parte: no se cancela, se cierra con lo recibido.
+        setSolicitudes((ss) => ss.map((x) => (x.id === id ? { ...x, status: "recibida" } : x)));
+        return null;
+      }
       setSolicitudes((ss) =>
         ss.map((x) => (x.id === id ? { ...x, status: "cancelada", fechaCancelacion: hoy } : x)),
       );
@@ -1145,12 +1314,37 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const avanzarSemana = useCallback(() => {
     setHistorial((h) => [
       ...h,
-      { semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones, solicitudes },
+      {
+        semanaActual,
+        hoy,
+        lotes,
+        pedidos,
+        tardias,
+        alertas,
+        inventarioAlmacen,
+        recepciones,
+        solicitudes,
+      },
     ]);
-    setLotes((ls) => finalizarCosechados(cerrarSemana(ls, semanaActual, () => nuevoId("lt")), semanaActual + 1));
+    setLotes((ls) =>
+      finalizarCosechados(
+        cerrarSemana(ls, semanaActual, () => nuevoId("lt")),
+        semanaActual + 1,
+      ),
+    );
     setSemanaActual((w) => w + 1);
     setHoy(fechaEnSemana(semanaActual + 1, 2));
-  }, [semanaActual, hoy, lotes, pedidos, tardias, alertas, inventarioAlmacen, recepciones, solicitudes]);
+  }, [
+    semanaActual,
+    hoy,
+    lotes,
+    pedidos,
+    tardias,
+    alertas,
+    inventarioAlmacen,
+    recepciones,
+    solicitudes,
+  ]);
 
   const restaurar = useCallback((i: Instantanea) => {
     setSemanaActual(i.semanaActual);
