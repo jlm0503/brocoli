@@ -21,7 +21,9 @@ import {
   costoPorPlanta,
   lineasSolicitud,
   lotesParaSolicitud,
+  registrarEntregaPlanta,
   siguienteFolio,
+  solicitudesAlCancelarLote,
   validarPlantasSolicitud,
   validarRecepcionPlanta,
   validarSolicitud,
@@ -904,6 +906,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
           }),
         );
       }
+      // Sus solicitudes de planta sin recibir se cancelan (en una consolidada solo sale este lote).
+      setSolicitudes((ss) => solicitudesAlCancelarLote(ss, loteId, hoy));
       setLotes((ls) => ls.map((x) => (x.id === loteId ? { ...x, cancelado: true, insumos: [] } : x)));
     },
     [lotes, pedidos, hoy],
@@ -1107,23 +1111,14 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!s || s.status === "cancelada" || s.status === "recibida") return "Esta solicitud ya no se puede recibir.";
       const err = validarRecepcionPlanta(datos.recibidas, s.lineas, datos.fecha, hoy, datos.foto);
       if (err) return err;
-      setSolicitudes((ss) =>
-        ss.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                status: "recibida",
-                lineas: x.lineas.map((l) => ({ ...l, plantasRecibidas: datos.recibidas[l.loteId] })),
-                recepcion: {
-                  fecha: datos.fecha,
-                  foto: datos.foto!,
-                  costoPlanta: costoPorPlanta(parametros, datos.fecha),
-                  plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
-                },
-              }
-            : x,
-        ),
-      );
+      const entrega = {
+        fecha: datos.fecha,
+        foto: datos.foto!,
+        recibidas: datos.recibidas,
+        costoPlanta: costoPorPlanta(parametros, datos.fecha),
+        plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
+      };
+      setSolicitudes((ss) => ss.map((x) => (x.id === id ? registrarEntregaPlanta(x, entrega, datos.cerrar) : x)));
       return null;
     },
     [solicitudes, hoy, parametros],
@@ -1134,6 +1129,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const s = solicitudes.find((x) => x.id === id);
       if (!s) return "Solicitud no encontrada.";
       if (s.status === "recibida") return "La planta ya se recibió; no se puede cancelar.";
+      if (s.status === "parcial") {
+        // Ya llegó parte: no se cancela, se cierra con lo recibido.
+        setSolicitudes((ss) => ss.map((x) => (x.id === id ? { ...x, status: "recibida" } : x)));
+        return null;
+      }
       setSolicitudes((ss) =>
         ss.map((x) => (x.id === id ? { ...x, status: "cancelada", fechaCancelacion: hoy } : x)),
       );
