@@ -263,7 +263,19 @@ export interface LineaDemanda {
 
 /* ───────────── Fase 2: solicitud de planta ───────────── */
 
-export type EstatusSolicitud = "generada" | "enviada" | "recibida" | "cancelada";
+export type EstatusSolicitud = "generada" | "enviada" | "parcial" | "recibida" | "cancelada";
+
+/** Una llegada de planta (puede haber varias si el vivero manda por partes). */
+export interface EntregaPlanta {
+  fecha: string;
+  /** Foto del ticket del vivero. */
+  foto: string;
+  /** Plantas que llegaron en esta entrega, por lote. */
+  recibidas: Record<string, number>;
+  /** Valores vigentes el día que llegó. */
+  costoPlanta: number;
+  plantasPorHa: number;
+}
 
 /** Renglón de la solicitud: copia de los datos del lote al generarla. */
 export interface LineaSolicitud {
@@ -278,7 +290,7 @@ export interface LineaSolicitud {
   plantas: number;
   semanaPlantacion: number;
   fechaEntrega: string;
-  /** Plantas que realmente llegaron (al marcar "Planta recibida"). */
+  /** Plantas que realmente llegaron, sumando todas las entregas. */
   plantasRecibidas?: number | undefined;
 }
 
@@ -299,6 +311,8 @@ export interface SolicitudPlanta {
     | { fecha: string; foto: string; costoPlanta: number; plantasPorHa: number }
     | undefined;
   fechaCancelacion?: string | undefined;
+  /** Entregas recibidas (parciales o completa). Las solicitudes antiguas solo traen `recepcion`. */
+  entregas?: EntregaPlanta[] | undefined;
 }
 
 /** Movimiento de la cuenta de planta. Cargo = planta recibida; abono = descuento por viaje evaluado. */

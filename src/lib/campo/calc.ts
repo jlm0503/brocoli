@@ -948,6 +948,7 @@ export function ponerAlDia(
 export const ESTATUS_SOLICITUD_LABEL: Record<EstatusSolicitud, string> = {
   generada: "Generada",
   enviada: "Enviada al vivero",
+  parcial: "Recibida parcial",
   recibida: "Planta recibida",
   cancelada: "Cancelada",
 };
@@ -1054,7 +1055,7 @@ export function diferenciaPlantas(l: LineaSolicitud): number {
   return (l.plantasRecibidas ?? l.plantas) - l.plantas;
 }
 
-/** Errores al marcar la planta como recibida. */
+/** Errores al registrar una entrega de planta (completa o parcial). */
 export function validarRecepcionPlanta(
   recibidas: Record<string, number>,
   lineas: LineaSolicitud[],
@@ -1068,8 +1069,71 @@ export function validarRecepcionPlanta(
     const n = recibidas[l.loteId];
     if (n === undefined || !Number.isInteger(n) || n < 0) return `Indica las plantas recibidas del lote ${l.lote}.`;
   }
-  if (!foto) return "La foto de la remisión es obligatoria.";
+  if (lineas.reduce((s, l) => s + (recibidas[l.loteId] ?? 0), 0) <= 0) return "Indica cuántas plantas llegaron.";
+  if (!foto) return "La foto del ticket del vivero es obligatoria.";
   return null;
+}
+
+/** Entregas de una solicitud; las antiguas (una sola recepción) se leen como una entrega. */
+export function entregasSolicitud(s: SolicitudPlanta): EntregaPlanta[] {
+  if (s.entregas) return s.entregas;
+  if (!s.recepcion) return [];
+  return [
+    {
+      ...s.recepcion,
+      recibidas: Object.fromEntries(s.lineas.map((l) => [l.loteId, l.plantasRecibidas ?? 0])),
+    },
+  ];
+}
+
+/** Plantas que faltan por llegar en cada lote de la solicitud. */
+export function faltantesSolicitud(s: Pick<SolicitudPlanta, "lineas">): Record<string, number> {
+  return Object.fromEntries(s.lineas.map((l) => [l.loteId, Math.max(0, l.plantas - (l.plantasRecibidas ?? 0))]));
+}
+
+/**
+ * Suma una entrega a la solicitud. Queda "recibida" cuando ya llegó todo lo pedido (o se cierra
+ * porque no llegará más); si falta planta queda "parcial" y puede recibir otra entrega.
+ */
+export function registrarEntregaPlanta(
+  s: SolicitudPlanta,
+  entrega: EntregaPlanta,
+  cerrar = false,
+): SolicitudPlanta {
+  const lineas = s.lineas.map((l) => ({
+    ...l,
+    plantasRecibidas: (l.plantasRecibidas ?? 0) + (entrega.recibidas[l.loteId] ?? 0),
+  }));
+  const completa = lineas.every((l) => l.plantasRecibidas >= l.plantas);
+  const { fecha, foto, costoPlanta, plantasPorHa } = entrega;
+  return {
+    ...s,
+    lineas,
+    entregas: [...entregasSolicitud(s), entrega],
+    recepcion: { fecha, foto, costoPlanta, plantasPorHa },
+    status: completa || cerrar ? "recibida" : "parcial",
+  };
+}
+
+/**
+ * Al cancelar un lote, sus solicitudes sin planta recibida se cancelan; en una consolidada solo
+ * se quita ese lote. Lo que ya llegó no se toca.
+ */
+export function solicitudesAlCancelarLote(
+  solicitudes: SolicitudPlanta[],
+  loteId: string,
+  hoy: string,
+): SolicitudPlanta[] {
+  return solicitudes.map((s) => {
+    if (s.status !== "generada" && s.status !== "enviada" && s.status !== "parcial") return s;
+    const linea = s.lineas.find((l) => l.loteId === loteId);
+    if (!linea || (linea.plantasRecibidas ?? 0) > 0) return s;
+    const lineas = s.lineas.filter((l) => l.loteId !== loteId);
+    if (lineas.length === 0) return { ...s, status: "cancelada", fechaCancelacion: hoy };
+    const status =
+      s.status === "parcial" && lineas.every((l) => (l.plantasRecibidas ?? 0) >= l.plantas) ? "recibida" : s.status;
+    return { ...s, lineas, status };
+  });
 }
 
 /* ───────────────────────── Fase 2 · Cuenta de planta ───────────────────────── */
@@ -1077,23 +1141,28 @@ export function validarRecepcionPlanta(
 /** Cargos de planta: cada renglón recibido = plantas × costo por planta vigente el día que llegó. */
 export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[] {
   return solicitudes
-    .filter((s) => s.status === "recibida" && s.recepcion)
+    .filter((s) => s.status === "recibida" || s.status === "parcial")
     .flatMap((s) =>
-      s.lineas
-        .filter((l) => (l.plantasRecibidas ?? 0) > 0)
-        .map((l) => ({
-          fecha: s.recepcion!.fecha,
-          tipo: "cargo" as const,
-          monto: redondear(l.plantasRecibidas! * s.recepcion!.costoPlanta),
-          plantas: l.plantasRecibidas!,
-          ha: s.recepcion!.plantasPorHa > 0 ? redondear(l.plantasRecibidas! / s.recepcion!.plantasPorHa, 4) : 0,
-          loteId: l.loteId,
-          ranchoId: l.ranchoId,
-          tablaId: l.tablaId,
-          lote: l.lote,
-          tabla: l.tabla,
-          folio: s.folio,
-        })),
+      entregasSolicitud(s).flatMap((e) =>
+        s.lineas
+          .filter((l) => (e.recibidas[l.loteId] ?? 0) > 0)
+          .map((l) => {
+            const n = e.recibidas[l.loteId]!;
+            return {
+              fecha: e.fecha,
+              tipo: "cargo" as const,
+              monto: redondear(n * e.costoPlanta),
+              plantas: n,
+              ha: e.plantasPorHa > 0 ? redondear(n / e.plantasPorHa, 4) : 0,
+              loteId: l.loteId,
+              ranchoId: l.ranchoId,
+              tablaId: l.tablaId,
+              lote: l.lote,
+              tabla: l.tabla,
+              folio: s.folio,
+            };
+          }),
+      ),
     );
 }
 
