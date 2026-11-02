@@ -185,7 +185,7 @@ interface CampoContextValue {
   marcarSolicitudEnviada: (id: string) => void;
   recibirPlanta: (
     id: string,
-    datos: { recibidas: Record<string, number>; fecha: string; foto: string | undefined },
+    datos: { recibidas: Record<string, number>; fecha: string; foto: string | undefined; cerrar?: boolean },
   ) => string | null;
   cancelarSolicitud: (id: string) => string | null;
   setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number) => void;
