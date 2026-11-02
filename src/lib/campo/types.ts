@@ -180,12 +180,7 @@ export interface Lote {
 }
 
 export type EstatusTabla =
-  | "libre"
-  | "parcial-planeada"
-  | "planeada"
-  | "plantada-parcial"
-  | "plantada"
-  | "en-cosecha";
+  "libre" | "parcial-planeada" | "planeada" | "plantada-parcial" | "plantada" | "en-cosecha";
 
 export type EstatusPedido = "pendiente" | "entregado" | "cancelado";
 
@@ -308,8 +303,7 @@ export interface SolicitudPlanta {
   fechaEnvio?: string | undefined;
   /** Al recibir la planta: fecha, foto de la remisión y valores vigentes ese día. */
   recepcion?:
-    | { fecha: string; foto: string; costoPlanta: number; plantasPorHa: number }
-    | undefined;
+    { fecha: string; foto: string; costoPlanta: number; plantasPorHa: number } | undefined;
   fechaCancelacion?: string | undefined;
   /** Entregas recibidas (parciales o completa). Las solicitudes antiguas solo traen `recepcion`. */
   entregas?: EntregaPlanta[] | undefined;

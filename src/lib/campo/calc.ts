@@ -64,12 +64,19 @@ export function nombreCultivo(cultivos: CultivoCat[], id: Cultivo): string {
 
 /* ───────────────────────── Parámetros con vigencia ───────────────────────── */
 
-export const PARAMETROS_INFO: Record<ClaveParametro, { nombre: string; unidad: string; defecto: number }> = {
+export const PARAMETROS_INFO: Record<
+  ClaveParametro,
+  { nombre: string; unidad: string; defecto: number }
+> = {
   plantasPorHa: { nombre: "Plantas por hectárea (sugerido)", unidad: "plantas", defecto: 60000 },
   costoPlantaHa: { nombre: "Costo de planta por hectárea", unidad: "MXN", defecto: 16200 },
   precioKg: { nombre: "Precio por kg pagable", unidad: "MXN", defecto: 10.5 },
   descuentoViaje: { nombre: "Descuento de planta por viaje", unidad: "MXN", defecto: 10000 },
-  metaKgHa: { nombre: "Meta de rendimiento por ha (alerta si cierra abajo)", unidad: "kg", defecto: 16000 },
+  metaKgHa: {
+    nombre: "Meta de rendimiento por ha (alerta si cierra abajo)",
+    unidad: "kg",
+    defecto: 16000,
+  },
   rollosCintaHa: { nombre: "Rollos de cinta por hectárea", unidad: "rollos", defecto: 2.1 },
   diasSinEvaluacion: { nombre: "Días sin evaluación antes de alerta", unidad: "días", defecto: 3 },
 };
@@ -77,7 +84,11 @@ export const PARAMETROS_INFO: Record<ClaveParametro, { nombre: string; unidad: s
 export const CLAVES_PARAMETRO = Object.keys(PARAMETROS_INFO) as ClaveParametro[];
 
 /** Valor que aplica en `fecha`: el último cambio con fecha de vigencia igual o anterior. */
-export function parametroVigente(params: Parametro[], clave: ClaveParametro, fecha: string): number {
+export function parametroVigente(
+  params: Parametro[],
+  clave: ClaveParametro,
+  fecha: string,
+): number {
   let mejor: Parametro | undefined;
   for (const p of params) {
     if (p.clave !== clave || p.desde > fecha) continue;
@@ -93,7 +104,11 @@ export function costoPorPlanta(params: Parametro[], fecha: string): number {
 }
 
 /** Errores al registrar un nuevo valor de parámetro. */
-export function validarParametro(clave: ClaveParametro, valor: number, desde: string): string | null {
+export function validarParametro(
+  clave: ClaveParametro,
+  valor: number,
+  desde: string,
+): string | null {
   if (!PARAMETROS_INFO[clave]) return "Parámetro desconocido.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return "Indica desde qué fecha aplica.";
   if (!Number.isFinite(valor) || valor < 0) return "El valor debe ser un número mayor o igual a 0.";
@@ -104,7 +119,8 @@ export function validarParametro(clave: ClaveParametro, valor: number, desde: st
 export function precioVigente(p: Producto, fecha: string): number {
   let precio = p.precio;
   let desde = "";
-  for (const c of p.precios ?? []) if (c.desde <= fecha && c.desde >= desde) [precio, desde] = [c.precio, c.desde];
+  for (const c of p.precios ?? [])
+    if (c.desde <= fecha && c.desde >= desde) [precio, desde] = [c.precio, c.desde];
   return precio;
 }
 
@@ -123,7 +139,11 @@ export function plantasFueraDeRango(plantas: number, sugeridas: number): boolean
   return Math.abs(plantas - sugeridas) / sugeridas > TOLERANCIA_PLANTAS + 1e-9;
 }
 
-export function validarPlantas(plantas: number, sugeridas: number, motivo: string | undefined): string | null {
+export function validarPlantas(
+  plantas: number,
+  sugeridas: number,
+  motivo: string | undefined,
+): string | null {
   if (!Number.isInteger(plantas) || plantas <= 0) return "Indica la cantidad de plantas.";
   if (plantasFueraDeRango(plantas, sugeridas) && !motivo?.trim())
     return "Las plantas difieren más de 10% de lo sugerido: escribe el motivo.";
@@ -210,7 +230,11 @@ export function radioValidacion(t: Tabla): number {
   return Math.max(100, Math.round(Math.sqrt((t.hectareas * 10000) / 3.1416) * 1.5));
 }
 
-export function codigoDisponible(productos: Producto[], codigo: string, exceptoId?: string): boolean {
+export function codigoDisponible(
+  productos: Producto[],
+  codigo: string,
+  exceptoId?: string,
+): boolean {
   const c = codigo.trim().toUpperCase();
   return c.length > 0 && !productos.some((p) => p.id !== exceptoId && p.codigo.toUpperCase() === c);
 }
@@ -269,7 +293,12 @@ export function lineasPlaneacion(
   const sem = { ...(recetaEfectiva(receta, adicionales, tablaId)[SEMANA_PLANEACION] ?? {}) };
   if (cinta) {
     const extra = adicionales
-      .filter((a) => a.tablaIds.includes(tablaId) && a.productoId === cinta.productoId && a.semanas.includes(SEMANA_PLANEACION))
+      .filter(
+        (a) =>
+          a.tablaIds.includes(tablaId) &&
+          a.productoId === cinta.productoId &&
+          a.semanas.includes(SEMANA_PLANEACION),
+      )
       .reduce((s, a) => s + a.dosis, 0);
     sem[cinta.productoId] = redondear(cinta.porHa + extra, 4);
   }
@@ -330,7 +359,9 @@ export function finalizarCosechados(lotes: Lote[], semanaActual: number): Lote[]
   return lotes.map((l) => {
     const real = semanaRealLote(l);
     if (l.finalizado || l.cancelado || real === null || pendientesLote(l) > 0) return l;
-    return semanaActual >= real + semanaCosechaLote(l) + SEMANAS_CIERRE ? { ...l, finalizado: true } : l;
+    return semanaActual >= real + semanaCosechaLote(l) + SEMANAS_CIERRE
+      ? { ...l, finalizado: true }
+      : l;
   });
 }
 
@@ -375,7 +406,10 @@ export function estatusTabla(t: Tabla, lotes: Lote[], semanaActual?: number): Es
   const planeadas = hectareasPlaneadas(lotes, t.id);
   const plantadas = hectareasPlantadas(lotes, t.id);
   if (planeadas <= 0) return "libre";
-  if (semanaActual !== undefined && lotesDeTabla(lotes, t.id).some((l) => loteEnCosecha(l, semanaActual)))
+  if (
+    semanaActual !== undefined &&
+    lotesDeTabla(lotes, t.id).some((l) => loteEnCosecha(l, semanaActual))
+  )
     return "en-cosecha";
   if (plantadas > 0) return plantadas >= t.hectareas ? "plantada" : "plantada-parcial";
   return planeadas >= t.hectareas ? "planeada" : "parcial-planeada";
@@ -391,7 +425,11 @@ export const ESTATUS_TABLA_LABEL: Record<EstatusTabla, string> = {
 };
 
 /** Semana de cultivo de la tabla según su primer lote plantado. */
-export function semanaCultivoTabla(lotes: Lote[], tablaId: string, semanaActual: number): number | null {
+export function semanaCultivoTabla(
+  lotes: Lote[],
+  tablaId: string,
+  semanaActual: number,
+): number | null {
   const reales = lotesDeTabla(lotes, tablaId)
     .map(semanaRealLote)
     .filter((w): w is number => w !== null);
@@ -442,7 +480,8 @@ export function validarApartado(
   if (disponibles <= 0) return "Toda la tabla ya está planeada.";
   if (semana < semanaActual) return "No se puede planear en una semana que ya pasó.";
   if (!(ha > 0)) return "Indica cuántas hectáreas se van a plantar.";
-  if (ha > disponibles) return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
+  if (ha > disponibles)
+    return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
   return null;
 }
 
@@ -451,25 +490,38 @@ export function validarApartado(
 const normal = (x: string) => x.trim().toLowerCase();
 
 /** Errores al agregar un elemento con nombre a un catálogo (cultivo, vivero, chofer, problema…). */
-export function validarNombreCatalogo(nombre: string, existentes: { id: string; nombre: string }[], exceptoId?: string): string | null {
+export function validarNombreCatalogo(
+  nombre: string,
+  existentes: { id: string; nombre: string }[],
+  exceptoId?: string,
+): string | null {
   if (!nombre.trim()) return "Escribe el nombre.";
   if (existentes.some((x) => x.id !== exceptoId && normal(x.nombre) === normal(nombre)))
     return `Ya existe ${nombre.trim()}.`;
   return null;
 }
 
-export function validarVariedad(v: Omit<Variedad, "id">, variedades: Variedad[], cultivos: CultivoCat[]): string | null {
+export function validarVariedad(
+  v: Omit<Variedad, "id">,
+  variedades: Variedad[],
+  cultivos: CultivoCat[],
+): string | null {
   if (!cultivos.some((c) => c.id === v.cultivo)) return "Elige el cultivo de la variedad.";
-  const err = validarNombreCatalogo(v.nombre, variedades.filter((x) => x.cultivo === v.cultivo));
+  const err = validarNombreCatalogo(
+    v.nombre,
+    variedades.filter((x) => x.cultivo === v.cultivo),
+  );
   if (err) return err;
-  if (!Number.isInteger(v.cicloDias) || v.cicloDias <= 0) return "Indica los días de plantación a cosecha.";
+  if (!Number.isInteger(v.cicloDias) || v.cicloDias <= 0)
+    return "Indica los días de plantación a cosecha.";
   return null;
 }
 
 /** Errores al agregar un rancho. `null` si es válido. */
 export function validarRancho(nombre: string, ranchos: Rancho[]): string | null {
   if (!nombre.trim()) return "Escribe el nombre del rancho.";
-  if (ranchos.some((r) => normal(r.nombre) === normal(nombre))) return `Ya existe el rancho ${nombre.trim()}.`;
+  if (ranchos.some((r) => normal(r.nombre) === normal(nombre)))
+    return `Ya existe el rancho ${nombre.trim()}.`;
   return null;
 }
 
@@ -499,11 +551,14 @@ export function validarPlantacionPrevia(
   fechaCosecha?: string,
 ): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaPlantacion)) return "Indica la fecha de plantación.";
-  if (fechaPlantacion > hoy) return "La fecha de plantación no puede ser futura; para eso usa Planear lote.";
-  if (fechaCosecha && fechaCosecha <= fechaPlantacion) return "La cosecha debe ser después de la plantación.";
+  if (fechaPlantacion > hoy)
+    return "La fecha de plantación no puede ser futura; para eso usa Planear lote.";
+  if (fechaCosecha && fechaCosecha <= fechaPlantacion)
+    return "La cosecha debe ser después de la plantación.";
   if (!(ha > 0)) return "Indica cuántas hectáreas se plantaron.";
   const disponibles = hectareasDisponibles(t, lotes);
-  if (ha > disponibles) return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
+  if (ha > disponibles)
+    return `Solo quedan ${formatoNum(disponibles)} ha disponibles en esta tabla.`;
   return null;
 }
 
@@ -598,7 +653,9 @@ export function pendientesConInsumos(
   );
 }
 
-export function sumarPorProducto(items: { productoId: string; cantidad: number }[]): Map<string, number> {
+export function sumarPorProducto(
+  items: { productoId: string; cantidad: number }[],
+): Map<string, number> {
   const m = new Map<string, number>();
   for (const i of items) m.set(i.productoId, redondear((m.get(i.productoId) ?? 0) + i.cantidad));
   return m;
@@ -611,7 +668,10 @@ export function descontar(
 ): { productoId: string; cantidad: number }[] {
   const disp = sumarPorProducto(disponibles);
   return necesidad
-    .map((n) => ({ productoId: n.productoId, cantidad: redondear(Math.max(0, n.cantidad - (disp.get(n.productoId) ?? 0))) }))
+    .map((n) => ({
+      productoId: n.productoId,
+      cantidad: redondear(Math.max(0, n.cantidad - (disp.get(n.productoId) ?? 0))),
+    }))
     .filter((n) => n.cantidad > 0);
 }
 
@@ -711,7 +771,10 @@ export function cerrarSemana(lotes: Lote[], semana: number, nuevoId: () => strin
       variedadId: l.variedadId,
       cultivo: l.cultivo,
       cicloDias: l.cicloDias,
-      plantas: l.plantas !== undefined && plantasPlant !== undefined ? l.plantas - plantasPlant : undefined,
+      plantas:
+        l.plantas !== undefined && plantasPlant !== undefined
+          ? l.plantas - plantasPlant
+          : undefined,
       viveroId: l.viveroId,
     });
   }
@@ -824,7 +887,8 @@ export function consolidar(
     const unico = statuses.size === 1 ? [...statuses][0] : undefined;
     return {
       ...c,
-      cantidadPedido: unidad.get(c.productoId) === "rollo" ? Math.ceil(c.cantidad - 1e-9) : c.cantidad,
+      cantidadPedido:
+        unidad.get(c.productoId) === "rollo" ? Math.ceil(c.cantidad - 1e-9) : c.cantidad,
       status: unico ?? "parcial",
     };
   });
@@ -836,7 +900,9 @@ export function consolidarPlaneacion(
   productos: Producto[],
 ): { productoId: string; cantidad: number; cantidadPedido: number }[] {
   const unidad = new Map(productos.map((p) => [p.id, p.unidad]));
-  const suma = sumarPorProducto(pedidos.filter((p) => p.status !== "cancelado").flatMap((p) => p.lineas));
+  const suma = sumarPorProducto(
+    pedidos.filter((p) => p.status !== "cancelado").flatMap((p) => p.lineas),
+  );
   return [...suma.entries()].map(([productoId, cantidad]) => ({
     productoId,
     cantidad,
@@ -861,7 +927,11 @@ export function costoLineas(
 }
 
 /** Costo de los insumos de planeación entregados al lote. */
-export function costoPlaneacionLote(l: Lote, pedidos: PedidoPlaneacion[], productos: Producto[]): number {
+export function costoPlaneacionLote(
+  l: Lote,
+  pedidos: PedidoPlaneacion[],
+  productos: Producto[],
+): number {
   const prod = new Map(productos.map((p) => [p.id, p]));
   const entrega = new Map(pedidos.map((p) => [p.id, p.fechaEntrega ?? p.fecha]));
   return insumosEntregados(l, pedidos).reduce((s, i) => {
@@ -918,7 +988,8 @@ export function corregirFechasLote(
       return { error: "La cosecha debe ser después de la plantación." };
   }
   // Si se plantó en la semana que se planeó (p. ej. plantación ya hecha), la semana planeada se recorre igual.
-  const semanaPlaneada = l.semanaPlaneada === semanaRealLote(l) ? avances[0]!.semana : l.semanaPlaneada;
+  const semanaPlaneada =
+    l.semanaPlaneada === semanaRealLote(l) ? avances[0]!.semana : l.semanaPlaneada;
   return { lote: { ...l, avances, semanaPlaneada, fechaCosecha: cosecha } };
 }
 
@@ -940,7 +1011,8 @@ export function ponerAlDia(
   nuevoId: () => string,
 ): Lote[] {
   let ls = lotes;
-  for (let w = semanaGuardada; w < semanaActual; w++) ls = finalizarCosechados(cerrarSemana(ls, w, nuevoId), w + 1);
+  for (let w = semanaGuardada; w < semanaActual; w++)
+    ls = finalizarCosechados(cerrarSemana(ls, w, nuevoId), w + 1);
   return finalizarCosechados(ls, semanaActual);
 }
 
@@ -964,7 +1036,11 @@ export function siguienteFolio(solicitudes: SolicitudPlanta[]): number {
 
 /** Lotes que ya están en una solicitud vigente (no cancelada). */
 function lotesSolicitados(solicitudes: SolicitudPlanta[]): Set<string> {
-  return new Set(solicitudes.filter((s) => s.status !== "cancelada").flatMap((s) => s.lineas.map((l) => l.loteId)));
+  return new Set(
+    solicitudes
+      .filter((s) => s.status !== "cancelada")
+      .flatMap((s) => s.lineas.map((l) => l.loteId)),
+  );
 }
 
 /**
@@ -1043,7 +1119,11 @@ export function validarPlantasSolicitud(
   return null;
 }
 
-export function totalesSolicitud(s: Pick<SolicitudPlanta, "lineas">): { ha: number; plantas: number; recibidas: number } {
+export function totalesSolicitud(s: Pick<SolicitudPlanta, "lineas">): {
+  ha: number;
+  plantas: number;
+  recibidas: number;
+} {
   return {
     ha: redondear(s.lineas.reduce((a, l) => a + l.ha, 0)),
     plantas: s.lineas.reduce((a, l) => a + l.plantas, 0),
@@ -1068,9 +1148,11 @@ export function validarRecepcionPlanta(
   if (fecha > hoy) return "La fecha de recepción no puede ser futura.";
   for (const l of lineas) {
     const n = recibidas[l.loteId];
-    if (n === undefined || !Number.isInteger(n) || n < 0) return `Indica las plantas recibidas del lote ${l.lote}.`;
+    if (n === undefined || !Number.isInteger(n) || n < 0)
+      return `Indica las plantas recibidas del lote ${l.lote}.`;
   }
-  if (lineas.reduce((s, l) => s + (recibidas[l.loteId] ?? 0), 0) <= 0) return "Indica cuántas plantas llegaron.";
+  if (lineas.reduce((s, l) => s + (recibidas[l.loteId] ?? 0), 0) <= 0)
+    return "Indica cuántas plantas llegaron.";
   if (!foto) return "La foto del ticket del vivero es obligatoria.";
   return null;
 }
@@ -1089,7 +1171,9 @@ export function entregasSolicitud(s: SolicitudPlanta): EntregaPlanta[] {
 
 /** Plantas que faltan por llegar en cada lote de la solicitud. */
 export function faltantesSolicitud(s: Pick<SolicitudPlanta, "lineas">): Record<string, number> {
-  return Object.fromEntries(s.lineas.map((l) => [l.loteId, Math.max(0, l.plantas - (l.plantasRecibidas ?? 0))]));
+  return Object.fromEntries(
+    s.lineas.map((l) => [l.loteId, Math.max(0, l.plantas - (l.plantasRecibidas ?? 0))]),
+  );
 }
 
 /**
@@ -1132,7 +1216,9 @@ export function solicitudesAlCancelarLote(
     const lineas = s.lineas.filter((l) => l.loteId !== loteId);
     if (lineas.length === 0) return { ...s, status: "cancelada", fechaCancelacion: hoy };
     const status =
-      s.status === "parcial" && lineas.every((l) => (l.plantasRecibidas ?? 0) >= l.plantas) ? "recibida" : s.status;
+      s.status === "parcial" && lineas.every((l) => (l.plantasRecibidas ?? 0) >= l.plantas)
+        ? "recibida"
+        : s.status;
     return { ...s, lineas, status };
   });
 }
@@ -1169,7 +1255,9 @@ export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[]
 
 /** Costo real de la planta de un lote (plantas recibidas × costo por planta). */
 export function costoPlantaLote(loteId: string, cargos: MovimientoPlanta[]): number {
-  return cargos.filter((c) => c.tipo === "cargo" && c.loteId === loteId).reduce((s, c) => s + c.monto, 0);
+  return cargos
+    .filter((c) => c.tipo === "cargo" && c.loteId === loteId)
+    .reduce((s, c) => s + c.monto, 0);
 }
 
 export interface ResumenCuentaPlanta {
@@ -1186,7 +1274,11 @@ export interface ResumenCuentaPlanta {
 }
 
 /** Indicadores de la cuenta de planta entre `desde` y `hasta` (incluidos). La cuenta nunca se cierra. */
-export function cuentaPlanta(movs: MovimientoPlanta[], desde: string, hasta: string): ResumenCuentaPlanta {
+export function cuentaPlanta(
+  movs: MovimientoPlanta[],
+  desde: string,
+  hasta: string,
+): ResumenCuentaPlanta {
   const enPeriodo = movs.filter((m) => m.fecha >= desde && m.fecha <= hasta);
   const cargos = enPeriodo.filter((m) => m.tipo === "cargo");
   const abonos = enPeriodo.filter((m) => m.tipo === "abono");
@@ -1202,7 +1294,8 @@ export function cuentaPlanta(movs: MovimientoPlanta[], desde: string, hasta: str
     viajes: abonos.length,
     saldoPeriodo: redondear(totalCargos - totalAbonos),
     saldoAcumulado: redondear(
-      suma(hastaFin.filter((m) => m.tipo === "cargo")) - suma(hastaFin.filter((m) => m.tipo === "abono")),
+      suma(hastaFin.filter((m) => m.tipo === "cargo")) -
+        suma(hastaFin.filter((m) => m.tipo === "abono")),
     ),
     relacion: totalCargos > 0 ? redondear((totalAbonos / totalCargos) * 100, 1) : null,
   };
@@ -1214,7 +1307,13 @@ export function cuentaMensual(
   desde: string,
   hasta: string,
 ): { mes: string; etiqueta: string; cargos: number; descuentos: number; saldo: number }[] {
-  const out: { mes: string; etiqueta: string; cargos: number; descuentos: number; saldo: number }[] = [];
+  const out: {
+    mes: string;
+    etiqueta: string;
+    cargos: number;
+    descuentos: number;
+    saldo: number;
+  }[] = [];
   let y = Number(desde.slice(0, 4));
   let m = Number(desde.slice(5, 7));
   const finY = Number(hasta.slice(0, 4));

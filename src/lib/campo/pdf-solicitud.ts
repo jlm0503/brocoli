@@ -11,12 +11,28 @@ const GRIS: [number, number, number] = [110, 112, 104];
 
 function fechaLarga(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const meses = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
   return `${d} de ${meses[m! - 1]} de ${y}`;
 }
 
 export async function pdfSolicitud(s: SolicitudPlanta): Promise<Blob> {
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const doc = new jsPDF({ unit: "mm", format: "letter" });
   const W = doc.internal.pageSize.getWidth();
   const M = 16;
@@ -76,7 +92,18 @@ export async function pdfSolicitud(s: SolicitudPlanta): Promise<Blob> {
   autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
-    head: [["Rancho", "Tabla", "Lote", "Variedad", "Ha", "Plantas", "Sem. plantación", "Entrega requerida"]],
+    head: [
+      [
+        "Rancho",
+        "Tabla",
+        "Lote",
+        "Variedad",
+        "Ha",
+        "Plantas",
+        "Sem. plantación",
+        "Entrega requerida",
+      ],
+    ],
     body: s.lineas.map((l) => [
       l.rancho,
       l.tabla,
@@ -144,7 +171,11 @@ function descargarBlob(blob: Blob, nombre: string) {
  * WhatsApp, correo) y la app no se cierra; en computadora lo descarga.
  * Regresa `true` si se compartió.
  */
-export async function entregarPdf(blob: Blob, s: SolicitudPlanta, preferirCompartir = false): Promise<boolean> {
+export async function entregarPdf(
+  blob: Blob,
+  s: SolicitudPlanta,
+  preferirCompartir = false,
+): Promise<boolean> {
   const nombre = nombreArchivo(s);
   const file = new File([blob], nombre, { type: "application/pdf" });
   const tactil = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;

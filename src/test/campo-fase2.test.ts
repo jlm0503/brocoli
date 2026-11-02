@@ -6,6 +6,9 @@ import {
   costoPorPlanta,
   cuentaPlanta,
   diferenciaPlantas,
+  faltantesSolicitud,
+  registrarEntregaPlanta,
+  solicitudesAlCancelarLote,
   folioSolicitud,
   lineasSolicitud,
   lotesParaSolicitud,
@@ -46,7 +49,12 @@ function solicitud(p: Partial<SolicitudPlanta> & { lotes: Lote[] }): SolicitudPl
     fecha: "2026-11-02",
     viveroId: "v1",
     vivero: { nombre: "Vivero", contacto: "", telefono: "", correo: "" },
-    lineas: lineasSolicitud(lotes, { ranchos: [], tablas: [], variedades: [], plantasPorHa: 60000 }),
+    lineas: lineasSolicitud(lotes, {
+      ranchos: [],
+      tablas: [],
+      variedades: [],
+      plantasPorHa: 60000,
+    }),
     ingeniero: "Israel",
     status: "generada",
     ...resto,
@@ -67,7 +75,9 @@ describe("Fase 2 · solicitud de planta", () => {
     const vigente = solicitud({ lotes: [c] });
     expect(lotesParaSolicitud([a, arr, c], [vigente]).map((l) => l.id)).toEqual(["a"]);
     // Al cancelar la solicitud, el lote puede pedir planta de nuevo.
-    expect(lotesParaSolicitud([c], [{ ...vigente, status: "cancelada" }]).map((l) => l.id)).toEqual(["c"]);
+    expect(lotesParaSolicitud([c], [{ ...vigente, status: "cancelada" }]).map((l) => l.id)).toEqual(
+      ["c"],
+    );
   });
 
   it("consolidada: mismo vivero y misma semana de plantación", () => {
@@ -81,15 +91,26 @@ describe("Fase 2 · solicitud de planta", () => {
   });
 
   it("sin plantas capturadas, la solicitud lleva ha × 60,000", () => {
-    const [l] = lineasSolicitud([lote({ id: "a", ha: 6 })], { ranchos: [], tablas: [], variedades: [], plantasPorHa: 60000 });
+    const [l] = lineasSolicitud([lote({ id: "a", ha: 6 })], {
+      ranchos: [],
+      tablas: [],
+      variedades: [],
+      plantasPorHa: 60000,
+    });
     expect(l!.plantas).toBe(360000);
   });
 
   it("planta recibida: foto obligatoria y se marca la diferencia contra lo solicitado", () => {
     const s = solicitud({ lotes: [lote({ id: "a" })] });
-    expect(validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-02", "2026-11-02", undefined)).toMatch(/foto/);
-    expect(validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-03", "2026-11-02", "f.jpg")).toMatch(/futura/);
-    expect(validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-02", "2026-11-02", "f.jpg")).toBeNull();
+    expect(
+      validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-02", "2026-11-02", undefined),
+    ).toMatch(/foto/);
+    expect(
+      validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-03", "2026-11-02", "f.jpg"),
+    ).toMatch(/futura/);
+    expect(
+      validarRecepcionPlanta({ a: 290000 }, s.lineas, "2026-11-02", "2026-11-02", "f.jpg"),
+    ).toBeNull();
     expect(diferenciaPlantas({ ...s.lineas[0]!, plantasRecibidas: 290000 })).toBe(-10000);
   });
 });
@@ -121,7 +142,10 @@ describe("Fase 2 · cuenta de planta", () => {
   });
 
   it("el costo por planta es el vigente el día que llegó; un cambio posterior no recalcula", () => {
-    const conCambio: Parametro[] = [...params, { id: "c", clave: "costoPlantaHa", valor: 18000, desde: "2026-12-01" }];
+    const conCambio: Parametro[] = [
+      ...params,
+      { id: "c", clave: "costoPlantaHa", valor: 18000, desde: "2026-12-01" },
+    ];
     expect(costoPorPlanta(conCambio, "2026-11-02")).toBe(0.27);
     expect(costoPorPlanta(conCambio, "2026-12-05")).toBe(0.3);
   });
@@ -157,5 +181,73 @@ describe("Fase 2 · plantas capturadas en la solicitud", () => {
     expect(validarPlantasSolicitud([a], { a: 350000 }, {}, 60000)).toMatch(/1-A.*motivo/);
     expect(validarPlantasSolicitud([a], { a: 350000 }, { a: "Más densidad" }, 60000)).toBeNull();
     expect(validarPlantasSolicitud([a], { a: NaN }, {}, 60000)).toMatch(/plantas/);
+  });
+});
+
+describe("Fase 2 · entregas parciales y lotes cancelados", () => {
+  const entrega = (recibidas: Record<string, number>, fecha = "2026-11-02") => ({
+    fecha,
+    foto: "ticket.jpg",
+    recibidas,
+    costoPlanta: 0.27,
+    plantasPorHa: 60000,
+  });
+
+  it("si llega una parte queda parcial; con la segunda entrega queda recibida", () => {
+    const s = solicitud({ lotes: [lote({ id: "a", ha: 5 })] }); // 300,000 plantas
+    const p1 = registrarEntregaPlanta(s, entrega({ a: 200000 }));
+    expect(p1.status).toBe("parcial");
+    expect(faltantesSolicitud(p1)).toEqual({ a: 100000 });
+    const p2 = registrarEntregaPlanta(p1, entrega({ a: 100000 }, "2026-11-05"));
+    expect(p2.status).toBe("recibida");
+    // Cada entrega es su propio cargo con su fecha.
+    expect(cargosPlanta([p2]).map((c) => [c.fecha, c.monto])).toEqual([
+      ["2026-11-02", 54000],
+      ["2026-11-05", 27000],
+    ]);
+  });
+
+  it("una parcial ya cobra lo que llegó, y se puede cerrar aunque falte", () => {
+    const s = solicitud({ lotes: [lote({ id: "a", ha: 5 })] });
+    const p1 = registrarEntregaPlanta(s, entrega({ a: 200000 }));
+    expect(cargosPlanta([p1])[0]!.monto).toBe(54000);
+    expect(registrarEntregaPlanta(s, entrega({ a: 200000 }), true).status).toBe("recibida");
+  });
+
+  it("la recepción pide foto del ticket y al menos una planta", () => {
+    const s = solicitud({ lotes: [lote({ id: "a" })] });
+    expect(validarRecepcionPlanta({ a: 0 }, s.lineas, "2026-11-02", "2026-11-02", "f.jpg")).toMatch(
+      /cuántas/,
+    );
+    expect(
+      validarRecepcionPlanta({ a: 10 }, s.lineas, "2026-11-02", "2026-11-02", undefined),
+    ).toMatch(/ticket/);
+  });
+
+  it("al cancelar un lote se cancela su solicitud sin recibir; en una consolidada solo sale el lote", () => {
+    const sola = solicitud({ id: "s1", lotes: [lote({ id: "a" })] });
+    const consolidada = solicitud({
+      id: "s2",
+      folio: 2,
+      status: "enviada",
+      lotes: [lote({ id: "b" }), lote({ id: "c" })],
+    });
+    const recibida = {
+      ...registrarEntregaPlanta(
+        solicitud({ id: "s3", folio: 3, lotes: [lote({ id: "a" })] }),
+        entrega({ a: 300000 }),
+      ),
+    };
+    const [r1, r2, r3] = solicitudesAlCancelarLote(
+      [sola, consolidada, recibida],
+      "a",
+      "2026-11-02",
+    );
+    expect(r1!.status).toBe("cancelada");
+    expect(r3!.status).toBe("recibida");
+    const [, r2b] = solicitudesAlCancelarLote([sola, consolidada], "b", "2026-11-02");
+    expect(r2b!.status).toBe("enviada");
+    expect(r2b!.lineas.map((l) => l.loteId)).toEqual(["c"]);
+    expect(r2).toBe(consolidada);
   });
 });
