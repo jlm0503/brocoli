@@ -94,11 +94,15 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
               })()}
               {NAV.find((n) => n.to === path)?.label ?? "Menú"}
             </span>
-            <ChevronDown className={`size-4 transition-transform ${menuAbierto ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`size-4 transition-transform ${menuAbierto ? "rotate-180" : ""}`}
+            />
           </button>
         </div>
 
-        <nav className={`${menuAbierto ? "flex" : "hidden"} flex-col gap-1 px-3 pb-3 lg:flex lg:pb-0`}>
+        <nav
+          className={`${menuAbierto ? "flex" : "hidden"} flex-col gap-1 px-3 pb-3 lg:flex lg:pb-0`}
+        >
           {items.map((item) => {
             const Icon = ICONS[item.to];
             return (
@@ -143,8 +147,8 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
 
           {semanasAdelantadas > 0 && (
             <div className="mb-6 rounded-lg border border-soil/40 bg-soil-soft px-4 py-3 text-sm text-soil-foreground">
-              Estás simulando la semana {semanaActual}. Lo que hagas aquí es práctica y no se guarda; con “Hoy”
-              regresas a los datos reales.
+              Estás simulando la semana {semanaActual}. Lo que hagas aquí es práctica y no se
+              guarda; con “Hoy” regresas a los datos reales.
             </div>
           )}
 
@@ -193,8 +197,8 @@ export function EsperandoPuesto() {
         <Hourglass className="mx-auto size-8 text-soil" />
         <h1 className="mt-4 text-2xl font-semibold">Tu cuenta espera aprobación</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Hola {nombre || user?.email}. El administrador tiene que asignarte tu puesto; cuando lo haga, aquí verás
-          tus pantallas.
+          Hola {nombre || user?.email}. El administrador tiene que asignarte tu puesto; cuando lo
+          haga, aquí verás tus pantallas.
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <Button onClick={() => void recargarPuesto()}>Ya me aprobaron</Button>
@@ -209,7 +213,8 @@ export function EsperandoPuesto() {
 
 /** Adelantar, regresar o volver a la semana real. Lo simulado no se guarda. */
 function ControlSemana({ oscuro = false }: { oscuro?: boolean }) {
-  const { semanaActual, semanasAdelantadas, avanzarSemana, regresarSemana, volverAHoy } = useCampo();
+  const { semanaActual, semanasAdelantadas, avanzarSemana, regresarSemana, volverAHoy } =
+    useCampo();
   const btn = oscuro
     ? "border-sidebar-border bg-sidebar-accent text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
     : "";
