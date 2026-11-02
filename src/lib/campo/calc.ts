@@ -23,6 +23,7 @@ import type {
   Rancho,
   Semaforo,
   SolicitudPlanta,
+  EntregaPlanta,
   Tabla,
   Variedad,
 } from "./types";
