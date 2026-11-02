@@ -12,12 +12,21 @@ import {
   folioSolicitud,
   lineasSolicitud,
   lotesParaSolicitud,
+  pedidosQueLleganEnSemana,
+  plantaQueLlegaEnSemana,
+  semanaDeFecha,
   siguienteFolio,
   validarPlantasSolicitud,
   validarRecepcionPlanta,
   validarSolicitud,
 } from "@/lib/campo/calc";
-import type { Lote, MovimientoPlanta, Parametro, SolicitudPlanta } from "@/lib/campo/types";
+import type {
+  Lote,
+  MovimientoPlanta,
+  Parametro,
+  PedidoPlaneacion,
+  SolicitudPlanta,
+} from "@/lib/campo/types";
 
 function lote(p: Partial<Lote> & { id: string }): Lote {
   return {
@@ -249,5 +258,34 @@ describe("Fase 2 · entregas parciales y lotes cancelados", () => {
     expect(r2b!.status).toBe("enviada");
     expect(r2b!.lineas.map((l) => l.loteId)).toEqual(["c"]);
     expect(r2).toBe(consolidada);
+  });
+});
+
+describe("Lo que llega al rancho", () => {
+  it("la planta llega en la semana de su fecha de entrega; las canceladas no cuentan", () => {
+    const s = solicitud({ lotes: [lote({ id: "a", semanaPlaneada: 47 })] });
+    const semana = semanaDeFecha(s.lineas[0]!.fechaEntrega);
+    expect(plantaQueLlegaEnSemana([s], semana)).toHaveLength(1);
+    expect(plantaQueLlegaEnSemana([s], semana + 1)).toHaveLength(0);
+    expect(plantaQueLlegaEnSemana([{ ...s, status: "cancelada" }], semana)).toHaveLength(0);
+  });
+
+  it("el pedido de planeación llega 2 semanas antes de plantar", () => {
+    const p = {
+      id: "p",
+      loteId: "a",
+      tablaId: "t",
+      ranchoId: "r",
+      semanaPlantacion: 48,
+      ha: 6,
+      lineas: [],
+      fecha: "",
+      ingeniero: "",
+      urgente: false,
+      status: "pendiente",
+    } as unknown as PedidoPlaneacion;
+    expect(pedidosQueLleganEnSemana([p], 46)).toHaveLength(1);
+    expect(pedidosQueLleganEnSemana([p], 47)).toHaveLength(0);
+    expect(pedidosQueLleganEnSemana([{ ...p, status: "cancelado" }], 46)).toHaveLength(0);
   });
 });

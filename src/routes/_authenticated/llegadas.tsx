@@ -24,7 +24,8 @@ export const Route = createFileRoute("/_authenticated/llegadas")({
       { title: "Lo que llega al rancho · Brócoli" },
       {
         name: "description",
-        content: "Insumos, pedidos de planeación y planta que llegan a cada rancho, semana por semana.",
+        content:
+          "Insumos, pedidos de planeación y planta que llegan a cada rancho, semana por semana.",
       },
       { property: "og:title", content: "Lo que llega al rancho · Brócoli" },
       { property: "og:description", content: "Qué recibe cada rancho cada semana." },
@@ -44,15 +45,31 @@ const ESTATUS_INSUMO = {
 } as const;
 
 function Llegadas() {
-  const { semanaActual, ranchos, lotes, tablas, recetas, adicionales, productos, recepciones, pedidos, solicitudes } =
-    useCampo();
+  const {
+    semanaActual,
+    ranchos,
+    lotes,
+    tablas,
+    recetas,
+    adicionales,
+    productos,
+    recepciones,
+    pedidos,
+    solicitudes,
+  } = useCampo();
   const [semana, setSemana] = useState(semanaActual);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const tablaById = useMemo(() => new Map(tablas.map((t) => [t.id, t])), [tablas]);
   const loteById = useMemo(() => new Map(lotes.map((l) => [l.id, l])), [lotes]);
 
   const insumos = useMemo(
-    () => consolidar(lineasSemana(lotes, recetas, adicionales, [semana]), productos, recepciones, semanaActual),
+    () =>
+      consolidar(
+        lineasSemana(lotes, recetas, adicionales, [semana]),
+        productos,
+        recepciones,
+        semanaActual,
+      ),
     [lotes, recetas, adicionales, semana, productos, recepciones, semanaActual],
   );
   const planeacion = pedidosQueLleganEnSemana(pedidos, semana);
@@ -73,20 +90,38 @@ function Llegadas() {
       description="Lo que va a recibir cada rancho en la semana: insumos de la receta, cinta y productos de preparación, y planta del vivero."
       actions={
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="outline" onClick={() => setSemana((w) => w - 1)} aria-label="Semana anterior">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => setSemana((w) => w - 1)}
+            aria-label="Semana anterior"
+          >
             <ChevronLeft />
           </Button>
-          <Button variant={semana === semanaActual ? "default" : "outline"} onClick={() => setSemana(semanaActual)}>
+          <Button
+            variant={semana === semanaActual ? "default" : "outline"}
+            onClick={() => setSemana(semanaActual)}
+          >
             Esta semana
           </Button>
-          <Button size="icon" variant="outline" onClick={() => setSemana((w) => w + 1)} aria-label="Semana siguiente">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => setSemana((w) => w + 1)}
+            aria-label="Semana siguiente"
+          >
             <ChevronRight />
           </Button>
         </div>
       }
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Insumos de la receta" value={insumos.length} hint="Productos por rancho" tone="primary" />
+        <Stat
+          label="Insumos de la receta"
+          value={insumos.length}
+          hint="Productos por rancho"
+          tone="primary"
+        />
         <Stat label="Pedidos de planeación" value={planeacion.length} hint="Cinta y preparación" />
         <Stat
           label="Planta del vivero"
@@ -98,7 +133,8 @@ function Llegadas() {
 
       {semana > semanaActual && (
         <p className="mb-6 rounded-lg bg-secondary px-4 py-3 text-sm text-muted-foreground">
-          Los insumos de la receta solo cuentan lo que ya está plantado; si se planta más, esta semana puede crecer.
+          Los insumos de la receta solo cuentan lo que ya está plantado; si se planta más, esta
+          semana puede crecer.
         </p>
       )}
 
@@ -112,12 +148,17 @@ function Llegadas() {
             const ins = insumos
               .filter((f) => f.ranchoId === r.id)
               .sort((a, b) =>
-                (productoById.get(a.productoId)?.nombre ?? "").localeCompare(productoById.get(b.productoId)?.nombre ?? ""),
+                (productoById.get(a.productoId)?.nombre ?? "").localeCompare(
+                  productoById.get(b.productoId)?.nombre ?? "",
+                ),
               );
             const peds = planeacion.filter((p) => p.ranchoId === r.id);
             const plts = planta.filter((l) => l.ranchoId === r.id);
             return (
-              <section key={r.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+              <section
+                key={r.id}
+                className="overflow-hidden rounded-xl border border-border bg-card shadow-card"
+              >
                 <header className="border-b border-border bg-secondary/60 px-5 py-4">
                   <h2 className="text-2xl font-semibold">{r.nombre}</h2>
                   {r.zona && <p className="text-xs text-muted-foreground">{r.zona}</p>}
@@ -132,7 +173,15 @@ function Llegadas() {
                           detalle={`${l.variedad} · ${l.vivero} · ${folioSolicitud(l.folio)} · entrega ${fechaCorta(l.fechaEntrega)}`}
                           cantidad={`${formatoNum(l.plantas)} plantas`}
                           estatus={
-                            <Badge variant={l.status === "recibida" ? "recibido" : l.status === "generada" ? "pendiente" : "comprado"}>
+                            <Badge
+                              variant={
+                                l.status === "recibida"
+                                  ? "recibido"
+                                  : l.status === "generada"
+                                    ? "pendiente"
+                                    : "comprado"
+                              }
+                            >
                               {ESTATUS_SOLICITUD_LABEL[l.status]}
                             </Badge>
                           }
@@ -141,7 +190,10 @@ function Llegadas() {
                     </Bloque>
                   )}
                   {peds.length > 0 && (
-                    <Bloque icono={<Package className="size-4" />} titulo="Cinta y preparación (para plantar en 2 semanas)">
+                    <Bloque
+                      icono={<Package className="size-4" />}
+                      titulo="Cinta y preparación (para plantar en 2 semanas)"
+                    >
                       {peds.flatMap((p) =>
                         p.lineas.map((x) => {
                           const prod = productoById.get(x.productoId);
@@ -152,7 +204,9 @@ function Llegadas() {
                               detalle={`${tablaById.get(p.tablaId)?.nombre ?? ""} · lote ${loteById.get(p.loteId)?.codigo ?? ""} · planta sem ${p.semanaPlantacion}`}
                               cantidad={`${formatoNum(x.cantidad)} ${prod?.unidad ?? ""}`}
                               estatus={
-                                <Badge variant={p.status === "entregado" ? "recibido" : "pendiente"}>
+                                <Badge
+                                  variant={p.status === "entregado" ? "recibido" : "pendiente"}
+                                >
                                   {p.status === "entregado" ? "Entregado" : "Pendiente"}
                                 </Badge>
                               }
@@ -163,10 +217,15 @@ function Llegadas() {
                     </Bloque>
                   )}
                   {ins.length > 0 && (
-                    <Bloque icono={<FlaskConical className="size-4" />} titulo="Insumos de la receta">
+                    <Bloque
+                      icono={<FlaskConical className="size-4" />}
+                      titulo="Insumos de la receta"
+                    >
                       {ins.map((f) => {
                         const prod = productoById.get(f.productoId);
-                        const tablasTxt = [...new Set(f.lineas.map((l) => tablaById.get(l.tablaId)?.nombre ?? ""))].join(", ");
+                        const tablasTxt = [
+                          ...new Set(f.lineas.map((l) => tablaById.get(l.tablaId)?.nombre ?? "")),
+                        ].join(", ");
                         return (
                           <Fila
                             key={f.productoId}
@@ -189,7 +248,15 @@ function Llegadas() {
   );
 }
 
-function Bloque({ icono, titulo, children }: { icono: React.ReactNode; titulo: string; children: React.ReactNode }) {
+function Bloque({
+  icono,
+  titulo,
+  children,
+}: {
+  icono: React.ReactNode;
+  titulo: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="px-5 py-4">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">

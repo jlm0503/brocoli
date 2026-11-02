@@ -1342,7 +1342,10 @@ export function cuentaMensual(
 /* ───────────────────────── Lo que llega a cada rancho ───────────────────────── */
 
 /** Pedidos de planeación que deben llegar al rancho en la semana (2 semanas antes de plantar). */
-export function pedidosQueLleganEnSemana(pedidos: PedidoPlaneacion[], semana: number): PedidoPlaneacion[] {
+export function pedidosQueLleganEnSemana(
+  pedidos: PedidoPlaneacion[],
+  semana: number,
+): PedidoPlaneacion[] {
   return pedidos.filter((p) => p.status !== "cancelado" && semanaEntregaIdeal(p) === semana);
 }
 

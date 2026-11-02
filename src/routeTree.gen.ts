@@ -17,6 +17,7 @@ import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authenticated/cuenta-planta'
+import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
 import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
@@ -64,6 +65,11 @@ const AuthenticatedCuentaPlantaRoute =
     path: '/cuenta-planta',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedLlegadasRoute = AuthenticatedLlegadasRouteImport.update({
+  id: '/llegadas',
+  path: '/llegadas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
   id: '/paquete',
   path: '/paquete',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
   '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/cuenta-planta'
+    | '/llegadas'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/cuenta-planta'
+    | '/llegadas'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
     | '/_authenticated/cuenta-planta'
+    | '/_authenticated/llegadas'
     | '/_authenticated/paquete'
     | '/_authenticated/parametros'
     | '/_authenticated/planeacion'
@@ -257,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCuentaPlantaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/llegadas': {
+      id: '/_authenticated/llegadas'
+      path: '/llegadas'
+      fullPath: '/llegadas'
+      preLoaderRoute: typeof AuthenticatedLlegadasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/paquete': {
       id: '/_authenticated/paquete'
       path: '/paquete'
@@ -307,6 +326,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedCuentaPlantaRoute: typeof AuthenticatedCuentaPlantaRoute
+  AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
   AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
@@ -320,6 +340,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedCuentaPlantaRoute: AuthenticatedCuentaPlantaRoute,
+  AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
