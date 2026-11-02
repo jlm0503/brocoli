@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { MiCuenta } from "@/components/campo/MiCuenta";
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
 import { NAV, ROLES, type NavPath } from "@/lib/campo/roles";
@@ -121,14 +122,7 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
           <span className="eyebrow !text-ink-foreground/60">{ROLES[role].nombre}</span>
           <div className="mt-1 flex items-center justify-between gap-2">
             <span className="truncate text-sm">{nombre}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 border-sidebar-border bg-sidebar-accent text-xs text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
-              onClick={() => void salir()}
-            >
-              <LogOut /> Salir
-            </Button>
+            <MiCuenta className="h-8 border-sidebar-border bg-sidebar-accent text-xs text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground" />
           </div>
           <span className="eyebrow mt-4 block !text-ink-foreground/60">Simular semana</span>
           <ControlSemana oscuro />
@@ -144,9 +138,7 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
             <div className="ml-auto">
               <ControlSemana />
             </div>
-            <Button size="icon" variant="outline" className="size-8" onClick={() => void salir()} aria-label="Salir">
-              <LogOut />
-            </Button>
+            <MiCuenta className="h-8 text-xs" />
           </div>
 
           {semanasAdelantadas > 0 && (
