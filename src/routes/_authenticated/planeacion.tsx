@@ -563,7 +563,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                           <Badge variant={sp.status === "recibida" ? "recibido" : "comprado"} className="px-1.5 py-0 text-[0.65rem]">
                             <FileText className="mr-1 size-3" />
                             SP-{String(sp.folio).padStart(4, "0")}
-                            {sp.status === "recibida" ? " · planta recibida" : ""}
+                            {sp.status === "recibida" ? " · planta recibida" : sp.status === "parcial" ? " · recibida parcial" : ""}
                           </Badge>
                         );
                       if (!puedenPedir.has(l.id)) return null;
