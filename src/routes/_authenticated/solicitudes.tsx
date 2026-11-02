@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   ESTATUS_SOLICITUD_LABEL,
   diferenciaPlantas,
+  entregasSolicitud,
   fechaCorta,
   folioSolicitud,
   formatoNum,
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/solicitudes")({
 const VARIANTE: Record<EstatusSolicitud, "pendiente" | "comprado" | "recibido" | "cancelado"> = {
   generada: "pendiente",
   enviada: "comprado",
+  parcial: "comprado",
   recibida: "recibido",
   cancelada: "cancelado",
 };
@@ -51,7 +53,7 @@ function Solicitudes() {
   const [recibiendo, setRecibiendo] = useState<SolicitudPlanta | null>(null);
   const lista = [...solicitudes].sort((a, b) => b.folio - a.folio);
   const sinSolicitud = lotesParaSolicitud(lotes, solicitudes);
-  const porRecibir = solicitudes.filter((s) => s.status === "generada" || s.status === "enviada");
+  const porRecibir = solicitudes.filter((s) => s.status === "generada" || s.status === "enviada" || s.status === "parcial");
 
   return (
     <AppShell
@@ -69,7 +71,7 @@ function Solicitudes() {
         <Stat label="Lotes sin solicitud" value={String(sinSolicitud.length)} hint="Planeados, sin plantar" tone="soil" />
         <Stat
           label="Por recibir"
-          value={`${formatoNum(porRecibir.reduce((s, x) => s + totalesSolicitud(x).plantas, 0))} plantas`}
+          value={`${formatoNum(porRecibir.reduce((s, x) => s + totalesSolicitud(x).plantas - totalesSolicitud(x).recibidas, 0))} plantas`}
           hint={`${porRecibir.length} solicitudes`}
         />
         <Stat label="Solicitudes" value={String(solicitudes.length)} tone="primary" />
@@ -99,6 +101,8 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
   const semanas = [...new Set(s.lineas.map((l) => l.semanaPlantacion))].join(", ");
   const dif = s.status === "recibida" ? tot.recibidas - tot.plantas : 0;
   const abierta = s.status === "generada" || s.status === "enviada";
+  const parcial = s.status === "parcial";
+  const entregas = entregasSolicitud(s);
 
   // El PDF se arma de antemano: así el botón lo entrega al instante y el celular no pierde el toque.
   const blob = usePdfSolicitud(s);
@@ -155,6 +159,11 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
       <p className="num mt-2 text-right text-sm">
         {formatoNum(tot.ha)} ha · {formatoNum(tot.plantas)} plantas
       </p>
+      {parcial && (
+        <p className="num mt-1 text-right text-xs font-medium text-soil-foreground">
+          Llegaron {formatoNum(tot.recibidas)} · faltan {formatoNum(Math.max(0, tot.plantas - tot.recibidas))} plantas
+        </p>
+      )}
       {s.status === "recibida" && s.recepcion && (
         <p className="mt-1 text-right text-xs text-muted-foreground">
           Recibida {fechaCorta(s.recepcion.fecha)}
@@ -183,17 +192,30 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             <Send /> Marcar enviada
           </Button>
         )}
-        {abierta && (
+        {(abierta || parcial) && (
           <Button size="sm" onClick={onRecibir}>
-            <PackageCheck /> Planta recibida
+            <PackageCheck /> {parcial ? "Recibir lo que falta" : "Planta recibida"}
           </Button>
         )}
-        {s.recepcion?.foto && (
-          <VerEvidencia foto={s.recepcion.foto} title="Ver remisión">
+        {entregas.map((e, i) => (
+          <VerEvidencia key={i} foto={e.foto} title={`Ticket del vivero · ${fechaCorta(e.fecha)}`}>
             <span className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm hover:bg-secondary">
-              <ImageIcon className="size-4" /> Remisión
+              <ImageIcon className="size-4" /> Ticket{entregas.length > 1 ? ` ${fechaCorta(e.fecha)}` : ""}
             </span>
           </VerEvidencia>
+        ))}
+        {parcial && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const err = cancelarSolicitud(s.id);
+              if (err) toast.error(err);
+              else toast(`${folioSolicitud(s.folio)} cerrada con la planta que llegó.`);
+            }}
+          >
+            <X /> Ya no llegará más
+          </Button>
         )}
         {abierta && (
           <Button

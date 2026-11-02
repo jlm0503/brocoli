@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  entregasSolicitud,
+  faltantesSolicitud,
   fechaCorta,
   fechaEnSemana,
   folioSolicitud,
@@ -398,28 +400,36 @@ function PlantasLote({
   );
 }
 
-/** Captura la planta que llegó: cantidad real por lote, fecha y foto de la remisión. */
+/** Captura la planta que llegó (toda o una parte): cantidad por lote, fecha y foto del ticket del vivero. */
 export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: SolicitudPlanta | null; onClose: () => void }) {
   const { hoy, recibirPlanta } = useCampo();
   const [fecha, setFecha] = useState(hoy);
+  const faltan = solicitud ? faltantesSolicitud(solicitud) : {};
   const [cant, setCant] = useState<Record<string, string>>(() =>
-    Object.fromEntries((solicitud?.lineas ?? []).map((l) => [l.loteId, String(l.plantas)])),
+    Object.fromEntries(Object.entries(faltan).map(([id, n]) => [id, String(n)])),
   );
   const [foto, setFoto] = useState<string | undefined>();
+  const [cerrar, setCerrar] = useState(false);
   if (!solicitud) return null;
 
   const recibidas = Object.fromEntries(
-    solicitud.lineas.map((l) => [l.loteId, cant[l.loteId] === "" ? NaN : Number(cant[l.loteId] ?? l.plantas)]),
+    solicitud.lineas.map((l) => [l.loteId, cant[l.loteId] === "" ? NaN : Number(cant[l.loteId] ?? faltan[l.loteId])]),
   );
   const error = validarRecepcionPlanta(recibidas, solicitud.lineas, fecha, hoy, foto);
   const tot = totalesSolicitud(solicitud);
-  const totalRecibido = solicitud.lineas.reduce((s, l) => s + (Number.isFinite(recibidas[l.loteId]) ? recibidas[l.loteId]! : 0), 0);
+  const ahora = solicitud.lineas.reduce((s, l) => s + (Number.isFinite(recibidas[l.loteId]) ? recibidas[l.loteId]! : 0), 0);
+  const totalRecibido = tot.recibidas + ahora;
   const dif = totalRecibido - tot.plantas;
+  const previas = entregasSolicitud(solicitud).length;
 
   const guardar = () => {
-    const err = recibirPlanta(solicitud.id, { recibidas, fecha, foto });
+    const err = recibirPlanta(solicitud.id, { recibidas, fecha, foto, cerrar });
     if (err) return void toast.error(err);
-    toast.success(`Planta de ${folioSolicitud(solicitud.folio)} recibida`);
+    toast.success(
+      dif < 0 && !cerrar
+        ? `Entrega registrada en ${folioSolicitud(solicitud.folio)}. Faltan ${formatoNum(-dif)} plantas por llegar.`
+        : `Planta de ${folioSolicitud(solicitud.folio)} recibida`,
+    );
     onClose();
   };
 
@@ -431,7 +441,9 @@ export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: Solicit
             Planta recibida · {folioSolicitud(solicitud.folio)}
           </DialogTitle>
           <DialogDescription>
-            Captura lo que realmente llegó. El cargo a la cuenta de planta se hace con estas plantas.
+            Captura lo que llegó en esta entrega. Si el vivero mandó solo una parte, registra lo que llegó y la
+            solicitud queda abierta para lo que falta.
+            {previas > 0 && ` Ya van ${previas} entrega${previas > 1 ? "s" : ""}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -447,53 +459,54 @@ export function RecibirPlantaDialog({ solicitud, onClose }: { solicitud: Solicit
             />
           </div>
           <ul className="space-y-3">
-            {solicitud.lineas.map((l) => {
-              const n = recibidas[l.loteId]!;
-              const d = Number.isFinite(n) ? n - l.plantas : 0;
-              return (
-                <li key={l.loteId} className="grid grid-cols-[1fr_9rem] items-end gap-3">
-                  <Label htmlFor={`rp-${l.loteId}`} className="flex-col items-start gap-0.5">
-                    <span>
-                      {l.tabla} · lote {l.lote}
-                    </span>
-                    <span className="num text-xs font-normal text-muted-foreground">
-                      Solicitadas {formatoNum(l.plantas)}
-                      {d !== 0 && (
-                        <span className={d < 0 ? "text-destructive" : "text-primary"}>
-                          {" "}
-                          · {d > 0 ? "+" : ""}
-                          {formatoNum(d)}
-                        </span>
-                      )}
-                    </span>
-                  </Label>
-                  <Input
-                    id={`rp-${l.loteId}`}
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    step="1"
-                    value={cant[l.loteId] ?? String(l.plantas)}
-                    onChange={(e) => setCant((c) => ({ ...c, [l.loteId]: e.target.value }))}
-                    className="num"
-                  />
-                </li>
-              );
-            })}
+            {solicitud.lineas.map((l) => (
+              <li key={l.loteId} className="grid grid-cols-[1fr_9rem] items-end gap-3">
+                <Label htmlFor={`rp-${l.loteId}`} className="flex-col items-start gap-0.5">
+                  <span>
+                    {l.tabla} · lote {l.lote}
+                  </span>
+                  <span className="num text-xs font-normal text-muted-foreground">
+                    Solicitadas {formatoNum(l.plantas)}
+                    {(l.plantasRecibidas ?? 0) > 0 && ` · ya llegaron ${formatoNum(l.plantasRecibidas!)}`}
+                    {" · "}faltan {formatoNum(faltan[l.loteId] ?? 0)}
+                  </span>
+                </Label>
+                <Input
+                  id={`rp-${l.loteId}`}
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={cant[l.loteId] ?? String(faltan[l.loteId] ?? 0)}
+                  onChange={(e) => setCant((c) => ({ ...c, [l.loteId]: e.target.value }))}
+                  className="num"
+                />
+              </li>
+            ))}
           </ul>
           <p className="num rounded-lg bg-secondary p-3 text-sm">
-            Recibidas {formatoNum(totalRecibido)} de {formatoNum(tot.plantas)} solicitadas
+            Con esta entrega: {formatoNum(totalRecibido)} de {formatoNum(tot.plantas)} solicitadas
             {dif !== 0 && (
               <span className={dif < 0 ? "font-medium text-destructive" : "font-medium text-primary"}>
                 {" "}
-                · diferencia {dif > 0 ? "+" : ""}
-                {formatoNum(dif)}
+                · {dif < 0 ? `faltan ${formatoNum(-dif)}` : `+${formatoNum(dif)} de más`}
               </span>
             )}
           </p>
+          {dif < 0 && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <Checkbox checked={cerrar} onCheckedChange={(c) => setCerrar(c === true)} className="mt-0.5" />
+              <span>
+                Ya no llegará más planta de esta solicitud
+                <span className="block text-xs text-muted-foreground">
+                  Si no lo marcas, queda como recibida parcial esperando lo que falta.
+                </span>
+              </span>
+            </label>
+          )}
           <div className="space-y-2">
-            <Label>Foto de la remisión</Label>
-            <FotoInput foto={foto} setFoto={setFoto} texto="Tomar o subir foto de la remisión" alt="Remisión" />
+            <Label>Foto del ticket del vivero</Label>
+            <FotoInput foto={foto} setFoto={setFoto} texto="Tomar o subir foto del ticket" alt="Ticket del vivero" />
           </div>
           {error && foto && <p className="text-sm text-destructive">{error}</p>}
         </div>
