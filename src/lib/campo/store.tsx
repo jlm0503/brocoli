@@ -210,6 +210,8 @@ interface CampoContextValue {
     opciones: OpcionesPlaneacion,
   ) => { error: string } | { solicitud: SolicitudPlanta | null };
   cancelarLote: (loteId: string) => void;
+  /** Super Admin o ingeniero: marca el lote como "Cosecha terminada" (libera la tabla). */
+  terminarCosecha: (loteId: string) => string | null;
   /** Solo administrador: corrige fechas de plantación (por avance) y cosecha (vacía = ciclo). */
   corregirFechas: (
     loteId: string,
@@ -293,7 +295,7 @@ async function escribir(coleccion: Coleccion, antes: Mapa, ahora: Mapa, userId: 
 }
 
 export function CampoProvider({ children }: { children: ReactNode }) {
-  const { user, role, nombre, lista } = useSesion();
+  const { user, role, roles, nombre, lista } = useSesion();
   const [cargado, setCargado] = useState(false);
   const [semanaActual, setSemanaActual] = useState(() => semanaDeFecha(hoyEnMexico()));
   const [hoy, setHoy] = useState(() => hoyEnMexico());
@@ -1001,6 +1003,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  const terminarCosecha = useCallback(
+    (loteId: string) => {
+      if (!roles.some((r) => r === "admin" || r === "ingeniero"))
+        return "Solo el Super Admin o el ingeniero marcan la cosecha terminada.";
+      const l = lotes.find((x) => x.id === loteId);
+      if (!l || l.cancelado || l.avances.length === 0) return "Lote no encontrado.";
+      if (l.cosechaTerminada) return "Este lote ya tiene la cosecha terminada.";
+      setLotes((ls) => ls.map((x) => (x.id === loteId ? { ...x, finalizado: true, cosechaTerminada: hoy } : x)));
+      return null;
+    },
+    [roles, lotes, hoy],
+  );
+
   const cancelarLote = useCallback(
     (loteId: string) => {
       const l = lotes.find((x) => x.id === loteId);
@@ -1438,6 +1453,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarAdicional,
       planearLote,
       cancelarLote,
+      terminarCosecha,
       corregirFechas,
       registrarAvance,
       entregarPedido,
@@ -1498,6 +1514,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarAdicional,
       planearLote,
       cancelarLote,
+      terminarCosecha,
       corregirFechas,
       registrarAvance,
       entregarPedido,
