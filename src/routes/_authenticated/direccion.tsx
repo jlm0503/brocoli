@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { fechaCorta, reporteMensualAlertas } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useCampo } from "@/lib/campo/store";
 import type { AlertaDireccion } from "@/lib/campo/types";
 
@@ -32,7 +33,12 @@ const TIPO: Record<AlertaDireccion["tipo"], string> = {
 };
 
 function Direccion() {
-  const { alertasDireccion, extraordinarios } = useFase3();
+  const { alertasDireccion: todas, extraordinarios } = useFase3();
+  const { tablas } = useCampo();
+  const { pasaRancho, pasaTabla } = useFiltro();
+  const alertasDireccion = todas.filter(
+    (a) => pasaRancho(a.ranchoId) && tablas.some((t) => a.tablaIds.includes(t.id) && pasaTabla(t)),
+  );
   const abiertas = alertasDireccion.filter((a) => a.status === "abierta").sort((a, b) => b.fecha.localeCompare(a.fecha));
   const cerradas = alertasDireccion.filter((a) => a.status === "notificada").sort((a, b) => b.fecha.localeCompare(a.fecha));
   const reporte = reporteMensualAlertas(alertasDireccion);
@@ -43,6 +49,7 @@ function Direccion() {
       eyebrow="Dirección · incumplimientos"
       title="Alertas a Dirección"
       description="Llegan solas cuando una foto queda fuera de las tablas o cuando un ingeniero no reporta la mejora 3 días después de lo esperado. Ciérralas al hablar con el ingeniero."
+      filtros
     >
       <section className="mb-10">
         <h2 className="mb-3 text-2xl font-semibold">

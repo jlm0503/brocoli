@@ -42,6 +42,7 @@ import {
   formatoNum,
   sumarPorProducto,
 } from "@/lib/campo/calc";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useCampo } from "@/lib/campo/store";
 import type { AlertaInsumos, OpcionTardia } from "@/lib/campo/types";
 
@@ -73,8 +74,16 @@ const OPCION_LABEL: Record<OpcionTardia, string> = {
 };
 
 function Alertas() {
-  const { ranchos, alertas, tardias, tablas, productos, inventarioAlmacen, hoy } = useCampo();
+  const { ranchos, alertas: todasAlertas, tardias: todasTardias, tablas, lotes, productos, inventarioAlmacen, hoy } =
+    useCampo();
+  const { pasaRancho, pasaCultivo } = useFiltro();
   const [resolviendo, setResolviendo] = useState<AlertaInsumos | null>(null);
+  /** Pasa el filtro según el rancho y el cultivo del lote que originó el registro. */
+  const pasa = (r: { ranchoId: string; tablaId: string; loteCodigo: string }) =>
+    pasaRancho(r.ranchoId) &&
+    pasaCultivo(lotes.find((l) => l.tablaId === r.tablaId && l.codigo === r.loteCodigo)?.cultivo);
+  const alertas = todasAlertas.filter(pasa);
+  const tardias = todasTardias.filter(pasa);
   const abiertas = alertas.filter((a) => a.status === "abierta");
   const cerradas = alertas.filter((a) => a.status !== "abierta");
   const precio = new Map(productos.map((p) => [p.id, p]));
@@ -93,6 +102,7 @@ function Alertas() {
       eyebrow="Administrador · almacén general"
       title="Alertas y reportes"
       description={`Cuando se cancela un lote con insumos ya entregados, quedan por reubicar o recolectar. Las alertas abiertas más de ${DIAS_ALERTA_ROJA} días se marcan en rojo.`}
+      filtros
     >
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Stat label="Alertas abiertas" value={abiertas.length} tone="soil" />
