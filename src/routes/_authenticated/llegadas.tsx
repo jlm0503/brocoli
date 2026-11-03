@@ -58,6 +58,7 @@ function Llegadas() {
     pedidos,
     solicitudes,
   } = useCampo();
+  const ranchos = useRanchosVisibles(todosRanchos);
   const [semana, setSemana] = useState(semanaActual);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const tablaById = useMemo(() => new Map(tablas.map((t) => [t.id, t])), [tablas]);

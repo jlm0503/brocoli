@@ -397,3 +397,12 @@ export function useAvisos(): Partial<Record<NavPath, number>> {
     "/direccion": ctx.alertasDireccion.filter((a) => a.status === "abierta").length,
   };
 }
+
+/** Ranchos que puede ver la persona (ingeniero: solo los asignados). */
+export function useRanchosVisibles<T extends { id: string }>(ranchos: T[]): T[] {
+  const { ranchosVisibles } = useFase3();
+  return useMemo(
+    () => (ranchosVisibles ? ranchos.filter((r) => ranchosVisibles.includes(r.id)) : ranchos),
+    [ranchos, ranchosVisibles],
+  );
+}
