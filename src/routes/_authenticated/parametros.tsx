@@ -16,12 +16,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CLAVES_PARAMETRO,
   PARAMETROS_INFO,
   costoPorPlanta,
   fechaCorta,
   formatoNum,
+  nombreCultivo,
+  registroVigente,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import type { ClaveParametro } from "@/lib/campo/types";
@@ -55,33 +58,65 @@ function valorConUnidad(clave: ClaveParametro, v: number): string {
   return `${formatoNum(v)} ${u}`;
 }
 
+const GENERAL = "general";
+
 function Parametros() {
-  const { parametros, parametro, hoy, eliminarParametro } = useCampo();
+  const { parametros, parametro, hoy, eliminarParametro, variedades, cultivos } = useCampo();
   const [editando, setEditando] = useState<ClaveParametro | null>(null);
+  const [vista, setVista] = useState(GENERAL);
+  const variedad = variedades.find((v) => v.id === vista);
+  const vid = variedad?.id;
+  const claves = vid ? CLAVES_PARAMETRO.filter((c) => PARAMETROS_INFO[c].porVariedad) : CLAVES_PARAMETRO;
+  const ordenadas = [...variedades].sort(
+    (a, b) => a.cultivo.localeCompare(b.cultivo) || a.nombre.localeCompare(b.nombre),
+  );
 
   return (
     <AppShell
       path="/parametros"
       eyebrow="Administrador · parámetros"
       title="Parámetros"
-      description="Cada cambio aplica desde su fecha de vigencia. Lo que ya se registró antes (lotes planeados, pedidos, costos) conserva el valor que tenía."
+      description="Cada cambio aplica desde su fecha de vigencia. Lo que ya se registró antes (lotes planeados, pedidos, costos) conserva el valor que tenía. Cada variedad puede tener sus propios valores; si no tiene, usa el general."
     >
+      <Tabs value={vista} onValueChange={setVista} className="mb-6">
+        <TabsList className="h-auto flex-wrap justify-start">
+          <TabsTrigger value={GENERAL}>General</TabsTrigger>
+          {ordenadas.map((v) => (
+            <TabsTrigger key={v.id} value={v.id}>
+              {nombreCultivo(cultivos, v.cultivo)} · {v.nombre}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      {variedad && (
+        <p className="mb-6 text-sm text-muted-foreground">
+          Valores solo para {nombreCultivo(cultivos, variedad.cultivo).toLowerCase()} {variedad.nombre}. Descuento por
+          viaje y días sin evaluación son iguales para todos y se cambian en General.
+        </p>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
-        {CLAVES_PARAMETRO.map((clave) => {
+        {claves.map((clave) => {
           const info = PARAMETROS_INFO[clave];
           const historial = parametros
-            .filter((p) => p.clave === clave)
+            .filter((p) => p.clave === clave && (p.variedadId ?? undefined) === vid)
             .sort((a, b) => b.desde.localeCompare(a.desde));
-          const vigente = parametro(clave);
+          const vigente = parametro(clave, undefined, vid);
+          const propio = vid ? registroVigente(parametros, clave, hoy, vid) : undefined;
           return (
             <article key={clave} className="rounded-xl border border-border bg-card p-5 shadow-card">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="eyebrow">{info.nombre}</p>
                   <p className="num mt-1 text-3xl font-semibold">{valorConUnidad(clave, vigente)}</p>
+                  {vid && !propio && (
+                    <p className="mt-1 text-xs text-muted-foreground">Usa el valor general</p>
+                  )}
+                  {!vid && info.porVariedad && (
+                    <p className="mt-1 text-xs text-muted-foreground">Para variedades sin valor propio</p>
+                  )}
                   {clave === "costoPlantaHa" && (
                     <p className="num mt-1 text-xs text-muted-foreground">
-                      Costo por planta: ${formatoNum(costoPorPlanta(parametros, hoy))} (costo por ha ÷ plantas por ha)
+                      Costo por planta: ${formatoNum(costoPorPlanta(parametros, hoy, vid))} (costo por ha ÷ plantas por ha)
                     </p>
                   )}
                 </div>
@@ -101,7 +136,7 @@ function Parametros() {
                         <span className="flex items-center gap-1">
                           {esVigente && <Badge variant="verde">vigente</Badge>}
                           {p.desde > hoy && <Badge variant="pendiente">programado</Badge>}
-                          {historial.length > 1 && (
+                          {(vid || historial.length > 1) && (
                             <Button
                               size="icon"
                               variant="ghost"
@@ -125,12 +160,27 @@ function Parametros() {
           );
         })}
       </div>
-      <NuevoValor clave={editando} onClose={() => setEditando(null)} />
+      <NuevoValor
+        clave={editando}
+        variedadId={vid}
+        etiqueta={variedad ? `${nombreCultivo(cultivos, variedad.cultivo)} ${variedad.nombre}` : undefined}
+        onClose={() => setEditando(null)}
+      />
     </AppShell>
   );
 }
 
-function NuevoValor({ clave, onClose }: { clave: ClaveParametro | null; onClose: () => void }) {
+function NuevoValor({
+  clave,
+  variedadId,
+  etiqueta,
+  onClose,
+}: {
+  clave: ClaveParametro | null;
+  variedadId?: string | undefined;
+  etiqueta?: string | undefined;
+  onClose: () => void;
+}) {
   const { guardarParametro, hoy } = useCampo();
   const [valor, setValor] = useState("");
   const [desde, setDesde] = useState("");
@@ -138,9 +188,11 @@ function NuevoValor({ clave, onClose }: { clave: ClaveParametro | null; onClose:
 
   const guardar = () => {
     if (!clave) return;
-    const err = guardarParametro(clave, Number(valor), fecha);
+    const err = guardarParametro(clave, Number(valor), fecha, variedadId);
     if (err) return void toast.error(err);
-    toast.success(`${PARAMETROS_INFO[clave].nombre}: ${valorConUnidad(clave, Number(valor))} desde el ${fechaLarga(fecha)}`);
+    toast.success(
+      `${PARAMETROS_INFO[clave].nombre}${etiqueta ? ` (${etiqueta})` : ""}: ${valorConUnidad(clave, Number(valor))} desde el ${fechaLarga(fecha)}`,
+    );
     setValor("");
     setDesde("");
     onClose();
@@ -150,7 +202,10 @@ function NuevoValor({ clave, onClose }: { clave: ClaveParametro | null; onClose:
     <Dialog open={!!clave} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">{clave && PARAMETROS_INFO[clave].nombre}</DialogTitle>
+          <DialogTitle className="font-display text-2xl">
+            {clave && PARAMETROS_INFO[clave].nombre}
+            {etiqueta && <span className="block text-base font-normal text-muted-foreground">{etiqueta}</span>}
+          </DialogTitle>
           <DialogDescription>El nuevo valor aplica desde la fecha que elijas; lo anterior no cambia.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
