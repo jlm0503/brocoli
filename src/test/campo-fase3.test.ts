@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cantidadesExtraordinario,
   consumoTeorico,
+  costoExtraLote,
   radioValidacion,
   siguienteFolioExtra,
   urgenteSurtido,
@@ -62,6 +63,18 @@ describe("Fase 3 · solicitud extraordinaria", () => {
 describe("Fase 3 · devoluciones", () => {
   it("consumo teórico = entregado − retirado", () => {
     expect(consumoTeorico(30, 4.5)).toBe(25.5);
+  });
+});
+
+describe("Fase 3 · costo del extraordinario", () => {
+  const reparto = [{ tablaId: "a", loteId: "l1", ha: 4, monto: 6313.6 }];
+  it("autorizado pero sin surtir no suma al lote", () => {
+    const ex = { status: "autorizada", reparto } as unknown as Extraordinario;
+    expect(costoExtraLote("l1", [ex])).toBe(0);
+  });
+  it("surtido sí suma al lote", () => {
+    const ex = { status: "surtida", reparto } as unknown as Extraordinario;
+    expect(costoExtraLote("l1", [ex])).toBe(6313.6);
   });
 });
 
