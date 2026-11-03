@@ -105,7 +105,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
         alertas_direccion: setAlertas,
         devoluciones: setDevs,
         asignaciones: setAsigs,
-      }) as Record<Col3, (f: (xs: { id: string }[]) => { id: string }[]) => void>,
+      }) as unknown as Record<Col3, (f: (xs: { id: string }[]) => { id: string }[]) => void>,
     [],
   );
 
