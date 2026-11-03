@@ -17,6 +17,7 @@ import {
   plantaQueLlegaEnSemana,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
+import { useRanchosVisibles } from "@/lib/campo/fase3";
 
 export const Route = createFileRoute("/_authenticated/llegadas")({
   head: () => ({
@@ -47,7 +48,7 @@ const ESTATUS_INSUMO = {
 function Llegadas() {
   const {
     semanaActual,
-    ranchos,
+    ranchos: todosRanchos,
     lotes,
     tablas,
     recetas,

@@ -80,6 +80,7 @@ import {
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { useCampo } from "@/lib/campo/store";
+import { useRanchosVisibles } from "@/lib/campo/fase3";
 import type {
   CultivoCat,
   Lote,
@@ -122,7 +123,8 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 }
 
 function Planeacion() {
-  const { ranchos, tablas, lotes, semanaActual } = useCampo();
+  const { ranchos: todosRanchos, tablas, lotes, semanaActual } = useCampo();
+  const ranchos = useRanchosVisibles(todosRanchos);
   const [ranchoElegido, setRancho] = useState("");
   const rancho = ranchos.some((r) => r.id === ranchoElegido)
     ? ranchoElegido
@@ -316,7 +318,8 @@ function RegistrarPlantacionDialog({
   ranchoInicial: string;
   onClose: () => void;
 }) {
-  const { ranchos, tablas, lotes, variedades, cultivos, hoy, registrarPlantacion } = useCampo();
+  const { ranchos: todosRanchos, tablas, lotes, variedades, cultivos, hoy, registrarPlantacion } = useCampo();
+  const ranchos = useRanchosVisibles(todosRanchos);
   const [ranchoId, setRanchoId] = useState(ranchoInicial);
   const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
   const [tablaElegida, setTablaId] = useState("");
