@@ -21,6 +21,9 @@ import {
   Bug,
   Siren,
   Undo2,
+  Tractor,
+  Receipt,
+  TrendingUp,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -48,6 +51,9 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/extraordinarios": Bug,
   "/direccion": Siren,
   "/devoluciones": Undo2,
+  "/cosecha": Tractor,
+  "/liquidacion": Receipt,
+  "/rendimiento": TrendingUp,
 };
 
 interface AppShellProps {

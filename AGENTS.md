@@ -23,3 +23,5 @@
 - Crop-dependent parametros may carry a `variedadId`; `parametroVigente(..., variedadId)` uses the variety's own dated value and falls back to the general one (keys flagged `porVariedad` in `PARAMETROS_INFO`). Why: each variety has its own plant density, costs and goals without duplicating the global ones.
 - Rancho/cultivo screen filters live in `src/lib/campo/filtro.tsx` (view-only, per device) and screens opt in with `AppShell filtros` plus `useFiltro()`; they never change stored data. Why: one consistent filter across screens that can't affect what is saved.
 
+
+- Harvest data (`viajes`, `liquidaciones`) lives in `src/lib/campo/cosecha.tsx` (same per-item save/realtime pattern as `fase3.tsx`); a trip stores its evaluation with the kg split, dated price and discount it used, and lot direct cost comes from the shared `useCostos` in `src/lib/campo/costos.tsx`. Why: settlements and yields must never recalculate past trips, and Estatus and Rendimiento must show the same cost.

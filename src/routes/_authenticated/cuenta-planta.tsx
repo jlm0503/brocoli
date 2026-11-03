@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  abonosViajes,
   cargosPlanta,
   cuentaMensual,
   cuentaPlanta,
@@ -16,6 +17,7 @@ import {
   formatoNum,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
+import { useCosecha } from "@/lib/campo/cosecha";
 import { useFiltro } from "@/lib/campo/filtro";
 import type { MovimientoPlanta } from "@/lib/campo/types";
 
@@ -50,14 +52,15 @@ function rangoMes(hoy: string, atras = 0): [string, string] {
 
 function CuentaPlanta() {
   const { solicitudes, hoy } = useCampo();
+  const { viajes } = useCosecha();
   const { pasaLoteId } = useFiltro();
-  // Los abonos ($ por viaje evaluado) llegan con la captura de cosecha.
+  // Abonos: el descuento de planta de cada viaje evaluado.
   const movimientos = useMemo<MovimientoPlanta[]>(
     () =>
-      cargosPlanta(solicitudes)
+      [...cargosPlanta(solicitudes), ...abonosViajes(viajes)]
         .filter((m) => !m.loteId || pasaLoteId(m.loteId))
         .sort((a, b) => a.fecha.localeCompare(b.fecha)),
-    [solicitudes, pasaLoteId],
+    [solicitudes, viajes, pasaLoteId],
   );
   const primero = movimientos[0]?.fecha ?? `${hoy.slice(0, 4)}-01-01`;
   const atajos: { label: string; rango: [string, string] }[] = [

@@ -16,15 +16,18 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
+import { Route as AuthenticatedCosechaRouteImport } from './routes/_authenticated/cosecha'
 import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authenticated/cuenta-planta'
 import { Route as AuthenticatedDevolucionesRouteImport } from './routes/_authenticated/devoluciones'
 import { Route as AuthenticatedDireccionRouteImport } from './routes/_authenticated/direccion'
 import { Route as AuthenticatedExtraordinariosRouteImport } from './routes/_authenticated/extraordinarios'
+import { Route as AuthenticatedLiquidacionRouteImport } from './routes/_authenticated/liquidacion'
 import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
 import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
 import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
+import { Route as AuthenticatedRendimientoRouteImport } from './routes/_authenticated/rendimiento'
 import { Route as AuthenticatedSolicitudesRouteImport } from './routes/_authenticated/solicitudes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
@@ -62,6 +65,11 @@ const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
   path: '/compras',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCosechaRoute = AuthenticatedCosechaRouteImport.update({
+  id: '/cosecha',
+  path: '/cosecha',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCuentaPlantaRoute =
   AuthenticatedCuentaPlantaRouteImport.update({
     id: '/cuenta-planta',
@@ -83,6 +91,12 @@ const AuthenticatedExtraordinariosRoute =
   AuthenticatedExtraordinariosRouteImport.update({
     id: '/extraordinarios',
     path: '/extraordinarios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLiquidacionRoute =
+  AuthenticatedLiquidacionRouteImport.update({
+    id: '/liquidacion',
+    path: '/liquidacion',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedLlegadasRoute = AuthenticatedLlegadasRouteImport.update({
@@ -110,6 +124,12 @@ const AuthenticatedRanchosRoute = AuthenticatedRanchosRouteImport.update({
   path: '/ranchos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRendimientoRoute =
+  AuthenticatedRendimientoRouteImport.update({
+    id: '/rendimiento',
+    path: '/rendimiento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSolicitudesRoute =
   AuthenticatedSolicitudesRouteImport.update({
     id: '/solicitudes',
@@ -129,15 +149,18 @@ export interface FileRoutesByFullPath {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/cosecha': typeof AuthenticatedCosechaRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
+  '/rendimiento': typeof AuthenticatedRendimientoRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -148,15 +171,18 @@ export interface FileRoutesByTo {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/cosecha': typeof AuthenticatedCosechaRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
+  '/rendimiento': typeof AuthenticatedRendimientoRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -169,15 +195,18 @@ export interface FileRoutesById {
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
+  '/_authenticated/cosecha': typeof AuthenticatedCosechaRoute
   '/_authenticated/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/_authenticated/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/_authenticated/direccion': typeof AuthenticatedDireccionRoute
   '/_authenticated/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/_authenticated/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
   '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
   '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
+  '/_authenticated/rendimiento': typeof AuthenticatedRendimientoRoute
   '/_authenticated/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -190,15 +219,18 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/cosecha'
     | '/cuenta-planta'
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/liquidacion'
     | '/llegadas'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
     | '/ranchos'
+    | '/rendimiento'
     | '/solicitudes'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
@@ -209,15 +241,18 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/cosecha'
     | '/cuenta-planta'
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/liquidacion'
     | '/llegadas'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
     | '/ranchos'
+    | '/rendimiento'
     | '/solicitudes'
     | '/usuarios'
   id:
@@ -229,15 +264,18 @@ export interface FileRouteTypes {
     | '/_authenticated/alertas'
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
+    | '/_authenticated/cosecha'
     | '/_authenticated/cuenta-planta'
     | '/_authenticated/devoluciones'
     | '/_authenticated/direccion'
     | '/_authenticated/extraordinarios'
+    | '/_authenticated/liquidacion'
     | '/_authenticated/llegadas'
     | '/_authenticated/paquete'
     | '/_authenticated/parametros'
     | '/_authenticated/planeacion'
     | '/_authenticated/ranchos'
+    | '/_authenticated/rendimiento'
     | '/_authenticated/solicitudes'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
@@ -300,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedComprasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cosecha': {
+      id: '/_authenticated/cosecha'
+      path: '/cosecha'
+      fullPath: '/cosecha'
+      preLoaderRoute: typeof AuthenticatedCosechaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cuenta-planta': {
       id: '/_authenticated/cuenta-planta'
       path: '/cuenta-planta'
@@ -326,6 +371,13 @@ declare module '@tanstack/react-router' {
       path: '/extraordinarios'
       fullPath: '/extraordinarios'
       preLoaderRoute: typeof AuthenticatedExtraordinariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/liquidacion': {
+      id: '/_authenticated/liquidacion'
+      path: '/liquidacion'
+      fullPath: '/liquidacion'
+      preLoaderRoute: typeof AuthenticatedLiquidacionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/llegadas': {
@@ -363,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRanchosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/rendimiento': {
+      id: '/_authenticated/rendimiento'
+      path: '/rendimiento'
+      fullPath: '/rendimiento'
+      preLoaderRoute: typeof AuthenticatedRendimientoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/solicitudes': {
       id: '/_authenticated/solicitudes'
       path: '/solicitudes'
@@ -384,15 +443,18 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedCosechaRoute: typeof AuthenticatedCosechaRoute
   AuthenticatedCuentaPlantaRoute: typeof AuthenticatedCuentaPlantaRoute
   AuthenticatedDevolucionesRoute: typeof AuthenticatedDevolucionesRoute
   AuthenticatedDireccionRoute: typeof AuthenticatedDireccionRoute
   AuthenticatedExtraordinariosRoute: typeof AuthenticatedExtraordinariosRoute
+  AuthenticatedLiquidacionRoute: typeof AuthenticatedLiquidacionRoute
   AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
   AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
   AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
+  AuthenticatedRendimientoRoute: typeof AuthenticatedRendimientoRoute
   AuthenticatedSolicitudesRoute: typeof AuthenticatedSolicitudesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
@@ -401,15 +463,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
+  AuthenticatedCosechaRoute: AuthenticatedCosechaRoute,
   AuthenticatedCuentaPlantaRoute: AuthenticatedCuentaPlantaRoute,
   AuthenticatedDevolucionesRoute: AuthenticatedDevolucionesRoute,
   AuthenticatedDireccionRoute: AuthenticatedDireccionRoute,
   AuthenticatedExtraordinariosRoute: AuthenticatedExtraordinariosRoute,
+  AuthenticatedLiquidacionRoute: AuthenticatedLiquidacionRoute,
   AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
+  AuthenticatedRendimientoRoute: AuthenticatedRendimientoRoute,
   AuthenticatedSolicitudesRoute: AuthenticatedSolicitudesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }

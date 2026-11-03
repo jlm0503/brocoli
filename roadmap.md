@@ -12,7 +12,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Pedido de planeación con semáforo, planeación tardía, cancelación con alerta
 - [x] Entregar N / Comprar N+2 con rollos redondeados y estatus por renglón
 - [ ] Receta de coliflor (la manda el usuario)
-- [ ] Nombre real de la congeladora (lo da el usuario)
+- [x] Nombre real de la congeladora: Ultracongelados
 - [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
 - [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
 
@@ -23,7 +23,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Costo real de planta en el costo del lote
 - [x] Caso de prueba Fase 2 (300,000 plantas → $81,000; 2 viajes → saldo $61,000, 24.7%)
 - [ ] Logo real de Ultra Farms (lo da el usuario) y qué fechas abarca una "temporada"
-## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones (lista, esperando confirmación)
+## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones (cerrada por el usuario, 3 nov)
 - [x] Puestos: Super Admin, Administrador, Autorizador, Ingeniero (solo sus ranchos), Compras, Almacén, Dirección; varios por persona
 - [x] Extraordinarios con 3+ fotos de cámara, GPS y validación por radio; autorizar / con cambios / rechazar; aviso rojo a 1 día
 - [x] Reporte de mejora; alertas a Dirección (ubicación no válida, mejora no entregada +3 días) y reporte mensual
@@ -31,8 +31,17 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] Avisos push al celular (pendiente: hoy son avisos dentro de la app)
 - [ ] Ubicación GPS de tablas (Fase 7); mientras, las fotos salen "no verificable"
 - [x] Prueba completa con datos de prueba (3 nov): "Rancho Prueba", tablas Prueba 1-4, variedad "Prueba", EX-0001 a EX-0005, una devolución; el ingeniero Prueba quedó asignado solo a Rancho Prueba
-- [ ] Borrar los datos de prueba cuando Jimena lo pida (ids prueba-*, rancho prueba-rancho, ex-* de ese rancho, alertas y devolución ligadas)
-## Fase 4 — Cosecha: salidas, evaluación, panel, liquidación semanal, rendimiento, calidad
+- [ ] Borrar los datos de prueba cuando Jimena lo pida (por ahora se quedan para pruebas; incluye Chofer Prueba y viaje PRUEBA-V1) (ids prueba-*, rancho prueba-rancho, ex-* de ese rancho, alertas y devolución ligadas)
+## Fase 4 — Cosecha (lista, esperando confirmación)
+- [x] Salida del embarque sin kilos (folio, fecha/hora, chofer, lotes, foto de la hoja); lote cerrado solo Super Admin con motivo
+- [x] Evaluación: kg brutos/pagables, calificación, problemas, reporte; reparto por ha o ajuste del Super Admin; merma, bruto, descuento, neto
+- [x] Descuento por viaje abona a la Cuenta de planta
+- [x] Panel de cosecha con semana, indicadores, semáforo de meta y "Cosecha terminada"; alerta de viaje sin evaluar a 3 días
+- [x] Liquidación jueves a miércoles con pago real, comprobante, estatus, Excel y PDF
+- [x] Rendimiento y retorno por lote/tabla/rancho/ingeniero, gráfica contra meta, ranking; reporte de calidad
+- [x] Caso de prueba Fase 4 en pruebas automáticas
+- [ ] Salidas sin señal (va con el modo offline de la Fase 7)
+- [ ] Permisos de captura de cosecha editables por puesto (hoy solo Super Admin)
 ## Fase 5 — Cierre de ciclo, históricos, captura histórica
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
