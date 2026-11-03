@@ -16,14 +16,20 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
 - [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
 
-## Fase 2 — Solicitud de planta (PDF) y cuenta de planta (lista, esperando confirmación)
+## Fase 2 — Solicitud de planta (PDF) y cuenta de planta (cerrada por el usuario)
 - [x] Solicitud de planta por lote o consolidada (vivero + semana), folio SP-0001, PDF, compartir, reimprimir
 - [x] Estatus Generada / Enviada / Planta recibida (cantidad, fecha, foto, diferencia) / Cancelada; arrastrados no generan
 - [x] Cuenta de planta: cargos al recibir planta, abonos por viaje evaluado (llegan en Fase 4), indicadores, gráfica mensual
 - [x] Costo real de planta en el costo del lote
 - [x] Caso de prueba Fase 2 (300,000 plantas → $81,000; 2 viajes → saldo $61,000, 24.7%)
 - [ ] Logo real de Ultra Farms (lo da el usuario) y qué fechas abarca una "temporada"
-## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones
+## Fase 3 — Roles múltiples, extraordinarios, alertas a Dirección, devoluciones (lista, esperando confirmación)
+- [x] Puestos: Super Admin, Administrador, Autorizador, Ingeniero (solo sus ranchos), Compras, Almacén, Dirección; varios por persona
+- [x] Extraordinarios con 3+ fotos de cámara, GPS y validación por radio; autorizar / con cambios / rechazar; aviso rojo a 1 día
+- [x] Reporte de mejora; alertas a Dirección (ubicación no válida, mejora no entregada +3 días) y reporte mensual
+- [x] Devoluciones semanales con foto; se restan del costo del lote; consumo teórico por tabla
+- [ ] Avisos push al celular (pendiente: hoy son avisos dentro de la app)
+- [ ] Ubicación GPS de tablas (Fase 7); mientras, las fotos salen "no verificable"
 ## Fase 4 — Cosecha: salidas, evaluación, panel, liquidación semanal, rendimiento, calidad
 ## Fase 5 — Cierre de ciclo, históricos, captura histórica
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real

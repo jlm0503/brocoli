@@ -17,6 +17,9 @@ import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authenticated/cuenta-planta'
+import { Route as AuthenticatedDevolucionesRouteImport } from './routes/_authenticated/devoluciones'
+import { Route as AuthenticatedDireccionRouteImport } from './routes/_authenticated/direccion'
+import { Route as AuthenticatedExtraordinariosRouteImport } from './routes/_authenticated/extraordinarios'
 import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
 import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
@@ -65,6 +68,23 @@ const AuthenticatedCuentaPlantaRoute =
     path: '/cuenta-planta',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDevolucionesRoute =
+  AuthenticatedDevolucionesRouteImport.update({
+    id: '/devoluciones',
+    path: '/devoluciones',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDireccionRoute = AuthenticatedDireccionRouteImport.update({
+  id: '/direccion',
+  path: '/direccion',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExtraordinariosRoute =
+  AuthenticatedExtraordinariosRouteImport.update({
+    id: '/extraordinarios',
+    path: '/extraordinarios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLlegadasRoute = AuthenticatedLlegadasRouteImport.update({
   id: '/llegadas',
   path: '/llegadas',
@@ -110,6 +130,9 @@ export interface FileRoutesByFullPath {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/devoluciones': typeof AuthenticatedDevolucionesRoute
+  '/direccion': typeof AuthenticatedDireccionRoute
+  '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
@@ -126,6 +149,9 @@ export interface FileRoutesByTo {
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/devoluciones': typeof AuthenticatedDevolucionesRoute
+  '/direccion': typeof AuthenticatedDireccionRoute
+  '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
@@ -144,6 +170,9 @@ export interface FileRoutesById {
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
+  '/_authenticated/devoluciones': typeof AuthenticatedDevolucionesRoute
+  '/_authenticated/direccion': typeof AuthenticatedDireccionRoute
+  '/_authenticated/extraordinarios': typeof AuthenticatedExtraordinariosRoute
   '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
   '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
@@ -162,6 +191,9 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/cuenta-planta'
+    | '/devoluciones'
+    | '/direccion'
+    | '/extraordinarios'
     | '/llegadas'
     | '/paquete'
     | '/parametros'
@@ -178,6 +210,9 @@ export interface FileRouteTypes {
     | '/catalogos'
     | '/compras'
     | '/cuenta-planta'
+    | '/devoluciones'
+    | '/direccion'
+    | '/extraordinarios'
     | '/llegadas'
     | '/paquete'
     | '/parametros'
@@ -195,6 +230,9 @@ export interface FileRouteTypes {
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
     | '/_authenticated/cuenta-planta'
+    | '/_authenticated/devoluciones'
+    | '/_authenticated/direccion'
+    | '/_authenticated/extraordinarios'
     | '/_authenticated/llegadas'
     | '/_authenticated/paquete'
     | '/_authenticated/parametros'
@@ -269,6 +307,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCuentaPlantaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/devoluciones': {
+      id: '/_authenticated/devoluciones'
+      path: '/devoluciones'
+      fullPath: '/devoluciones'
+      preLoaderRoute: typeof AuthenticatedDevolucionesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/direccion': {
+      id: '/_authenticated/direccion'
+      path: '/direccion'
+      fullPath: '/direccion'
+      preLoaderRoute: typeof AuthenticatedDireccionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/extraordinarios': {
+      id: '/_authenticated/extraordinarios'
+      path: '/extraordinarios'
+      fullPath: '/extraordinarios'
+      preLoaderRoute: typeof AuthenticatedExtraordinariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/llegadas': {
       id: '/_authenticated/llegadas'
       path: '/llegadas'
@@ -326,6 +385,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedCuentaPlantaRoute: typeof AuthenticatedCuentaPlantaRoute
+  AuthenticatedDevolucionesRoute: typeof AuthenticatedDevolucionesRoute
+  AuthenticatedDireccionRoute: typeof AuthenticatedDireccionRoute
+  AuthenticatedExtraordinariosRoute: typeof AuthenticatedExtraordinariosRoute
   AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
   AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
@@ -340,6 +402,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedCuentaPlantaRoute: AuthenticatedCuentaPlantaRoute,
+  AuthenticatedDevolucionesRoute: AuthenticatedDevolucionesRoute,
+  AuthenticatedDireccionRoute: AuthenticatedDireccionRoute,
+  AuthenticatedExtraordinariosRoute: AuthenticatedExtraordinariosRoute,
   AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,

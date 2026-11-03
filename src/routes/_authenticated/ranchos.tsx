@@ -18,6 +18,8 @@ import {
   cargosPlanta,
   costoLineas,
   costoPlantaLote,
+  costoExtraLote,
+  costoDevolucionesLote,
   precioVigente,
   costoPlaneacionLote,
   esArrastrado,
@@ -42,6 +44,7 @@ import {
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { useCampo } from "@/lib/campo/store";
+import { useFase3 } from "@/lib/campo/fase3";
 import type { EstatusTabla, LineaDemanda, Lote, Tabla, Variedad } from "@/lib/campo/types";
 
 const nombreDe = (variedades: Variedad[], id: string) => variedades.find((v) => v.id === id)?.nombre ?? id;
@@ -81,6 +84,7 @@ const TILE: Record<EstatusTabla, string> = {
 
 function useCostos() {
   const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes } = useCampo();
+  const { extraordinarios, devoluciones } = useFase3();
   return useMemo(() => {
     const cargos = cargosPlanta(solicitudes);
     const plantaLote = (loteId: string) => costoPlantaLote(loteId, cargos);
@@ -96,12 +100,19 @@ function useCostos() {
       const lote = lotes.find((x) => x.id === loteId);
       const semanal = costoLineas(porLote.get(loteId) ?? [], productos, recepciones);
       // Planta: costo real (plantas recibidas × costo por planta). Los descuentos por viaje no se cargan al lote.
-      return semanal + (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0) + plantaLote(loteId);
+      // Extraordinarios autorizados (por ha) suman; lo que el Almacén retiró se resta.
+      return (
+        semanal +
+        (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0) +
+        plantaLote(loteId) +
+        costoExtraLote(loteId, extraordinarios) -
+        costoDevolucionesLote(loteId, devoluciones)
+      );
     };
     const costoTabla = (tablaId: string) =>
       lotes.filter((l) => l.tablaId === tablaId).reduce((s, l) => s + costoLote(l.id), 0);
     return { porLote, costoLote, costoTabla, plantaLote };
-  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes]);
+  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes, extraordinarios, devoluciones]);
 }
 
 function Ranchos() {

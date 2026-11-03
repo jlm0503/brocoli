@@ -22,6 +22,13 @@
       "when": 1793569712968,
       "tag": "0002_solicitudes_de_planta",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793725150275,
+      "tag": "0003_fase3_puestos_extraordinarios",
+      "breakpoints": true
     }
   ]
 }

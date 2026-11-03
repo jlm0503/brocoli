@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
+import { ExtrasCompras } from "@/components/campo/Extraordinarios";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,6 +103,7 @@ function Compras() {
           </TabsTrigger>
           <TabsTrigger value="entregar">Entregar esta semana · {semanaActual}</TabsTrigger>
           <TabsTrigger value="comprar">Comprar para semana {semanaActual + 2}</TabsTrigger>
+          <TabsTrigger value="extra">Extraordinarios autorizados</TabsTrigger>
         </TabsList>
         <TabsContent value="planeacion">
           <PedidosPlaneacion />
@@ -111,6 +113,9 @@ function Compras() {
         </TabsContent>
         <TabsContent value="comprar">
           <ListaSemana semana={semanaActual + 2} modo="comprar" />
+        </TabsContent>
+        <TabsContent value="extra">
+          <ExtrasCompras />
         </TabsContent>
       </Tabs>
     </AppShell>

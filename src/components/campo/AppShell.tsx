@@ -18,13 +18,17 @@ import {
   Sprout,
   Truck,
   Users,
+  Bug,
+  Siren,
+  Undo2,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { MiCuenta } from "@/components/campo/MiCuenta";
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
-import { NAV, ROLES, type NavPath } from "@/lib/campo/roles";
+import { useAvisos } from "@/lib/campo/fase3";
+import { NAV, ROLES, puedeVer, type NavPath } from "@/lib/campo/roles";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 
@@ -40,6 +44,9 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/solicitudes": FileText,
   "/cuenta-planta": Wallet,
   "/llegadas": Truck,
+  "/extraordinarios": Bug,
+  "/direccion": Siren,
+  "/devoluciones": Undo2,
 };
 
 interface AppShellProps {
@@ -53,7 +60,8 @@ interface AppShellProps {
 
 export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
   const { ready, semanaActual, hoy, semanasAdelantadas } = useCampo();
-  const { lista, user, role, nombre, salir } = useSesion();
+  const { lista, user, role, roles, nombre } = useSesion();
+  const avisos = useAvisos();
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   if (!lista) return <div className="min-h-screen bg-background" />;
@@ -66,8 +74,8 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
       </div>
     );
 
-  const allowed = NAV.find((n) => n.to === path)?.roles.includes(role);
-  const items = NAV.filter((n) => n.roles.includes(role));
+  const allowed = puedeVer(roles, path);
+  const items = NAV.filter((n) => puedeVer(roles, n.to));
 
   return (
     <div className="min-h-screen bg-background lg:grid lg:grid-cols-[260px_1fr]">
@@ -119,13 +127,18 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
               >
                 <Icon className="size-4" />
                 {item.label}
+                {(avisos[item.to] ?? 0) > 0 && (
+                  <span className="num ml-auto rounded-full bg-destructive px-1.5 text-[0.65rem] text-destructive-foreground">
+                    {avisos[item.to]}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
         <div className="mt-auto hidden border-t border-sidebar-border p-4 lg:block">
-          <span className="eyebrow !text-ink-foreground/60">{ROLES[role].nombre}</span>
+          <span className="eyebrow !text-ink-foreground/60">{roles.map((r) => ROLES[r].nombre).join(" · ")}</span>
           <div className="mt-1 flex items-center justify-between gap-2">
             <span className="truncate text-sm">{nombre}</span>
             <MiCuenta className="h-8 border-sidebar-border bg-sidebar-accent text-xs text-ink-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground" />
@@ -139,7 +152,7 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
         <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-12">
           <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
             <span className="min-w-0 truncate text-xs text-muted-foreground">
-              {nombre} · {ROLES[role].nombre}
+              {nombre} · {roles.map((r) => ROLES[r].nombre).join(" · ")}
             </span>
             <div className="ml-auto">
               <ControlSemana />

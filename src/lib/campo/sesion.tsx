@@ -23,6 +23,8 @@ interface SesionValue {
   nombre: string;
   /** Puesto asignado por el administrador; null = espera aprobación. */
   role: Role | null;
+  /** Todos los puestos de la persona. */
+  roles: Role[];
   salir: () => Promise<void>;
   recargarPuesto: () => Promise<void>;
 }
@@ -38,11 +40,13 @@ export function SesionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [nombre, setNombre] = useState("");
   const [role, setRole] = useState<Role | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [lista, setLista] = useState(false);
 
   const cargarPuesto = useCallback(async (u: User | null) => {
     if (!u) {
       setRole(null);
+      setRoles([]);
       setNombre("");
       return;
     }
@@ -50,7 +54,9 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", u.id),
       supabase.from("profiles").select("nombre").eq("id", u.id).maybeSingle(),
     ]);
-    setRole(puestoPrincipal((roles.data ?? []).map((r) => r.role)));
+    const mios = (roles.data ?? []).map((r) => r.role as Role);
+    setRoles(mios);
+    setRole(puestoPrincipal(mios));
     setNombre(
       perfil.data?.nombre || (u.user_metadata?.["nombre"] as string | undefined) || u.email || "",
     );
@@ -81,14 +87,15 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setRole(null);
+    setRoles([]);
     await router.navigate({ to: "/auth", replace: true });
   }, [router]);
 
   const recargarPuesto = useCallback(() => cargarPuesto(user), [cargarPuesto, user]);
 
   const value = useMemo(
-    () => ({ lista, user, nombre, role, salir, recargarPuesto }),
-    [lista, user, nombre, role, salir, recargarPuesto],
+    () => ({ lista, user, nombre, role, roles, salir, recargarPuesto }),
+    [lista, user, nombre, role, roles, salir, recargarPuesto],
   );
   return <SesionContext.Provider value={value}>{children}</SesionContext.Provider>;
 }

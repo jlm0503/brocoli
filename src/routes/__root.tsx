@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SesionProvider } from "@/lib/campo/sesion";
 import { CampoProvider } from "@/lib/campo/store";
+import { Fase3Provider } from "@/lib/campo/fase3";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -135,8 +136,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <SesionProvider>
         <CampoProvider>
-          <Outlet />
-          <Toaster position="bottom-right" />
+          <Fase3Provider>
+            <Outlet />
+            <Toaster position="bottom-right" />
+          </Fase3Provider>
         </CampoProvider>
       </SesionProvider>
     </QueryClientProvider>
