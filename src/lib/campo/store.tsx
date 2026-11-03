@@ -149,7 +149,7 @@ interface CampoContextValue {
   problemas: ProblemaCalidad[];
   parametros: Parametro[];
   /** Valor vigente de un parámetro en la fecha de hoy (o la indicada). */
-  parametro: (clave: ClaveParametro, fecha?: string) => number;
+  parametro: (clave: ClaveParametro, fecha?: string, variedadId?: string) => number;
   guardarParametro: (clave: ClaveParametro, valor: number, desde: string, variedadId?: string) => string | null;
   eliminarParametro: (id: string) => void;
   agregarSimple: (
