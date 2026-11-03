@@ -68,6 +68,8 @@ export interface Parametro {
   clave: ClaveParametro;
   valor: number;
   desde: string;
+  /** Si trae variedad, aplica solo a esa variedad; si no, es el valor general. */
+  variedadId?: string | undefined;
 }
 
 /** Variedad sembrada. Su ciclo define la fecha estimada de cosecha y hasta qué semana aplica la receta. */
@@ -278,6 +280,8 @@ export interface EntregaPlanta {
   /** Valores vigentes el día que llegó. */
   costoPlanta: number;
   plantasPorHa: number;
+  /** Valores de la variedad de cada lote el día que llegó (mandan sobre los de arriba). */
+  porLote?: Record<string, { costoPlanta: number; plantasPorHa: number }> | undefined;
 }
 
 /** Renglón de la solicitud: copia de los datos del lote al generarla. */

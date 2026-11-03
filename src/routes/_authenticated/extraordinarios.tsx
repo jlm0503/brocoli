@@ -37,6 +37,7 @@ import {
   urgenteSurtido,
 } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
+import { useFiltro } from "@/lib/campo/filtro";
 import { tiene } from "@/lib/campo/roles";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
@@ -63,8 +64,12 @@ const RESULTADOS: Record<ResultadoMejora, string> = { mejoro: "Mejoró", parcial
 
 function Extraordinarios() {
   const { roles, user } = useSesion();
-  const { extraordinarios } = useFase3();
-  const { hoy } = useCampo();
+  const { extraordinarios: todos } = useFase3();
+  const { hoy, tablas } = useCampo();
+  const { pasaRancho, pasaTabla } = useFiltro();
+  const extraordinarios = todos.filter(
+    (e) => pasaRancho(e.ranchoId) && tablas.some((t) => e.tablaIds.includes(t.id) && pasaTabla(t)),
+  );
   const autoriza = tiene(roles, "admin", "autorizador");
   const ingeniero = tiene(roles, "ingeniero");
   const [nueva, setNueva] = useState(false);
@@ -84,6 +89,7 @@ function Extraordinarios() {
       path="/extraordinarios"
       eyebrow="Plaga · gusano · helada"
       title="Solicitudes extraordinarias"
+      filtros
       description="Toda solicitud entra como “Por autorizar” y no llega a Compras hasta que se autoriza. Las fotos se toman en el momento y se revisa que estén dentro de las tablas."
       actions={
         ingeniero || autoriza ? (

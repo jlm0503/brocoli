@@ -80,6 +80,7 @@ import {
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useRanchosVisibles } from "@/lib/campo/fase3";
 import type {
   CultivoCat,
@@ -123,8 +124,8 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 }
 
 function Planeacion() {
-  const { ranchos: todosRanchos, tablas, lotes, semanaActual } = useCampo();
-  const ranchos = useRanchosVisibles(todosRanchos);
+  const { tablas, lotes, semanaActual } = useCampo();
+  const { ranchos, pasaTabla, pasaCultivo } = useFiltro();
   const [ranchoElegido, setRancho] = useState("");
   const rancho = ranchos.some((r) => r.id === ranchoElegido)
     ? ranchoElegido
@@ -134,8 +135,8 @@ function Planeacion() {
   const [solicitando, setSolicitando] = useState(false);
   const [lista, setLista] = useState<SolicitudPlanta | null>(null);
 
-  const delRancho = tablas.filter((t) => t.ranchoId === rancho);
-  const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado);
+  const delRancho = tablas.filter((t) => t.ranchoId === rancho && pasaTabla(t, { libres: true }));
+  const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado && pasaCultivo(l.cultivo));
   const plantadasSemana = lotesRancho
     .flatMap((l) => l.avances)
     .filter((a) => a.semana === semanaActual)
@@ -152,6 +153,7 @@ function Planeacion() {
       eyebrow={`Ingenieros · semana ${semanaActual}`}
       title="Planeación y avance"
       description={`Planea la tabla completa o por lotes en distintas semanas, idealmente con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana pasa a un lote pendiente.`}
+      filtros
       actions={
         tablas.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -761,7 +763,7 @@ function PlanearDialog({
   const haNum = Number(ha);
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
-  const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa"));
+  const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa", undefined, variedad?.id));
   const plantas =
     porHaTxt !== null
       ? Math.round(Number(porHaTxt) * (haNum > 0 ? haNum : 0))
@@ -771,8 +773,8 @@ function PlanearDialog({
   const fueraDeRango = plantasFueraDeRango(plantas, sugeridas);
   const entregaPlanta = fechaEntrega || fechaEnSemana(w, 0);
   const cinta = useMemo(
-    () => cintaPlaneacion(productos, parametro("rollosCintaHa")),
-    [productos, parametro],
+    () => cintaPlaneacion(productos, parametro("rollosCintaHa", undefined, variedad?.id)),
+    [productos, parametro, variedad?.id],
   );
   const paquete = useMemo(
     () =>
@@ -950,7 +952,8 @@ function PlanearDialog({
               className="num"
             />
             <p className="text-xs text-muted-foreground">
-              Sugerido: {formatoNum(sugeridas)} ({formatoNum(parametro("plantasPorHa"))} por ha)
+              Sugerido: {formatoNum(sugeridas)} ({formatoNum(parametro("plantasPorHa", undefined, variedad?.id))} por ha
+              {variedad ? ` para ${variedad.nombre}` : ""})
             </p>
           </div>
           <div className="space-y-2">

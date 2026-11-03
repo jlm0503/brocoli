@@ -16,6 +16,7 @@ import {
   formatoNum,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import type { MovimientoPlanta } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/cuenta-planta")({
@@ -49,10 +50,14 @@ function rangoMes(hoy: string, atras = 0): [string, string] {
 
 function CuentaPlanta() {
   const { solicitudes, hoy } = useCampo();
+  const { pasaLoteId } = useFiltro();
   // Los abonos ($ por viaje evaluado) llegan con la captura de cosecha.
   const movimientos = useMemo<MovimientoPlanta[]>(
-    () => [...cargosPlanta(solicitudes)].sort((a, b) => a.fecha.localeCompare(b.fecha)),
-    [solicitudes],
+    () =>
+      cargosPlanta(solicitudes)
+        .filter((m) => !m.loteId || pasaLoteId(m.loteId))
+        .sort((a, b) => a.fecha.localeCompare(b.fecha)),
+    [solicitudes, pasaLoteId],
   );
   const primero = movimientos[0]?.fecha ?? `${hoy.slice(0, 4)}-01-01`;
   const atajos: { label: string; rango: [string, string] }[] = [
@@ -72,6 +77,7 @@ function CuentaPlanta() {
       eyebrow="Administrador · planta"
       title="Cuenta de planta"
       description="La planta la financia la congeladora: cada planta recibida es un cargo y cada viaje evaluado un descuento. La cuenta corre todo el año y no se cierra en cero."
+      filtros
     >
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <div className="flex flex-wrap gap-2">

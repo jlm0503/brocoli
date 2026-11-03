@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cantidadesExtraordinario, distanciaM, fechaCorta, formatoNum, fotoRecienTomada, radioValidacion } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useCampo } from "@/lib/campo/store";
 import type { Condicion, EstadoUbicacion, FotoGps, Tabla } from "@/lib/campo/types";
 
@@ -152,8 +153,10 @@ export function MapaFotos({ fotos, tablas }: { fotos: FotoGps[]; tablas: Tabla[]
 export function ExtrasCompras() {
   const { extraordinarios, surtir } = useFase3();
   const { tablas, productos, ranchos } = useCampo();
+  const { pasaRancho, pasaTabla } = useFiltro();
   const lista = extraordinarios
     .filter((e) => e.status === "autorizada" || e.status === "surtida")
+    .filter((e) => pasaRancho(e.ranchoId) && tablas.some((t) => e.tablaIds.includes(t.id) && pasaTabla(t)))
     .sort((a, b) => (a.status === b.status ? a.fechaMaxSurtido.localeCompare(b.fechaMaxSurtido) : a.status === "autorizada" ? -1 : 1));
   if (lista.length === 0)
     return (

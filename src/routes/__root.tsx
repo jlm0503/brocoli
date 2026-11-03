@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SesionProvider } from "@/lib/campo/sesion";
 import { CampoProvider } from "@/lib/campo/store";
 import { Fase3Provider } from "@/lib/campo/fase3";
+import { FiltroProvider } from "@/lib/campo/filtro";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -137,8 +138,10 @@ function RootComponent() {
       <SesionProvider>
         <CampoProvider>
           <Fase3Provider>
-            <Outlet />
-            <Toaster position="bottom-right" />
+            <FiltroProvider>
+              <Outlet />
+              <Toaster position="bottom-right" />
+            </FiltroProvider>
           </Fase3Provider>
         </CampoProvider>
       </SesionProvider>

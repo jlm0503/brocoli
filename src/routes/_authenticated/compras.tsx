@@ -43,6 +43,7 @@ import {
   type Consolidado,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/compras")({
@@ -83,13 +84,15 @@ const SEMAFORO_LABEL: Record<Semaforo, string> = {
 
 function Compras() {
   const { semanaActual, pedidos } = useCampo();
-  const rojos = pedidos.filter((p) => semaforoPedido(p, semanaActual) === "rojo").length;
+  const { pasaLoteId } = useFiltro();
+  const rojos = pedidos.filter((p) => pasaLoteId(p.loteId) && semaforoPedido(p, semanaActual) === "rojo").length;
   return (
     <AppShell
       path="/compras"
       eyebrow={`Compras · semana ${semanaActual}`}
       title="Compras y entregas"
       description="Todo sale de la receta: el pedido de planeación nace al planear un lote; lo semanal se calcula con las hectáreas realmente plantadas."
+      filtros
     >
       <Tabs defaultValue="planeacion">
         <TabsList className="mb-6 h-auto flex-wrap">
@@ -130,8 +133,9 @@ function PedidosPlaneacion() {
   const [entregando, setEntregando] = useState<PedidoPlaneacion | null>(null);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
+  const { pasaLoteId } = useFiltro();
   const visibles = pedidos.filter(
-    (p) => todos || p.status === "pendiente" || semanaEntregaLimite(p) >= semanaActual,
+    (p) => pasaLoteId(p.loteId) && (todos || p.status === "pendiente" || semanaEntregaLimite(p) >= semanaActual),
   );
   const grupos = useMemo(() => {
     const m = new Map<string, PedidoPlaneacion[]>();
@@ -300,7 +304,9 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
 /* ───────────── Entregar / comprar ───────────── */
 
 function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "comprar" }) {
-  const { ranchos, lotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
+  const { ranchos, lotes: todosLotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
+  const { pasaLote } = useFiltro();
+  const lotes = useMemo(() => todosLotes.filter((l) => pasaLote(l)), [todosLotes, pasaLote]);
   const [recibiendo, setRecibiendo] = useState<Consolidado | null>(null);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const lineas = useMemo(

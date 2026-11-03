@@ -19,6 +19,7 @@ import {
 } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 
 export const Route = createFileRoute("/_authenticated/devoluciones")({
   head: () => ({
@@ -35,14 +36,19 @@ export const Route = createFileRoute("/_authenticated/devoluciones")({
 });
 
 function Devoluciones() {
-  const { ranchos, tablas, productos, semanaActual, lotes, recetas, adicionales, recepciones } = useCampo();
-  const { devoluciones, registrarDevolucion, eliminarDevolucion, extraordinarios } = useFase3();
+  const { tablas, productos, semanaActual, lotes, recetas, adicionales, recepciones } = useCampo();
+  const { ranchos, pasaTabla } = useFiltro();
+  const { devoluciones: todasDev, registrarDevolucion, eliminarDevolucion, extraordinarios } = useFase3();
   const [ranchoId, setRanchoId] = useState(ranchos[0]?.id ?? "");
   const [tablaId, setTablaId] = useState("");
   const [productoId, setProductoId] = useState("");
   const [cantidad, setCantidad] = useState("");
   const [foto, setFoto] = useState<string | undefined>();
   const [clave, setClave] = useState(0);
+  const devoluciones = todasDev.filter((d) => {
+    const t = tablas.find((x) => x.id === d.tablaId);
+    return !t || pasaTabla(t);
+  });
 
   const deSemana = devoluciones.filter((d) => d.semana === semanaActual);
 
@@ -88,6 +94,7 @@ function Devoluciones() {
       eyebrow={`Almacén general · semana ${semanaActual}`}
       title="Devoluciones de no consumido"
       description="La aplicación se registra en otra app. Aquí se captura lo que se retira sin usar: producto, cantidad y foto. Lo retirado sale del costo del lote."
+      filtros
     >
       <section className="mb-10 rounded-xl border border-border bg-card p-5 shadow-card">
         <h2 className="mb-4 text-2xl font-semibold">Registrar lo retirado</h2>

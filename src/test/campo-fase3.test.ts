@@ -64,3 +64,28 @@ describe("Fase 3 · devoluciones", () => {
     expect(consumoTeorico(30, 4.5)).toBe(25.5);
   });
 });
+
+import { costoPorPlanta, parametroVigente } from "@/lib/campo/calc";
+import type { Parametro } from "@/lib/campo/types";
+
+describe("Parámetros por variedad", () => {
+  const ps: Parametro[] = [
+    { id: "g", clave: "plantasPorHa", valor: 60000, desde: "2026-01-01" },
+    { id: "d", clave: "plantasPorHa", valor: 55000, desde: "2026-11-01", variedadId: "diamante" },
+    { id: "c", clave: "costoPlantaHa", valor: 16200, desde: "2026-01-01" },
+    { id: "dv", clave: "descuentoViaje", valor: 9000, desde: "2026-11-01", variedadId: "diamante" },
+  ];
+  it("la variedad con valor propio lo usa desde su fecha", () => {
+    expect(parametroVigente(ps, "plantasPorHa", "2026-11-03", "diamante")).toBe(55000);
+  });
+  it("antes de su fecha, o sin valor propio, usa el general", () => {
+    expect(parametroVigente(ps, "plantasPorHa", "2026-10-30", "diamante")).toBe(60000);
+    expect(parametroVigente(ps, "plantasPorHa", "2026-11-03", "tlaloc")).toBe(60000);
+  });
+  it("descuento por viaje es igual para todas las variedades", () => {
+    expect(parametroVigente(ps, "descuentoViaje", "2026-11-03", "diamante")).toBe(10000);
+  });
+  it("costo por planta con las plantas por ha de la variedad", () => {
+    expect(costoPorPlanta(ps, "2026-11-03", "diamante")).toBeCloseTo(16200 / 55000, 4);
+  });
+});

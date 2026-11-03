@@ -44,6 +44,7 @@ import {
 } from "@/lib/campo/calc";
 import { puedeCorregirFechas } from "@/lib/campo/roles";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useFase3 } from "@/lib/campo/fase3";
 import type { EstatusTabla, LineaDemanda, Lote, Tabla, Variedad } from "@/lib/campo/types";
 
@@ -109,17 +110,20 @@ function useCostos() {
         costoDevolucionesLote(loteId, devoluciones)
       );
     };
-    const costoTabla = (tablaId: string) =>
-      lotes.filter((l) => l.tablaId === tablaId).reduce((s, l) => s + costoLote(l.id), 0);
+    const costoTabla = (tablaId: string, pasa: (l: (typeof lotes)[number]) => boolean = () => true) =>
+      lotes.filter((l) => l.tablaId === tablaId && pasa(l)).reduce((s, l) => s + costoLote(l.id), 0);
     return { porLote, costoLote, costoTabla, plantaLote };
   }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes, extraordinarios, devoluciones]);
 }
 
 function Ranchos() {
-  const { ranchos, tablas, lotes, semanaActual, variedades } = useCampo();
+  const { tablas: todasTablas, lotes, semanaActual, variedades } = useCampo();
+  const { ranchos, pasaTabla, pasaCultivo } = useFiltro();
+  const tablas = todasTablas.filter((t) => pasaTabla(t));
   const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const [abierta, setAbierta] = useState<Tabla | null>(null);
-  const { costoTabla } = useCostos();
+  const costos = useCostos();
+  const costoTabla = (id: string) => costos.costoTabla(id, (l) => pasaCultivo(l.cultivo));
 
   const total = tablas.reduce((s, t) => s + costoTabla(t.id), 0);
   const haActivas = tablas.reduce((s, t) => s + hectareasActivas(lotes, t.id, semanaActual), 0);
@@ -131,6 +135,7 @@ function Ranchos() {
       eyebrow={`Administrador · semana ${semanaActual}`}
       title="Estatus de ranchos y costos"
       description="Cada tabla con sus lotes, semana de cultivo y el dinero invertido a la fecha: insumos entregados (planeación + semanal) y planta recibida."
+      filtros
     >
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
@@ -155,6 +160,7 @@ function Ranchos() {
       <div className="space-y-10">
         {ranchos.map((r) => {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
+          if (ts.length === 0) return null;
           const costo = ts.reduce((s, t) => s + costoTabla(t.id), 0);
           const ha = ts.reduce((s, t) => s + t.hectareas, 0);
           return (
