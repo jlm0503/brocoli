@@ -1,4 +1,12 @@
-export type Role = "admin" | "ingeniero" | "compras";
+/** "admin" es el Super Admin. Una persona puede tener varios puestos. */
+export type Role =
+  | "admin"
+  | "administrador"
+  | "autorizador"
+  | "ingeniero"
+  | "compras"
+  | "almacen"
+  | "direccion";
 
 export type Familia =
   | "Suelo"
@@ -322,4 +330,112 @@ export interface MovimientoPlanta {
   lote?: string | undefined;
   tabla?: string | undefined;
   folio?: number | undefined;
+}
+
+/* ───────────── Fase 3: extraordinarios, alertas a Dirección y devoluciones ───────────── */
+
+/** Foto tomada en el momento con la cámara; guarda fecha, hora y ubicación. */
+export interface FotoGps {
+  ruta: string;
+  /** Fecha y hora ISO en que se tomó */
+  fecha: string;
+  lat?: number | undefined;
+  lng?: number | undefined;
+  /** Precisión del GPS en metros */
+  precision?: number | undefined;
+}
+
+export type Condicion = "plaga" | "gusano" | "helada" | "otra";
+export type EstadoUbicacion = "valida" | "no_valida" | "no_verificable";
+export type ResultadoMejora = "mejoro" | "parcial" | "no_mejoro";
+
+export interface LineaExtra {
+  productoId: string;
+  porHa: number;
+}
+
+/** Costo del extraordinario cargado a una tabla (y a su lote activo) al autorizarse. */
+export interface RepartoExtra {
+  tablaId: string;
+  loteId?: string | undefined;
+  ha: number;
+  monto: number;
+}
+
+export interface Extraordinario {
+  id: string;
+  /** EX-0001 */
+  folio: string;
+  ingenieroId: string;
+  ingeniero: string;
+  ranchoId: string;
+  tablaIds: string[];
+  condicion: Condicion;
+  descripcion: string;
+  lineas: LineaExtra[];
+  diasEfecto: number;
+  fechaMaxSurtido: string;
+  fotos: FotoGps[];
+  ubicacion: EstadoUbicacion;
+  /** Fecha de la solicitud */
+  fecha: string;
+  status: "por_autorizar" | "autorizada" | "rechazada" | "surtida";
+  autorizacion?:
+    | {
+        por: string;
+        fecha: string;
+        conCambios: boolean;
+        /** Qué se cambió, en palabras */
+        cambios?: string | undefined;
+        motivo?: string | undefined;
+        lineasOriginales?: LineaExtra[] | undefined;
+      }
+    | undefined;
+  reparto?: RepartoExtra[] | undefined;
+  surtido?: { fecha: string; por: string } | undefined;
+  mejora?:
+    | {
+        fecha: string;
+        resultado: ResultadoMejora;
+        comentario: string;
+        fotos: FotoGps[];
+        ubicacion: EstadoUbicacion;
+      }
+    | undefined;
+}
+
+export interface AlertaDireccion {
+  /** Id fijo por causa (ub-, ubm-, sm- + id del extraordinario) para no duplicarla. */
+  id: string;
+  tipo: "ubicacion" | "sin_mejora";
+  extraordinarioId: string;
+  ingeniero: string;
+  ranchoId: string;
+  tablaIds: string[];
+  fecha: string;
+  fotos: FotoGps[];
+  status: "abierta" | "notificada";
+  cierre?: { por: string; fecha: string; comentario: string } | undefined;
+}
+
+/** Lo no consumido que el Almacén general retira de una tabla en la semana. */
+export interface Devolucion {
+  id: string;
+  semana: number;
+  fecha: string;
+  ranchoId: string;
+  tablaId: string;
+  loteId?: string | undefined;
+  productoId: string;
+  cantidad: number;
+  /** Precio del producto en la fecha (lo que se resta del costo del lote) */
+  precio: number;
+  foto: string;
+  por: string;
+}
+
+/** Ranchos asignados a un ingeniero (id = id de la persona). Sin asignación ve todos. */
+export interface Asignacion {
+  id: string;
+  ranchoIds: string[];
 }
