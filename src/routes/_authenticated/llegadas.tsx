@@ -18,7 +18,6 @@ import {
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
-import { useRanchosVisibles } from "@/lib/campo/fase3";
 
 export const Route = createFileRoute("/_authenticated/llegadas")({
   head: () => ({
