@@ -180,6 +180,8 @@ export interface Lote {
   fechaCosecha?: string | undefined;
   /** Ya se cosechó: la tabla queda libre para el siguiente ciclo. */
   finalizado?: boolean | undefined;
+  /** Fecha en que el Super Admin o el ingeniero marcó "Cosecha terminada". */
+  cosechaTerminada?: string | undefined;
   /** Plantas del lote (sugerido: ha × plantas por ha vigente al planear). */
   plantas?: number | undefined;
   /** Motivo cuando las plantas difieren más de ±10% de lo sugerido. */
@@ -443,3 +445,75 @@ export interface Asignacion {
   id: string;
   ranchoIds: string[];
 }
+
+/* ───────────── Fase 4: cosecha ───────────── */
+
+/** Kilos de un viaje que le tocan a un lote (por ha en cosecha, o ajustado por el Super Admin). */
+export interface RepartoKg {
+  loteId: string;
+  tablaId: string;
+  ranchoId: string;
+  pct: number;
+  kgBrutos: number;
+  kgPagables: number;
+  /** Precio por kg pagable vigente en la fecha del viaje para la variedad del lote. */
+  precio: number;
+  importe: number;
+}
+
+export interface ProblemaEvaluado {
+  problemaId: string;
+  modo: "pct" | "kg";
+  valor: number;
+  /** Kg castigados (si se capturó %, = % × kg brutos). */
+  kg: number;
+  comentario: string;
+}
+
+/** Evaluación de la congeladora: aquí entran los kilos. La calidad es informativa. */
+export interface EvaluacionViaje {
+  fecha: string;
+  por: string;
+  kgBrutos: number;
+  kgPagables: number;
+  /** Calificación general de 1 a 10. */
+  calificacion: number;
+  problemas: ProblemaEvaluado[];
+  /** Foto o PDF del reporte de la congeladora. */
+  reporte: string;
+  repartoAjustado?: "pct" | "kg" | undefined;
+  reparto: RepartoKg[];
+  merma: number;
+  importeBruto: number;
+  descuento: number;
+  importeNeto: number;
+}
+
+export interface Viaje {
+  id: string;
+  /** Folio de la hoja */
+  folio: string;
+  fecha: string;
+  hora: string;
+  loteIds: string[];
+  choferId: string;
+  congeladoraId: string;
+  /** Foto de la hoja (cámara o galería). */
+  foto: string;
+  por: string;
+  /** Motivo cuando el Super Admin incluye un lote ya cerrado. */
+  motivoCerrado?: string | undefined;
+  status: "transito" | "evaluado";
+  evaluacion?: EvaluacionViaje | undefined;
+}
+
+/** Pago real de una semana de pago (jueves a miércoles). `id` = fecha del jueves. */
+export interface Liquidacion {
+  id: string;
+  pagado: number;
+  fecha: string;
+  comprobante: string;
+  por: string;
+}
+
+export type EstatusLiquidacion = "abierta" | "por_cobrar" | "pagada" | "pagada_diferencia";
