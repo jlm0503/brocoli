@@ -156,7 +156,7 @@ function Resultados() {
             {(ranking ?? filas).map((f, i) => (
               <tr key={f.key} className="border-t border-border/60">
                 {ranking && <td className="num px-3 py-2">{i + 1}</td>}
-                <td className="px-3 py-2">{f.nombre}</td>
+                <td className="min-w-52 px-3 py-2">{f.nombre}</td>
                 <td className="num px-3 py-2 text-right">{formatoNum(f.r.ha)}</td>
                 <td className="num px-3 py-2 text-right">{formatoNum(f.r.kgBrutos)}</td>
                 <td className="num px-3 py-2 text-right">{formatoNum(f.r.brutosHa)}</td>
