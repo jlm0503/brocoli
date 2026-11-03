@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { FiltroBar } from "@/components/campo/FiltroBar";
 import { MiCuenta } from "@/components/campo/MiCuenta";
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
@@ -55,10 +56,12 @@ interface AppShellProps {
   title: string;
   description?: string;
   actions?: ReactNode;
+  /** Muestra los filtros de rancho y cultivo arriba del contenido. */
+  filtros?: boolean;
   children: ReactNode;
 }
 
-export function AppShell({ path, eyebrow, title, description, actions, children }: AppShellProps) {
+export function AppShell({ path, eyebrow, title, description, actions, filtros, children }: AppShellProps) {
   const { ready, semanaActual, hoy, semanasAdelantadas } = useCampo();
   const { lista, user, role, roles, nombre } = useSesion();
   const avisos = useAvisos();
@@ -183,6 +186,7 @@ export function AppShell({ path, eyebrow, title, description, actions, children 
                 </div>
                 {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
               </header>
+              {filtros && <FiltroBar />}
               {children}
             </>
           ) : (
