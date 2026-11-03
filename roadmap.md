@@ -30,6 +30,8 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Devoluciones semanales con foto; se restan del costo del lote; consumo teórico por tabla
 - [ ] Avisos push al celular (pendiente: hoy son avisos dentro de la app)
 - [ ] Ubicación GPS de tablas (Fase 7); mientras, las fotos salen "no verificable"
+- [x] Prueba completa con datos de prueba (3 nov): "Rancho Prueba", tablas Prueba 1-4, variedad "Prueba", EX-0001 a EX-0005, una devolución; el ingeniero Prueba quedó asignado solo a Rancho Prueba
+- [ ] Borrar los datos de prueba cuando Jimena lo pida (ids prueba-*, rancho prueba-rancho, ex-* de ese rancho, alertas y devolución ligadas)
 ## Fase 4 — Cosecha: salidas, evaluación, panel, liquidación semanal, rendimiento, calidad
 ## Fase 5 — Cierre de ciclo, históricos, captura histórica
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
