@@ -1,3 +1,4 @@
+import type { EstatusLiquidacion, EvaluacionViaje, Liquidacion, ProblemaEvaluado, RepartoKg, Viaje } from "./types";
 import type { AlertaDireccion, Devolucion, EstadoUbicacion, Extraordinario, FotoGps, LineaExtra, RepartoExtra } from "./types";
 import type {
   Adicional,
@@ -1575,4 +1576,407 @@ export function validarDevolucion(d: { tablaId: string; productoId: string; cant
 /** Consumo teórico = entregado − retirado (nunca menos de 0). */
 export function consumoTeorico(entregado: number, retirado: number): number {
   return Math.max(0, Math.round((entregado - retirado) * 100) / 100);
+}
+
+
+/* ───────────────────────── Fase 4 · Cosecha ───────────────────────── */
+
+/** Jueves que abre la semana de pago (jueves a miércoles) en la que cae `fecha`. */
+export function semanaPago(fecha: string): string {
+  const lunes0 = (new Date(fecha + "T00:00:00Z").getUTCDay() + 6) % 7;
+  return sumarDias(fecha, -((lunes0 - 3 + 7) % 7));
+}
+
+export function finSemanaPago(jueves: string): string {
+  return sumarDias(jueves, 6);
+}
+
+/** Lotes que pueden salir en un viaje: plantados y sin cerrar (el Super Admin puede ver los cerrados). */
+export function lotesParaSalida(lotes: Lote[], incluirCerrados = false): Lote[] {
+  return lotes.filter((l) => !l.cancelado && plantadasLote(l) > 0 && (incluirCerrados || !l.finalizado));
+}
+
+export function validarSalida(
+  d: { folio: string; fecha: string; loteIds: string[]; choferId: string; foto?: string | undefined; motivoCerrado?: string | undefined },
+  lotes: Lote[],
+  viajes: Viaje[],
+  hoy: string,
+  superAdmin: boolean,
+): string | null {
+  if (!d.folio.trim()) return "Escribe el folio de la hoja.";
+  if (viajes.some((v) => v.folio.trim().toLowerCase() === d.folio.trim().toLowerCase()))
+    return "Ya hay un viaje con ese folio.";
+  if (!d.fecha || d.fecha > hoy) return "La fecha de salida no puede ser futura.";
+  if (d.loteIds.length === 0) return "Elige al menos una tabla o lote.";
+  if (!d.choferId) return "Elige el chofer.";
+  if (!d.foto) return "Falta la foto de la hoja.";
+  const cerrados = lotes.filter((l) => d.loteIds.includes(l.id) && l.finalizado);
+  if (cerrados.length > 0) {
+    if (!superAdmin) return "No se puede incluir un lote cerrado.";
+    if (!d.motivoCerrado?.trim()) return "Escribe el motivo para incluir un lote cerrado.";
+  }
+  return null;
+}
+
+/**
+ * Reparte los kilos del viaje entre sus lotes. Por defecto, proporcional a las hectáreas
+ * en cosecha de cada lote; el Super Admin puede fijar % (suman 100) o kg pagables por lote.
+ */
+export function repartirKg(
+  lotes: Lote[],
+  kgBrutos: number,
+  kgPagables: number,
+  ajuste?: { modo: "pct" | "kg"; valores: Record<string, number> },
+): { error: string } | { filas: Pick<RepartoKg, "loteId" | "tablaId" | "ranchoId" | "pct" | "kgBrutos" | "kgPagables">[] } {
+  if (lotes.length === 0) return { error: "El viaje no tiene lotes." };
+  let pesos: number[];
+  if (lotes.length === 1 || !ajuste) {
+    pesos = lotes.map((l) => plantadasLote(l));
+  } else if (ajuste.modo === "pct") {
+    pesos = lotes.map((l) => ajuste.valores[l.id] ?? 0);
+    if (pesos.some((p) => p < 0)) return { error: "Los porcentajes no pueden ser negativos." };
+    if (Math.abs(pesos.reduce((s, p) => s + p, 0) - 100) > 0.01) return { error: "Los porcentajes deben sumar 100%." };
+  } else {
+    pesos = lotes.map((l) => ajuste.valores[l.id] ?? 0);
+    if (pesos.some((p) => p < 0)) return { error: "Los kilos no pueden ser negativos." };
+    if (Math.abs(pesos.reduce((s, p) => s + p, 0) - kgPagables) > 0.5)
+      return { error: "Los kg por tabla deben sumar los kg pagables del viaje." };
+  }
+  const total = pesos.reduce((s, p) => s + p, 0);
+  if (!(total > 0)) return { error: "No hay hectáreas para repartir." };
+  let restoB = kgBrutos;
+  let restoP = kgPagables;
+  const filas = lotes.map((l, i) => {
+    const ultimo = i === lotes.length - 1;
+    const f = pesos[i]! / total;
+    const b = ultimo ? redondear(restoB) : redondear(kgBrutos * f);
+    const p = ultimo ? redondear(restoP) : redondear(kgPagables * f);
+    restoB -= b;
+    restoP -= p;
+    return { loteId: l.id, tablaId: l.tablaId, ranchoId: l.ranchoId, pct: redondear(f * 100, 2), kgBrutos: b, kgPagables: p };
+  });
+  return { filas };
+}
+
+/** Merma % = (brutos − pagables) ÷ brutos. */
+export function mermaPct(kgBrutos: number, kgPagables: number): number {
+  return kgBrutos > 0 ? redondear(((kgBrutos - kgPagables) / kgBrutos) * 100, 2) : 0;
+}
+
+export interface DatosEvaluacion {
+  kgBrutos: number;
+  kgPagables: number;
+  calificacion: number;
+  problemas: Omit<ProblemaEvaluado, "kg">[];
+  reporte?: string | undefined;
+  ajuste?: { modo: "pct" | "kg"; valores: Record<string, number> } | undefined;
+}
+
+/**
+ * Evalúa el viaje: reparte los kilos, toma el precio por kg vigente en la fecha del viaje
+ * (por variedad) y el descuento de planta vigente. La calidad no cambia el precio.
+ */
+export function evaluarViaje(
+  v: Viaje,
+  d: DatosEvaluacion,
+  ctx: { lotes: Lote[]; parametros: Parametro[]; hoy: string; por: string },
+): { error: string } | { evaluacion: EvaluacionViaje } {
+  if (!(d.kgBrutos > 0)) return { error: "Captura los kg brutos." };
+  if (!(d.kgPagables >= 0) || d.kgPagables > d.kgBrutos) return { error: "Los kg pagables deben estar entre 0 y los kg brutos." };
+  if (!(d.calificacion >= 1 && d.calificacion <= 10)) return { error: "La calificación general va de 1 a 10." };
+  if (!d.reporte) return { error: "Falta la foto o PDF del reporte de la congeladora." };
+  for (const p of d.problemas) {
+    if (!p.problemaId) return { error: "Elige el problema de calidad." };
+    if (!(p.valor > 0)) return { error: "Cada problema necesita su % o kg castigados." };
+    if (p.modo === "pct" && p.valor > 100) return { error: "El % castigado no puede pasar de 100." };
+  }
+  const ls = v.loteIds.map((id) => ctx.lotes.find((l) => l.id === id)).filter((l): l is Lote => !!l);
+  const r = repartirKg(ls, d.kgBrutos, d.kgPagables, ls.length > 1 ? d.ajuste : undefined);
+  if ("error" in r) return r;
+  const reparto: RepartoKg[] = r.filas.map((f) => {
+    const l = ls.find((x) => x.id === f.loteId)!;
+    const precio = parametroVigente(ctx.parametros, "precioKg", v.fecha, l.variedadId);
+    return { ...f, precio, importe: redondear(f.kgPagables * precio) };
+  });
+  const importeBruto = redondear(reparto.reduce((s, x) => s + x.importe, 0));
+  const descuento = parametroVigente(ctx.parametros, "descuentoViaje", v.fecha);
+  return {
+    evaluacion: {
+      fecha: ctx.hoy,
+      por: ctx.por,
+      kgBrutos: d.kgBrutos,
+      kgPagables: d.kgPagables,
+      calificacion: d.calificacion,
+      problemas: d.problemas.map((p) => ({
+        ...p,
+        comentario: p.comentario.trim(),
+        kg: p.modo === "kg" ? p.valor : redondear((p.valor / 100) * d.kgBrutos),
+      })),
+      reporte: d.reporte,
+      repartoAjustado: ls.length > 1 && d.ajuste ? d.ajuste.modo : undefined,
+      reparto,
+      merma: mermaPct(d.kgBrutos, d.kgPagables),
+      importeBruto,
+      descuento,
+      importeNeto: redondear(importeBruto - descuento),
+    },
+  };
+}
+
+/** Abonos de la cuenta de planta: el descuento de cada viaje evaluado, en su fecha de salida. */
+export function abonosViajes(viajes: Viaje[]): MovimientoPlanta[] {
+  return viajes
+    .filter((v) => v.status === "evaluado" && v.evaluacion)
+    .map((v) => {
+      const r = v.evaluacion!.reparto[0];
+      return {
+        fecha: v.fecha,
+        tipo: "abono" as const,
+        monto: v.evaluacion!.descuento,
+        loteId: r?.loteId,
+        ranchoId: r?.ranchoId,
+        tablaId: r?.tablaId,
+      };
+    });
+}
+
+/** Viajes en tránsito con más de `dias` días sin evaluación (alerta). */
+export function viajesSinEvaluar(viajes: Viaje[], hoy: string, dias: number): Viaje[] {
+  return viajes.filter((v) => v.status === "transito" && diasEntre(v.fecha, hoy) > dias);
+}
+
+/** Hectáreas plantadas de los lotes en cosecha en esa semana (sin cerrar). */
+export function haEnCosecha(lotes: Lote[], semana: number): number {
+  return redondear(lotes.filter((l) => loteEnCosecha(l, semana)).reduce((s, l) => s + plantadasLote(l), 0));
+}
+
+export interface ResumenPago {
+  jueves: string;
+  fin: string;
+  viajes: Viaje[];
+  sinEvaluar: number;
+  kgBrutos: number;
+  kgPagables: number;
+  importeBruto: number;
+  descuentos: number;
+  importeNeto: number;
+}
+
+/** Totales de una semana de pago. Solo cuentan los kilos e importes de los viajes evaluados. */
+export function resumenSemanaPago(viajes: Viaje[], jueves: string): ResumenPago {
+  const vs = viajes.filter((v) => semanaPago(v.fecha) === jueves);
+  const ev = vs.map((v) => v.evaluacion).filter((e): e is EvaluacionViaje => !!e);
+  const suma = (f: (e: EvaluacionViaje) => number) => redondear(ev.reduce((s, e) => s + f(e), 0));
+  return {
+    jueves,
+    fin: finSemanaPago(jueves),
+    viajes: vs.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora)),
+    sinEvaluar: vs.filter((v) => v.status === "transito").length,
+    kgBrutos: suma((e) => e.kgBrutos),
+    kgPagables: suma((e) => e.kgPagables),
+    importeBruto: suma((e) => e.importeBruto),
+    descuentos: suma((e) => e.descuento),
+    importeNeto: suma((e) => e.importeNeto),
+  };
+}
+
+/** Semanas de pago con viajes, de la más reciente a la más antigua. */
+export function semanasDePago(viajes: Viaje[]): string[] {
+  return [...new Set(viajes.map((v) => semanaPago(v.fecha)))].sort().reverse();
+}
+
+/** Desglose por tabla de una lista de viajes evaluados. */
+export function porTablaViajes(viajes: Viaje[]): { tablaId: string; kgBrutos: number; kgPagables: number; importe: number }[] {
+  const m = new Map<string, { tablaId: string; kgBrutos: number; kgPagables: number; importe: number }>();
+  for (const v of viajes)
+    for (const r of v.evaluacion?.reparto ?? []) {
+      const f = m.get(r.tablaId) ?? { tablaId: r.tablaId, kgBrutos: 0, kgPagables: 0, importe: 0 };
+      f.kgBrutos = redondear(f.kgBrutos + r.kgBrutos);
+      f.kgPagables = redondear(f.kgPagables + r.kgPagables);
+      f.importe = redondear(f.importe + r.importe);
+      m.set(r.tablaId, f);
+    }
+  return [...m.values()];
+}
+
+/** Abierta mientras corre la semana; luego Por cobrar hasta capturar el pago. */
+export function estatusLiquidacion(r: ResumenPago, liq: Liquidacion | undefined, hoy: string): EstatusLiquidacion {
+  if (!liq) return hoy <= r.fin ? "abierta" : "por_cobrar";
+  return Math.abs(liq.pagado - r.importeNeto) < 1 ? "pagada" : "pagada_diferencia";
+}
+
+export function validarPago(d: { pagado: number; fecha: string; comprobante?: string | undefined }): string | null {
+  if (!(d.pagado >= 0) || Number.isNaN(d.pagado)) return "Captura el monto pagado.";
+  if (!d.fecha) return "Captura la fecha del pago.";
+  if (!d.comprobante) return "Falta el comprobante.";
+  return null;
+}
+
+export interface RendimientoLote {
+  loteId: string;
+  ha: number;
+  viajes: number;
+  kgBrutos: number;
+  kgPagables: number;
+  brutosHa: number;
+  pagablesHa: number;
+  meta: number;
+  pctMeta: number;
+  merma: number;
+  /** Calificación promedio de sus viajes (null sin viajes). */
+  calidad: number | null;
+  ingreso: number;
+  gasto: number;
+  utilidad: number;
+  /** Ingreso ÷ gasto (null sin gasto). */
+  retorno: number | null;
+  utilidadHa: number;
+  /** Kg pagables por ha necesarios para cubrir el gasto directo. */
+  equilibrioKgHa: number;
+}
+
+/** Rendimiento y retorno de un lote con sus viajes evaluados y su gasto directo. */
+export function rendimientoLote(l: Lote, viajes: Viaje[], parametros: Parametro[], gasto: number): RendimientoLote {
+  const filas = viajes.flatMap((v) => (v.evaluacion?.reparto ?? []).filter((r) => r.loteId === l.id).map((r) => ({ r, v })));
+  const ha = plantadasLote(l);
+  const kgBrutos = redondear(filas.reduce((s, x) => s + x.r.kgBrutos, 0));
+  const kgPagables = redondear(filas.reduce((s, x) => s + x.r.kgPagables, 0));
+  const ingreso = redondear(filas.reduce((s, x) => s + x.r.importe, 0));
+  const fecha = fechaCosechaLote(l);
+  const meta = parametroVigente(parametros, "metaKgHa", fecha, l.variedadId);
+  const precio = parametroVigente(parametros, "precioKg", fecha, l.variedadId);
+  const pagablesHa = ha > 0 ? redondear(kgPagables / ha) : 0;
+  const cal = filas.map((x) => x.v.evaluacion!.calificacion);
+  const utilidad = redondear(ingreso - gasto);
+  return {
+    loteId: l.id,
+    ha,
+    viajes: filas.length,
+    kgBrutos,
+    kgPagables,
+    brutosHa: ha > 0 ? redondear(kgBrutos / ha) : 0,
+    pagablesHa,
+    meta,
+    pctMeta: meta > 0 ? redondear((pagablesHa / meta) * 100, 1) : 0,
+    merma: mermaPct(kgBrutos, kgPagables),
+    calidad: cal.length > 0 ? redondear(cal.reduce((s, c) => s + c, 0) / cal.length, 1) : null,
+    ingreso,
+    gasto: redondear(gasto),
+    utilidad,
+    retorno: gasto > 0 ? redondear(ingreso / gasto, 2) : null,
+    utilidadHa: ha > 0 ? redondear(utilidad / ha) : 0,
+    equilibrioKgHa: ha > 0 && precio > 0 ? redondear(gasto / precio / ha) : 0,
+  };
+}
+
+/** Acumulado de varios lotes (por tabla, rancho o ingeniero). */
+export function sumarRendimientos(rs: RendimientoLote[]): Omit<RendimientoLote, "loteId"> {
+  const s = (f: (r: RendimientoLote) => number) => redondear(rs.reduce((a, r) => a + f(r), 0));
+  const ha = s((r) => r.ha);
+  const kgBrutos = s((r) => r.kgBrutos);
+  const kgPagables = s((r) => r.kgPagables);
+  const ingreso = s((r) => r.ingreso);
+  const gasto = s((r) => r.gasto);
+  const metaHa = s((r) => r.meta * r.ha);
+  const pagablesHa = ha > 0 ? redondear(kgPagables / ha) : 0;
+  const cal = rs.filter((r) => r.calidad !== null);
+  const ingresoPorKg = kgPagables > 0 ? ingreso / kgPagables : 0;
+  return {
+    ha,
+    viajes: s((r) => r.viajes),
+    kgBrutos,
+    kgPagables,
+    brutosHa: ha > 0 ? redondear(kgBrutos / ha) : 0,
+    pagablesHa,
+    meta: ha > 0 ? redondear(metaHa / ha) : 0,
+    pctMeta: metaHa > 0 ? redondear((kgPagables / metaHa) * 100, 1) : 0,
+    merma: mermaPct(kgBrutos, kgPagables),
+    calidad: cal.length > 0 ? redondear(cal.reduce((a, r) => a + r.calidad!, 0) / cal.length, 1) : null,
+    ingreso,
+    gasto,
+    utilidad: redondear(ingreso - gasto),
+    retorno: gasto > 0 ? redondear(ingreso / gasto, 2) : null,
+    utilidadHa: ha > 0 ? redondear((ingreso - gasto) / ha) : 0,
+    equilibrioKgHa: ha > 0 && ingresoPorKg > 0 ? redondear(gasto / ingresoPorKg / ha) : 0,
+  };
+}
+
+/** Verde ≥ 100% de la meta, amarillo 80–99%, rojo < 80%. */
+export function semaforoMeta(pct: number): Semaforo {
+  return pct >= 100 ? "verde" : pct >= 80 ? "amarillo" : "rojo";
+}
+
+/** Kg pagables por ha acumulados por semana (fecha de salida) para la gráfica contra la meta. */
+export function curvaAcumulada(loteIds: string[], viajes: Viaje[], ha: number): { semana: number; kgHa: number }[] {
+  const porSemana = new Map<number, number>();
+  for (const v of viajes)
+    for (const r of v.evaluacion?.reparto ?? [])
+      if (loteIds.includes(r.loteId)) porSemana.set(semanaDeFecha(v.fecha), (porSemana.get(semanaDeFecha(v.fecha)) ?? 0) + r.kgPagables);
+  let acum = 0;
+  return [...porSemana.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([semana, kg]) => {
+      acum += kg;
+      return { semana, kgHa: ha > 0 ? redondear(acum / ha) : 0 };
+    });
+}
+
+/** Lotes con la cosecha terminada que cerraron abajo de su meta de kg pagables por ha (única alerta de rendimiento). */
+export function cerradosBajoMeta(lotes: Lote[], viajes: Viaje[], parametros: Parametro[]): RendimientoLote[] {
+  return lotes
+    .filter((l) => l.cosechaTerminada && !l.cancelado)
+    .map((l) => rendimientoLote(l, viajes, parametros, 0))
+    .filter((r) => r.pagablesHa < r.meta);
+}
+
+export interface ReporteCalidad {
+  problemas: { problemaId: string; veces: number; kg: number }[];
+  porTabla: { tablaId: string; kgBrutos: number; kgPagables: number; merma: number }[];
+  porIngeniero: { ingeniero: string; kgBrutos: number; kgPagables: number; merma: number }[];
+  semanal: { semana: number; kgBrutos: number; kgPagables: number; merma: number }[];
+}
+
+/** Calidad de los viajes evaluados; cada reparto pasa por `pasa` (filtros de fecha, rancho, tabla, lote, ingeniero). */
+export function reporteCalidad(
+  viajes: Viaje[],
+  lotes: Lote[],
+  pasa: (r: RepartoKg, v: Viaje) => boolean = () => true,
+): ReporteCalidad {
+  const probs = new Map<string, { problemaId: string; veces: number; kg: number }>();
+  const grupo = <K,>(m: Map<K, { kgBrutos: number; kgPagables: number }>, k: K, base: object, r: RepartoKg) => {
+    const f = m.get(k) ?? { ...base, kgBrutos: 0, kgPagables: 0 };
+    f.kgBrutos += r.kgBrutos;
+    f.kgPagables += r.kgPagables;
+    m.set(k, f);
+  };
+  const tablas = new Map<string, { kgBrutos: number; kgPagables: number }>();
+  const ings = new Map<string, { kgBrutos: number; kgPagables: number }>();
+  const sems = new Map<number, { kgBrutos: number; kgPagables: number }>();
+  for (const v of viajes) {
+    const e = v.evaluacion;
+    if (!e) continue;
+    for (const r of e.reparto) {
+      if (!pasa(r, v)) continue;
+      const f = r.pct / 100;
+      for (const p of e.problemas) {
+        const x = probs.get(p.problemaId) ?? { problemaId: p.problemaId, veces: 0, kg: 0 };
+        x.veces += 1;
+        x.kg = redondear(x.kg + p.kg * f);
+        probs.set(p.problemaId, x);
+      }
+      grupo(tablas, r.tablaId, { tablaId: r.tablaId }, r);
+      const ing = lotes.find((l) => l.id === r.loteId)?.ingeniero || "Sin ingeniero";
+      grupo(ings, ing, { ingeniero: ing }, r);
+      const w = semanaDeFecha(v.fecha);
+      grupo(sems, w, { semana: w }, r);
+    }
+  }
+  const conMerma = <T extends { kgBrutos: number; kgPagables: number }>(xs: T[]) =>
+    xs.map((x) => ({ ...x, kgBrutos: redondear(x.kgBrutos), kgPagables: redondear(x.kgPagables), merma: mermaPct(x.kgBrutos, x.kgPagables) }));
+  return {
+    problemas: [...probs.values()].sort((a, b) => b.veces - a.veces || b.kg - a.kg),
+    porTabla: conMerma([...tablas.values()] as { tablaId: string; kgBrutos: number; kgPagables: number }[]),
+    porIngeniero: conMerma([...ings.values()] as { ingeniero: string; kgBrutos: number; kgPagables: number }[]),
+    semanal: conMerma([...sems.values()] as { semana: number; kgBrutos: number; kgPagables: number }[]).sort((a, b) => a.semana - b.semana),
+  };
 }
