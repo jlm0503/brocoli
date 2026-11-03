@@ -135,7 +135,7 @@ function PedidosPlaneacion() {
 
   const { pasaLoteId } = useFiltro();
   const visibles = pedidos.filter(
-    (p) => pasaLoteId(p.loteId)) .filter((p) => todos || p.status === "pendiente" || semanaEntregaLimite(p) >= semanaActual,
+    (p) => pasaLoteId(p.loteId) && (todos || p.status === "pendiente" || semanaEntregaLimite(p) >= semanaActual),
   );
   const grupos = useMemo(() => {
     const m = new Map<string, PedidoPlaneacion[]>();
