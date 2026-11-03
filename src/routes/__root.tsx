@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SesionProvider } from "@/lib/campo/sesion";
 import { CampoProvider } from "@/lib/campo/store";
 import { Fase3Provider } from "@/lib/campo/fase3";
+import { CosechaProvider } from "@/lib/campo/cosecha";
 import { FiltroProvider } from "@/lib/campo/filtro";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -138,10 +139,12 @@ function RootComponent() {
       <SesionProvider>
         <CampoProvider>
           <Fase3Provider>
+            <CosechaProvider>
             <FiltroProvider>
               <Outlet />
               <Toaster position="bottom-right" />
             </FiltroProvider>
+          </CosechaProvider>
           </Fase3Provider>
         </CampoProvider>
       </SesionProvider>

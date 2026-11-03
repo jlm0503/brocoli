@@ -23,11 +23,17 @@ export function FotoInput({
   setFoto,
   texto = "Tomar o subir foto",
   alt = "Evidencia",
+  galeria = false,
+  pdf = false,
 }: {
   foto?: string | undefined;
   setFoto: (ruta: string) => void;
   texto?: string;
   alt?: string;
+  /** Permite elegir de la galería (p. ej. fotos que llegan por chat). */
+  galeria?: boolean;
+  /** Acepta también PDF. */
+  pdf?: boolean;
 }) {
   const [vista, setVista] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -48,8 +54,8 @@ export function FotoInput({
       )}
       <input
         type="file"
-        accept="image/*"
-        capture="environment"
+        accept={pdf ? "image/*,application/pdf" : "image/*"}
+        {...(galeria || pdf ? {} : { capture: "environment" as const })}
         className="sr-only"
         disabled={subiendo}
         onChange={async (e) => {
@@ -58,7 +64,8 @@ export function FotoInput({
           setSubiendo(true);
           try {
             const ruta = await subirEvidencia(file);
-            setVista(URL.createObjectURL(file));
+            setVista(file.type === "application/pdf" ? null : URL.createObjectURL(file));
+            if (file.type === "application/pdf") toast.success(`PDF guardado: ${file.name}`);
             setFoto(ruta);
           } catch {
             toast.error("No se pudo subir la foto. Intenta de nuevo.");

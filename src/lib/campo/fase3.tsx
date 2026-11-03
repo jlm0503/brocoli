@@ -31,6 +31,7 @@ import {
 import { tiene, type NavPath } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
+import { useViajesAtrasados } from "./cosecha";
 import type {
   AlertaDireccion,
   Asignacion,
@@ -392,6 +393,7 @@ export function useAvisos(): Partial<Record<NavPath, number>> {
   const ctx = useContext(Fase3Context);
   const { roles, user } = useSesion();
   const { hoy } = useCampo();
+  const atrasados = useViajesAtrasados();
   if (!ctx) return {};
   const ex = ctx.extraordinarios;
   const porAutorizar = tiene(roles, "admin", "autorizador") ? ex.filter((e) => e.status === "por_autorizar").length : 0;
@@ -402,6 +404,7 @@ export function useAvisos(): Partial<Record<NavPath, number>> {
     "/extraordinarios": porAutorizar + mejoras,
     "/compras": ex.filter((e) => e.status === "autorizada").length,
     "/direccion": ctx.alertasDireccion.filter((a) => a.status === "abierta").length,
+    "/cosecha": tiene(roles, "admin") ? atrasados.length : 0,
   };
 }
 
