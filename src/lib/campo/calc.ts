@@ -67,41 +67,62 @@ export function nombreCultivo(cultivos: CultivoCat[], id: Cultivo): string {
 
 export const PARAMETROS_INFO: Record<
   ClaveParametro,
-  { nombre: string; unidad: string; defecto: number }
+  { nombre: string; unidad: string; defecto: number; porVariedad: boolean }
 > = {
-  plantasPorHa: { nombre: "Plantas por hectárea (sugerido)", unidad: "plantas", defecto: 60000 },
-  costoPlantaHa: { nombre: "Costo de planta por hectárea", unidad: "MXN", defecto: 16200 },
-  precioKg: { nombre: "Precio por kg pagable", unidad: "MXN", defecto: 10.5 },
-  descuentoViaje: { nombre: "Descuento de planta por viaje", unidad: "MXN", defecto: 10000 },
+  plantasPorHa: { nombre: "Plantas por hectárea (sugerido)", unidad: "plantas", defecto: 60000, porVariedad: true },
+  costoPlantaHa: { nombre: "Costo de planta por hectárea", unidad: "MXN", defecto: 16200, porVariedad: true },
+  precioKg: { nombre: "Precio por kg pagable", unidad: "MXN", defecto: 10.5, porVariedad: true },
+  descuentoViaje: { nombre: "Descuento de planta por viaje", unidad: "MXN", defecto: 10000, porVariedad: false },
   metaKgHa: {
     nombre: "Meta de rendimiento por ha (alerta si cierra abajo)",
     unidad: "kg",
     defecto: 16000,
+    porVariedad: true,
   },
-  rollosCintaHa: { nombre: "Rollos de cinta por hectárea", unidad: "rollos", defecto: 2.1 },
-  diasSinEvaluacion: { nombre: "Días sin evaluación antes de alerta", unidad: "días", defecto: 3 },
+  rollosCintaHa: { nombre: "Rollos de cinta por hectárea", unidad: "rollos", defecto: 2.1, porVariedad: true },
+  diasSinEvaluacion: { nombre: "Días sin evaluación antes de alerta", unidad: "días", defecto: 3, porVariedad: false },
 };
 
 export const CLAVES_PARAMETRO = Object.keys(PARAMETROS_INFO) as ClaveParametro[];
 
-/** Valor que aplica en `fecha`: el último cambio con fecha de vigencia igual o anterior. */
+/** Último registro de la clave vigente en `fecha` para esa variedad (o el general si `variedadId` es undefined). */
+export function registroVigente(
+  params: Parametro[],
+  clave: ClaveParametro,
+  fecha: string,
+  variedadId?: string,
+): Parametro | undefined {
+  let mejor: Parametro | undefined;
+  for (const p of params) {
+    if (p.clave !== clave || p.desde > fecha || (p.variedadId ?? undefined) !== variedadId) continue;
+    if (!mejor || p.desde >= mejor.desde) mejor = p;
+  }
+  return mejor;
+}
+
+/**
+ * Valor que aplica en `fecha`: el último cambio con fecha de vigencia igual o anterior. Con variedad,
+ * manda el valor propio de esa variedad vigente en la fecha; si no tiene, se usa el general.
+ */
 export function parametroVigente(
   params: Parametro[],
   clave: ClaveParametro,
   fecha: string,
+  variedadId?: string,
 ): number {
-  let mejor: Parametro | undefined;
-  for (const p of params) {
-    if (p.clave !== clave || p.desde > fecha) continue;
-    if (!mejor || p.desde >= mejor.desde) mejor = p;
-  }
-  return mejor?.valor ?? PARAMETROS_INFO[clave].defecto;
+  const propio =
+    variedadId && PARAMETROS_INFO[clave].porVariedad
+      ? registroVigente(params, clave, fecha, variedadId)
+      : undefined;
+  return (propio ?? registroVigente(params, clave, fecha))?.valor ?? PARAMETROS_INFO[clave].defecto;
 }
 
 /** Costo por planta = costo de planta por ha ÷ plantas por ha (16,200 ÷ 60,000 = $0.27). */
-export function costoPorPlanta(params: Parametro[], fecha: string): number {
-  const porHa = parametroVigente(params, "plantasPorHa", fecha);
-  return porHa > 0 ? redondear(parametroVigente(params, "costoPlantaHa", fecha) / porHa, 4) : 0;
+export function costoPorPlanta(params: Parametro[], fecha: string, variedadId?: string): number {
+  const porHa = parametroVigente(params, "plantasPorHa", fecha, variedadId);
+  return porHa > 0
+    ? redondear(parametroVigente(params, "costoPlantaHa", fecha, variedadId) / porHa, 4)
+    : 0;
 }
 
 /** Errores al registrar un nuevo valor de parámetro. */
@@ -1073,6 +1094,8 @@ export function validarSolicitud(
   return null;
 }
 
+const porHaDe = (x: number | ((l: Lote) => number), l: Lote) => (typeof x === "function" ? x(l) : x);
+
 /** Renglones de la solicitud (copia de los datos del lote). Sin plantas capturadas, se usan las sugeridas. */
 export function lineasSolicitud(
   seleccion: Lote[],
@@ -1080,7 +1103,8 @@ export function lineasSolicitud(
     ranchos: Rancho[];
     tablas: Tabla[];
     variedades: Variedad[];
-    plantasPorHa: number;
+    /** Plantas por ha sugeridas: un número o, por lote (según su variedad). */
+    plantasPorHa: number | ((l: Lote) => number);
     /** Plantas capturadas en la solicitud por lote (por ha o total); mandan sobre las del lote. */
     plantas?: Record<string, number> | undefined;
   },
@@ -1094,7 +1118,7 @@ export function lineasSolicitud(
     lote: l.codigo,
     variedad: ctx.variedades.find((v) => v.id === l.variedadId)?.nombre ?? "",
     ha: l.ha,
-    plantas: ctx.plantas?.[l.id] ?? l.plantas ?? plantasSugeridas(l.ha, ctx.plantasPorHa),
+    plantas: ctx.plantas?.[l.id] ?? l.plantas ?? plantasSugeridas(l.ha, porHaDe(ctx.plantasPorHa, l)),
     semanaPlantacion: l.semanaPlaneada,
     fechaEntrega: l.fechaEntregaPlanta ?? fechaEnSemana(l.semanaPlaneada, 0),
   }));
@@ -1108,13 +1132,13 @@ export function validarPlantasSolicitud(
   seleccion: Lote[],
   plantas: Record<string, number>,
   motivos: Record<string, string>,
-  plantasPorHa: number,
+  plantasPorHa: number | ((l: Lote) => number),
 ): string | null {
   for (const l of seleccion) {
     const n = plantas[l.id];
     if (n === undefined) continue;
     const motivo = motivos[l.id] ?? l.motivoPlantas;
-    const err = validarPlantas(n, plantasSugeridas(l.ha, plantasPorHa), motivo);
+    const err = validarPlantas(n, plantasSugeridas(l.ha, porHaDe(plantasPorHa, l)), motivo);
     if (err) return `Lote ${l.codigo}: ${err.charAt(0).toLowerCase()}${err.slice(1)}`;
   }
   return null;
@@ -1236,12 +1260,13 @@ export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[]
           .filter((l) => (e.recibidas[l.loteId] ?? 0) > 0)
           .map((l) => {
             const n = e.recibidas[l.loteId]!;
+            const { costoPlanta, plantasPorHa } = e.porLote?.[l.loteId] ?? e;
             return {
               fecha: e.fecha,
               tipo: "cargo" as const,
-              monto: redondear(n * e.costoPlanta),
+              monto: redondear(n * costoPlanta),
               plantas: n,
-              ha: e.plantasPorHa > 0 ? redondear(n / e.plantasPorHa, 4) : 0,
+              ha: plantasPorHa > 0 ? redondear(n / plantasPorHa, 4) : 0,
               loteId: l.loteId,
               ranchoId: l.ranchoId,
               tablaId: l.tablaId,
