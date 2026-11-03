@@ -121,12 +121,12 @@ export function MapaFotos({ fotos, tablas }: { fotos: FotoGps[]; tablas: Tabla[]
             {f.lat !== undefined && f.lng !== undefined ? (
               <iframe
                 title={`Mapa foto ${i + 1}`}
-                className="h-32 w-full"
+                className="h-48 w-full"
                 loading="lazy"
                 src={`https://www.openstreetmap.org/export/embed.html?bbox=${f.lng - 0.004},${f.lat - 0.003},${f.lng + 0.004},${f.lat + 0.003}&layer=mapnik&marker=${f.lat},${f.lng}`}
               />
             ) : (
-              <div className="flex h-32 items-center justify-center bg-muted text-muted-foreground">Sin GPS</div>
+              <div className="flex h-48 items-center justify-center bg-muted text-muted-foreground">Sin GPS</div>
             )}
             <div className="space-y-1 p-2">
               <VerEvidencia foto={f.ruta} title={`Ver foto ${i + 1}`}>
