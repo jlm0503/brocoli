@@ -1073,7 +1073,8 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const reparto = new Map(
         repartirAvance(deTabla, ha, semanaActual).map((r) => [r.loteId, r.ha]),
       );
-      const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
+      const cinta = (l: Lote) =>
+        cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy, l.variedadId));
       const nuevosPedidos: PedidoPlaneacion[] = [];
       setLotes((ls) =>
         ls.map((l) => {
@@ -1091,7 +1092,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
             adicionales,
             l.tablaId,
             l.ha,
-            cinta,
+            cinta(l),
           );
           if (l.sinInsumos && l.avances.length === 0 && lineas.length > 0) {
             // Sus insumos se usaron en otro lote: al plantarse genera su propio pedido.
