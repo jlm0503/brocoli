@@ -253,13 +253,20 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     [extraordinarios, nombre, hoy, poner],
   );
 
+  // El costo se carga al surtir, con el precio vigente ese día.
   const surtir = useCallback(
     (id: string) => {
       const ex = extraordinarios.find((e) => e.id === id);
       if (!ex || ex.status !== "autorizada") return;
-      poner("extraordinarios", { ...ex, status: "surtida", surtido: { fecha: hoy, por: nombre } });
+      const ts = tablasDe(ex.tablaIds);
+      poner("extraordinarios", {
+        ...ex,
+        status: "surtida",
+        surtido: { fecha: hoy, por: nombre },
+        reparto: repartirPorHa(costoExtraordinario(ex.lineas, ts, productos, hoy), ts, lotes),
+      });
     },
-    [extraordinarios, hoy, nombre, poner],
+    [extraordinarios, tablasDe, productos, lotes, hoy, nombre, poner],
   );
 
   const reportarMejora: Fase3Value["reportarMejora"] = useCallback(

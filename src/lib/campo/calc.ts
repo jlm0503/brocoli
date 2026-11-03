@@ -1550,10 +1550,10 @@ export function reporteMensualAlertas(
   return [...m.values()].sort((a, b) => b.mes.localeCompare(a.mes) || a.ingeniero.localeCompare(b.ingeniero));
 }
 
-/** Monto de extraordinarios autorizados cargado a un lote. */
+/** Monto de extraordinarios cargado a un lote: solo cuenta cuando Compras ya lo surtió. */
 export function costoExtraLote(loteId: string, extras: Extraordinario[]): number {
   return extras
-    .filter((e) => e.status === "autorizada" || e.status === "surtida")
+    .filter((e) => e.status === "surtida")
     .flatMap((e) => e.reparto ?? [])
     .filter((r) => r.loteId === loteId)
     .reduce((s, r) => s + r.monto, 0);
