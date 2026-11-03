@@ -3,16 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { ROLES, puestoPrincipal } from "@/lib/campo/roles";
+import { useFase3 } from "@/lib/campo/fase3";
+import { ORDEN_PUESTOS, ROLES } from "@/lib/campo/roles";
+import { useCampo } from "@/lib/campo/store";
 import { useSesion } from "@/lib/campo/sesion";
 import type { Role } from "@/lib/campo/types";
 
@@ -20,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
   head: () => ({
     meta: [
       { title: "Usuarios y puestos · Brócoli" },
-      { name: "description", content: "Aprueba a quien se registró y asígnale su puesto: administrador, ingeniero de campo o compras." },
+      { name: "description", content: "Aprueba a quien se registró y asígnale su puesto: uno o varios puestos y, a los ingenieros, sus ranchos." },
       { property: "og:title", content: "Usuarios y puestos · Brócoli" },
       { property: "og:description", content: "Quién entra a la app y qué pantallas ve." },
       { property: "og:type", content: "website" },
@@ -35,10 +30,8 @@ interface Persona {
   nombre: string;
   email: string;
   created_at: string;
-  puesto: Role | null;
+  puestos: Role[];
 }
-
-const SIN_PUESTO = "ninguno";
 
 async function cargarPersonas(): Promise<Persona[]> {
   const [perfiles, roles] = await Promise.all([
@@ -49,63 +42,79 @@ async function cargarPersonas(): Promise<Persona[]> {
   if (roles.error) throw roles.error;
   return perfiles.data.map((p) => ({
     ...p,
-    puesto: puestoPrincipal(roles.data.filter((r) => r.user_id === p.id).map((r) => r.role)),
+    puestos: ORDEN_PUESTOS.filter((r) => roles.data.some((x) => x.user_id === p.id && x.role === r)),
   }));
 }
 
 function Usuarios() {
   const { user } = useSesion();
+  const { ranchos } = useCampo();
+  const { asignaciones, guardarAsignacion } = useFase3();
   const qc = useQueryClient();
   const { data: personas = [], isLoading } = useQuery({ queryKey: ["personas"], queryFn: cargarPersonas });
 
-  const asignar = useMutation({
-    mutationFn: async ({ id, puesto }: { id: string; puesto: Role | null }) => {
-      const quitar = await supabase.from("user_roles").delete().eq("user_id", id);
-      if (quitar.error) throw quitar.error;
-      if (puesto) {
-        const poner = await supabase.from("user_roles").insert({ user_id: id, role: puesto });
-        if (poner.error) throw poner.error;
-      }
+  const cambiar = useMutation({
+    mutationFn: async ({ id, puesto, dar }: { id: string; puesto: Role; dar: boolean }) => {
+      const r = dar
+        ? await supabase.from("user_roles").insert({ user_id: id, role: puesto })
+        : await supabase.from("user_roles").delete().eq("user_id", id).eq("role", puesto);
+      if (r.error) throw r.error;
     },
     onSuccess: (_d, v) => {
-      toast.success(v.puesto ? `Puesto asignado: ${ROLES[v.puesto].nombre}` : "Se quitó el puesto; ya no verá nada");
+      toast.success(`${v.dar ? "Puesto agregado" : "Puesto quitado"}: ${ROLES[v.puesto].nombre}`);
       void qc.invalidateQueries({ queryKey: ["personas"] });
     },
     onError: () => toast.error("No se pudo cambiar el puesto."),
   });
 
-  const pendientes = personas.filter((p) => !p.puesto);
-  const conPuesto = personas.filter((p) => p.puesto);
+  const pendientes = personas.filter((p) => p.puestos.length === 0);
+  const conPuesto = personas.filter((p) => p.puestos.length > 0);
 
   const fila = (p: Persona) => {
     const yo = p.id === user?.id;
+    const asig = asignaciones.find((a) => a.id === p.id)?.ranchoIds ?? [];
     return (
-      <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-card">
+      <li key={p.id} className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-card">
         <div className="min-w-0">
           <div className="font-medium">
             {p.nombre} {yo && <span className="text-xs text-muted-foreground">(tú)</span>}
           </div>
           <div className="truncate text-sm text-muted-foreground">{p.email}</div>
         </div>
-        {yo ? (
-          <Badge variant="verde">{p.puesto ? ROLES[p.puesto].nombre : "Sin puesto"}</Badge>
-        ) : (
-          <Select
-            value={p.puesto ?? SIN_PUESTO}
-            onValueChange={(v) => asignar.mutate({ id: p.id, puesto: v === SIN_PUESTO ? null : (v as Role) })}
-          >
-            <SelectTrigger className="w-56" aria-label={`Puesto de ${p.nombre}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SIN_PUESTO}>Sin puesto (no ve nada)</SelectItem>
-              {(Object.keys(ROLES) as Role[]).map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ROLES[r].nombre}
-                </SelectItem>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {ORDEN_PUESTOS.map((r) => {
+            const tiene = p.puestos.includes(r);
+            const bloqueado = yo && r === "admin";
+            return (
+              <label key={r} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={tiene}
+                  disabled={bloqueado || cambiar.isPending}
+                  aria-label={`${ROLES[r].nombre} para ${p.nombre}`}
+                  onCheckedChange={(c) => cambiar.mutate({ id: p.id, puesto: r, dar: c === true })}
+                />
+                {ROLES[r].nombre}
+              </label>
+            );
+          })}
+        </div>
+        {p.puestos.includes("ingeniero") && (
+          <div className="rounded-md bg-muted/60 p-3">
+            <div className="eyebrow mb-2">Ranchos que ve (sin marcar ninguno ve todos)</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {ranchos.map((r) => (
+                <label key={r.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={asig.includes(r.id)}
+                    onCheckedChange={(c) =>
+                      guardarAsignacion(p.id, c ? [...asig, r.id] : asig.filter((x) => x !== r.id))
+                    }
+                  />
+                  {r.nombre}
+                </label>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          </div>
         )}
       </li>
     );
@@ -116,7 +125,7 @@ function Usuarios() {
       path="/usuarios"
       eyebrow="Administrador · accesos"
       title="Usuarios y puestos"
-      description="Quien crea su cuenta no ve nada hasta que le asignes un puesto. Cada puesto solo ve sus pantallas."
+      description="Quien crea su cuenta no ve nada hasta que le asignes un puesto. Una persona puede tener varios puestos y ve las pantallas de todos ellos."
     >
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
