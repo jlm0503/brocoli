@@ -150,7 +150,7 @@ interface CampoContextValue {
   parametros: Parametro[];
   /** Valor vigente de un parámetro en la fecha de hoy (o la indicada). */
   parametro: (clave: ClaveParametro, fecha?: string) => number;
-  guardarParametro: (clave: ClaveParametro, valor: number, desde: string) => string | null;
+  guardarParametro: (clave: ClaveParametro, valor: number, desde: string, variedadId?: string) => string | null;
   eliminarParametro: (id: string) => void;
   agregarSimple: (
     col: CatalogoSimple,
@@ -618,15 +618,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const parametro = useCallback(
-    (clave: ClaveParametro, fecha?: string) => parametroVigente(parametros, clave, fecha ?? hoy),
+    (clave: ClaveParametro, fecha?: string, variedadId?: string) =>
+      parametroVigente(parametros, clave, fecha ?? hoy, variedadId),
     [parametros, hoy],
   );
 
-  const guardarParametro = useCallback((clave: ClaveParametro, valor: number, desde: string) => {
+  const guardarParametro = useCallback((clave: ClaveParametro, valor: number, desde: string, variedadId?: string) => {
     const err = validarParametro(clave, valor, desde);
     if (err) return err;
-    const id = `${clave}-${desde}`;
-    setParametros((ps) => [...ps.filter((p) => p.id !== id), { id, clave, valor, desde }]);
+    const id = variedadId ? `${clave}-${variedadId}-${desde}` : `${clave}-${desde}`;
+    setParametros((ps) => [
+      ...ps.filter((p) => p.id !== id),
+      { id, clave, valor, desde, ...(variedadId ? { variedadId } : {}) },
+    ]);
     return null;
   }, []);
 
@@ -812,9 +816,9 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         nuevoId,
         cinta: cintaPlaneacion(
           productos,
-          parametroVigente(parametros, "rollosCintaHa", p.fechaPlantacion),
+          parametroVigente(parametros, "rollosCintaHa", p.fechaPlantacion, variedad.id),
         ),
-        plantasPorHa: parametroVigente(parametros, "plantasPorHa", p.fechaPlantacion),
+        plantasPorHa: parametroVigente(parametros, "plantasPorHa", p.fechaPlantacion, variedad.id),
       });
       setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
       if (pedido) setPedidos((ps) => [...ps, pedido]);
@@ -845,13 +849,16 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (err) return fallo(err);
       const sugeridas = plantasSugeridas(
         redondear(ha),
-        parametroVigente(parametros, "plantasPorHa", hoy),
+        parametroVigente(parametros, "plantasPorHa", hoy, variedad.id),
       );
       const errPlantas = validarPlantas(opciones.plantas, sugeridas, opciones.motivoPlantas);
       if (errPlantas) return fallo(errPlantas);
       if (viveros.length > 0 && !viveros.some((v) => v.id === opciones.viveroId))
         return fallo("Elige el vivero.");
-      const cinta = cintaPlaneacion(productos, parametroVigente(parametros, "rollosCintaHa", hoy));
+      const cinta = cintaPlaneacion(
+        productos,
+        parametroVigente(parametros, "rollosCintaHa", hoy, variedad.id),
+      );
       const necesidad = lineasPlaneacion(
         recetaDe(recetas, variedad.cultivo),
         adicionales,
@@ -967,7 +974,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
               ranchos,
               tablas,
               variedades,
-              plantasPorHa: parametroVigente(parametros, "plantasPorHa", hoy),
+              plantasPorHa: parametroVigente(parametros, "plantasPorHa", hoy, variedad.id),
             }),
             ingeniero,
             status: "generada",
@@ -1219,7 +1226,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (err) return { error: err };
       const v = viveros.find((x) => x.id === viveroId);
       if (!v) return { error: "Elige el vivero." };
-      const plantasPorHa = parametroVigente(parametros, "plantasPorHa", hoy);
+      const plantasPorHa = (l: Lote) => parametroVigente(parametros, "plantasPorHa", hoy, l.variedadId);
       const errPlantas = validarPlantasSolicitud(seleccion, plantas, motivos, plantasPorHa);
       if (errPlantas) return { error: errPlantas };
       const solicitud: SolicitudPlanta = {
@@ -1284,13 +1291,25 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         recibidas: datos.recibidas,
         costoPlanta: costoPorPlanta(parametros, datos.fecha),
         plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha),
+        porLote: Object.fromEntries(
+          s.lineas.map((l) => {
+            const vid = lotes.find((x) => x.id === l.loteId)?.variedadId;
+            return [
+              l.loteId,
+              {
+                costoPlanta: costoPorPlanta(parametros, datos.fecha, vid),
+                plantasPorHa: parametroVigente(parametros, "plantasPorHa", datos.fecha, vid),
+              },
+            ];
+          }),
+        ),
       };
       setSolicitudes((ss) =>
         ss.map((x) => (x.id === id ? registrarEntregaPlanta(x, entrega, datos.cerrar) : x)),
       );
       return null;
     },
-    [solicitudes, hoy, parametros],
+    [solicitudes, hoy, parametros, lotes],
   );
 
   const cancelarSolicitud = useCallback(
