@@ -17,6 +17,7 @@ import {
   plantaQueLlegaEnSemana,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import { useRanchosVisibles } from "@/lib/campo/fase3";
 
 export const Route = createFileRoute("/_authenticated/llegadas")({
@@ -48,8 +49,7 @@ const ESTATUS_INSUMO = {
 function Llegadas() {
   const {
     semanaActual,
-    ranchos: todosRanchos,
-    lotes,
+    lotes: todosLotes,
     tablas,
     recetas,
     adicionales,
@@ -58,7 +58,8 @@ function Llegadas() {
     pedidos,
     solicitudes,
   } = useCampo();
-  const ranchos = useRanchosVisibles(todosRanchos);
+  const { ranchos, pasaLote, pasaLoteId } = useFiltro();
+  const lotes = useMemo(() => todosLotes.filter((l) => pasaLote(l)), [todosLotes, pasaLote]);
   const [semana, setSemana] = useState(semanaActual);
   const productoById = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const tablaById = useMemo(() => new Map(tablas.map((t) => [t.id, t])), [tablas]);
@@ -74,8 +75,8 @@ function Llegadas() {
       ),
     [lotes, recetas, adicionales, semana, productos, recepciones, semanaActual],
   );
-  const planeacion = pedidosQueLleganEnSemana(pedidos, semana);
-  const planta = plantaQueLlegaEnSemana(solicitudes, semana);
+  const planeacion = pedidosQueLleganEnSemana(pedidos, semana).filter((p) => pasaLoteId(p.loteId));
+  const planta = plantaQueLlegaEnSemana(solicitudes, semana).filter((l) => pasaLoteId(l.loteId));
 
   const conAlgo = ranchos.filter(
     (r) =>
@@ -90,6 +91,7 @@ function Llegadas() {
       eyebrow={`Semana ${semana} · inicia ${fechaCorta(fechaEnSemana(semana))}`}
       title="Lo que llega al rancho"
       description="Lo que va a recibir cada rancho en la semana: insumos de la receta, cinta y productos de preparación, y planta del vivero."
+      filtros
       actions={
         <div className="flex items-center gap-1">
           <Button

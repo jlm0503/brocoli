@@ -24,6 +24,7 @@ import {
 } from "@/lib/campo/calc";
 import { entregarPdf } from "@/lib/campo/pdf-solicitud";
 import { useCampo } from "@/lib/campo/store";
+import { useFiltro } from "@/lib/campo/filtro";
 import type { EstatusSolicitud, SolicitudPlanta } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/solicitudes")({
@@ -56,11 +57,13 @@ const VARIANTE: Record<EstatusSolicitud, "pendiente" | "comprado" | "recibido" |
 };
 
 function Solicitudes() {
-  const { solicitudes, lotes, semanaActual } = useCampo();
+  const { solicitudes: todas, lotes, semanaActual } = useCampo();
+  const { pasaLote, pasaLoteId } = useFiltro();
+  const solicitudes = todas.filter((s) => s.lineas.length === 0 || s.lineas.some((l) => pasaLoteId(l.loteId)));
   const [generando, setGenerando] = useState(false);
   const [recibiendo, setRecibiendo] = useState<SolicitudPlanta | null>(null);
   const lista = [...solicitudes].sort((a, b) => b.folio - a.folio);
-  const sinSolicitud = lotesParaSolicitud(lotes, solicitudes);
+  const sinSolicitud = lotesParaSolicitud(lotes, todas).filter((l) => pasaLote(l));
   const porRecibir = solicitudes.filter(
     (s) => s.status === "generada" || s.status === "enviada" || s.status === "parcial",
   );
@@ -71,6 +74,7 @@ function Solicitudes() {
       eyebrow={`Planta · semana ${semanaActual}`}
       title="Solicitudes de planta"
       description="Cada solicitud lleva folio y se descarga en PDF para mandarla al vivero. Al llegar la planta se captura lo que realmente se recibió."
+      filtros
       actions={
         <Button onClick={() => setGenerando(true)}>
           <Plus /> Generar solicitud
