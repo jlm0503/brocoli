@@ -280,6 +280,8 @@ export interface EntregaPlanta {
   /** Valores vigentes el día que llegó. */
   costoPlanta: number;
   plantasPorHa: number;
+  /** Valores de la variedad de cada lote el día que llegó (mandan sobre los de arriba). */
+  porLote?: Record<string, { costoPlanta: number; plantasPorHa: number }> | undefined;
 }
 
 /** Renglón de la solicitud: copia de los datos del lote al generarla. */
