@@ -42,6 +42,8 @@ export function FotoInput({
     <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/50 p-4 text-sm text-muted-foreground transition-colors hover:border-primary">
       {vista && foto ? (
         <img src={vista} alt={alt} className="max-h-40 rounded-md" />
+      ) : foto && !subiendo ? (
+        <span className="font-medium text-primary">Archivo guardado · toca para cambiarlo</span>
       ) : subiendo ? (
         <>
           <Loader2 className="size-5 animate-spin" /> Subiendo foto…
