@@ -1,3 +1,4 @@
+import type { AlertaDireccion, Devolucion, EstadoUbicacion, Extraordinario, FotoGps, LineaExtra, RepartoExtra } from "./types";
 import type {
   Adicional,
   AlertaInsumos,
@@ -1361,4 +1362,192 @@ export function plantaQueLlegaEnSemana(
         .filter((l) => semanaDeFecha(l.fechaEntrega) === semana)
         .map((l) => ({ ...l, folio: s.folio, vivero: s.vivero.nombre, status: s.status })),
     );
+}
+
+/* ───────────── Fase 3: extraordinarios, alertas a Dirección y devoluciones ───────────── */
+
+/** Distancia en metros entre dos puntos GPS (fórmula de haversine). */
+export function distanciaM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const rad = (g: number) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Cada foto debe caer dentro del radio de al menos una de las tablas elegidas.
+ * Una foto fuera (o sin ubicación) = "no_valida". Si ninguna tabla elegida tiene punto = "no_verificable".
+ */
+export function validarUbicacionFotos(fotos: FotoGps[], tablas: Tabla[]): EstadoUbicacion {
+  const conPunto = tablas.filter((t) => t.gps);
+  if (conPunto.length === 0) return "no_verificable";
+  const dentro = (f: FotoGps) =>
+    f.lat !== undefined &&
+    f.lng !== undefined &&
+    conPunto.some((t) => distanciaM({ lat: f.lat!, lng: f.lng! }, t.gps!) <= radioValidacion(t));
+  if (fotos.every(dentro)) return "valida";
+  // Si hay tablas sin punto, la foto pudo tomarse en ellas: no se puede asegurar que esté mal.
+  return conPunto.length < tablas.length ? "no_verificable" : "no_valida";
+}
+
+/** Una foto cuenta como "tomada en el momento" si el archivo es de hace 5 minutos o menos. */
+export function fotoRecienTomada(lastModified: number, ahora: number): boolean {
+  return ahora - lastModified >= -60_000 && ahora - lastModified <= 5 * 60_000;
+}
+
+/** Costo estimado: cantidad por ha × hectáreas de todas las tablas × precio vigente en la fecha. */
+export function costoExtraordinario(
+  lineas: LineaExtra[],
+  tablas: Tabla[],
+  productos: Producto[],
+  fecha: string,
+): number {
+  const ha = tablas.reduce((s, t) => s + t.hectareas, 0);
+  return lineas.reduce((s, l) => {
+    const p = productos.find((x) => x.id === l.productoId);
+    return s + (p ? l.porHa * ha * precioVigente(p, fecha) : 0);
+  }, 0);
+}
+
+/** El costo se carga a las tablas en proporción a sus hectáreas, y a su lote activo si tiene. */
+export function repartirPorHa(costo: number, tablas: Tabla[], lotes: Lote[]): RepartoExtra[] {
+  const ha = tablas.reduce((s, t) => s + t.hectareas, 0);
+  return tablas.map((t) => {
+    const activos = lotesDeTabla(lotes, t.id).filter((l) => l.avances.length > 0);
+    const lote = activos[activos.length - 1];
+    return {
+      tablaId: t.id,
+      loteId: lote?.id,
+      ha: t.hectareas,
+      monto: ha > 0 ? Math.round((costo * t.hectareas * 100) / ha) / 100 : 0,
+    };
+  });
+}
+
+/** Cantidad total por producto que Compras debe surtir (por ha × hectáreas). */
+export function cantidadesExtraordinario(ex: Extraordinario, tablas: Tabla[]): { productoId: string; cantidad: number }[] {
+  const ha = tablas.filter((t) => ex.tablaIds.includes(t.id)).reduce((s, t) => s + t.hectareas, 0);
+  return ex.lineas.map((l) => ({ productoId: l.productoId, cantidad: Math.round(l.porHa * ha * 100) / 100 }));
+}
+
+export function validarExtraordinario(d: {
+  tablaIds: string[];
+  descripcion: string;
+  lineas: LineaExtra[];
+  fotos: FotoGps[];
+  diasEfecto: number;
+  fechaMaxSurtido: string;
+}, hoy: string): string | null {
+  if (d.tablaIds.length === 0) return "Elige al menos una tabla afectada.";
+  if (!d.descripcion.trim()) return "Describe la condición.";
+  if (d.lineas.length === 0 || d.lineas.some((l) => !l.productoId || !(l.porHa > 0)))
+    return "Agrega los productos con su cantidad por ha.";
+  if (d.fotos.length < 3) return "Toma al menos 3 fotos con la cámara.";
+  if (!(d.diasEfecto > 0)) return "Indica los días esperados de efecto.";
+  if (!d.fechaMaxSurtido) return "Indica la fecha máxima de surtido.";
+  if (d.fechaMaxSurtido < hoy) return "La fecha máxima de surtido no puede ser pasada.";
+  return null;
+}
+
+export function siguienteFolioExtra(extras: Extraordinario[]): string {
+  const n = extras.reduce((m, e) => Math.max(m, Number(e.folio.replace(/\D/g, "")) || 0), 0);
+  return `EX-${String(n + 1).padStart(4, "0")}`;
+}
+
+/** Aviso en rojo: por autorizar y falta 1 día o menos para la fecha máxima de surtido. */
+export function urgenteSurtido(ex: Extraordinario, hoy: string): boolean {
+  return ex.status === "por_autorizar" && diasEntre(hoy, ex.fechaMaxSurtido) <= 1;
+}
+
+/** Fecha en que el ingeniero debe reportar la mejora: autorización + días de efecto. */
+export function fechaReporteMejora(ex: Extraordinario): string | null {
+  if (!ex.autorizacion || (ex.status !== "autorizada" && ex.status !== "surtida")) return null;
+  return sumarDias(ex.autorizacion.fecha, ex.diasEfecto);
+}
+
+export function debeReportarMejora(ex: Extraordinario, hoy: string): boolean {
+  const f = fechaReporteMejora(ex);
+  return !!f && !ex.mejora && hoy >= f;
+}
+
+/**
+ * Alertas a Dirección que deben existir: fotos fuera de lugar (solicitud o mejora) y
+ * mejora no reportada 3 días después de la fecha esperada. Ids fijos para no duplicar.
+ */
+export function alertasDireccionNuevas(
+  extras: Extraordinario[],
+  existentes: AlertaDireccion[],
+  hoy: string,
+): AlertaDireccion[] {
+  const ya = new Set(existentes.map((a) => a.id));
+  const nuevas: AlertaDireccion[] = [];
+  const base = (ex: Extraordinario, id: string, tipo: AlertaDireccion["tipo"], fotos: FotoGps[]) => {
+    if (ya.has(id)) return;
+    nuevas.push({
+      id,
+      tipo,
+      extraordinarioId: ex.id,
+      ingeniero: ex.ingeniero,
+      ranchoId: ex.ranchoId,
+      tablaIds: ex.tablaIds,
+      fecha: hoy,
+      fotos,
+      status: "abierta",
+    });
+  };
+  for (const ex of extras) {
+    if (ex.ubicacion === "no_valida") base(ex, `ub-${ex.id}`, "ubicacion", ex.fotos);
+    if (ex.mejora?.ubicacion === "no_valida") base(ex, `ubm-${ex.id}`, "ubicacion", ex.mejora.fotos);
+    const f = fechaReporteMejora(ex);
+    if (f && !ex.mejora && diasEntre(f, hoy) > 3) base(ex, `sm-${ex.id}`, "sin_mejora", []);
+  }
+  return nuevas;
+}
+
+export function validarCierreAlerta(comentario: string): string | null {
+  return comentario.trim() ? null : "Escribe el comentario para cerrar la alerta.";
+}
+
+/** Reporte mensual: cuántas alertas por mes, ingeniero y tipo. */
+export function reporteMensualAlertas(
+  alertas: AlertaDireccion[],
+): { mes: string; ingeniero: string; ubicacion: number; sin_mejora: number }[] {
+  const m = new Map<string, { mes: string; ingeniero: string; ubicacion: number; sin_mejora: number }>();
+  for (const a of alertas) {
+    const mes = a.fecha.slice(0, 7);
+    const k = `${mes}|${a.ingeniero}`;
+    const r = m.get(k) ?? { mes, ingeniero: a.ingeniero, ubicacion: 0, sin_mejora: 0 };
+    r[a.tipo] += 1;
+    m.set(k, r);
+  }
+  return [...m.values()].sort((a, b) => b.mes.localeCompare(a.mes) || a.ingeniero.localeCompare(b.ingeniero));
+}
+
+/** Monto de extraordinarios autorizados cargado a un lote. */
+export function costoExtraLote(loteId: string, extras: Extraordinario[]): number {
+  return extras
+    .filter((e) => e.status === "autorizada" || e.status === "surtida")
+    .flatMap((e) => e.reparto ?? [])
+    .filter((r) => r.loteId === loteId)
+    .reduce((s, r) => s + r.monto, 0);
+}
+
+/** Lo retirado sale del costo del lote: cantidad × precio guardado en la devolución. */
+export function costoDevolucionesLote(loteId: string, devoluciones: Devolucion[]): number {
+  return devoluciones.filter((d) => d.loteId === loteId).reduce((s, d) => s + d.cantidad * d.precio, 0);
+}
+
+export function validarDevolucion(d: { tablaId: string; productoId: string; cantidad: number; foto?: string | undefined }): string | null {
+  if (!d.tablaId) return "Elige la tabla.";
+  if (!d.productoId) return "Elige el producto.";
+  if (!(d.cantidad > 0)) return "Indica la cantidad retirada.";
+  if (!d.foto) return "Toma la foto de lo retirado.";
+  return null;
+}
+
+/** Consumo teórico = entregado − retirado (nunca menos de 0). */
+export function consumoTeorico(entregado: number, retirado: number): number {
+  return Math.max(0, Math.round((entregado - retirado) * 100) / 100);
 }
