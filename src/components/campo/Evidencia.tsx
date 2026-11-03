@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 const BUCKET = "evidencias";
 
 /** Sube la foto al almacén privado y regresa su ruta (lo que se guarda en el pedido o la alerta). */
-async function subirEvidencia(file: File): Promise<string> {
+export async function subirEvidencia(file: File): Promise<string> {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const ruta = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
