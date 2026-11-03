@@ -71,7 +71,7 @@ export function GenerarSolicitudDialog({
     (elegidos ?? candidatos.map((c) => c.id)).includes(l.id),
   );
   const [observaciones, setObs] = useState("");
-  const plantasPorHa = parametro("plantasPorHa");
+  const plantasPorHa = (l: Lote) => parametro("plantasPorHa", undefined, l.variedadId);
   /** Lo capturado por lote: plantas por ha y total, ligados entre sí. */
   const [captura, setCaptura] = useState<Record<string, { porHa: string; total: string }>>({});
   const [motivos, setMotivos] = useState<Record<string, string>>({});
@@ -80,7 +80,7 @@ export function GenerarSolicitudDialog({
     return t === undefined ? undefined : t === "" ? NaN : Math.round(Number(t));
   };
   const plantasDe = (l: Lote) =>
-    totalCapturado(l) ?? l.plantas ?? plantasSugeridas(l.ha, plantasPorHa);
+    totalCapturado(l) ?? l.plantas ?? plantasSugeridas(l.ha, plantasPorHa(l));
   const editar = (l: Lote, campo: "porHa" | "total", valor: string) => {
     const n = Number(valor);
     const ok = valor !== "" && Number.isFinite(n) && n >= 0;
@@ -223,7 +223,7 @@ export function GenerarSolicitudDialog({
                         <PlantasLote
                           lote={l}
                           plantas={plantasDe(l)}
-                          sugeridas={plantasSugeridas(l.ha, plantasPorHa)}
+                          sugeridas={plantasSugeridas(l.ha, plantasPorHa(l))}
                           captura={captura[l.id]}
                           onChange={(campo, v) => editar(l, campo, v)}
                           motivo={motivos[l.id] ?? l.motivoPlantas ?? ""}

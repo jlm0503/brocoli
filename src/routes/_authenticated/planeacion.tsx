@@ -761,7 +761,7 @@ function PlanearDialog({
   const haNum = Number(ha);
   const w = Number(semana);
   const error = tabla ? validarApartado(tabla, lotes, w, haNum, semanaActual) : null;
-  const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa"));
+  const sugeridas = plantasSugeridas(haNum > 0 ? haNum : 0, parametro("plantasPorHa", undefined, variedad?.id));
   const plantas =
     porHaTxt !== null
       ? Math.round(Number(porHaTxt) * (haNum > 0 ? haNum : 0))
@@ -771,8 +771,8 @@ function PlanearDialog({
   const fueraDeRango = plantasFueraDeRango(plantas, sugeridas);
   const entregaPlanta = fechaEntrega || fechaEnSemana(w, 0);
   const cinta = useMemo(
-    () => cintaPlaneacion(productos, parametro("rollosCintaHa")),
-    [productos, parametro],
+    () => cintaPlaneacion(productos, parametro("rollosCintaHa", undefined, variedad?.id)),
+    [productos, parametro, variedad?.id],
   );
   const paquete = useMemo(
     () =>
@@ -950,7 +950,8 @@ function PlanearDialog({
               className="num"
             />
             <p className="text-xs text-muted-foreground">
-              Sugerido: {formatoNum(sugeridas)} ({formatoNum(parametro("plantasPorHa"))} por ha)
+              Sugerido: {formatoNum(sugeridas)} ({formatoNum(parametro("plantasPorHa", undefined, variedad?.id))} por ha
+              {variedad ? ` para ${variedad.nombre}` : ""})
             </p>
           </div>
           <div className="space-y-2">
