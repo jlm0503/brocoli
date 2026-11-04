@@ -147,7 +147,7 @@ function Ranchos() {
         <Stat
           label={`Ha a cosechar · sem ${semanaActual + 1}`}
           value={`${formatoNum(sumaHa(proxima))} ha`}
-          hint={`${proxima.length} ${proxima.length === 1 ? "lote" : "lotes"} entran a cosecha la próxima semana`}
+          hint={`${proxima.length} ${proxima.length === 1 ? "lote entra" : "lotes entran"} a cosecha la próxima semana`}
         />
         <Stat
           label={`Ha a cosechar · sem ${semanaActual + 2}`}
