@@ -1980,3 +1980,62 @@ export function reporteCalidad(
     semanal: conMerma([...sems.values()] as { semana: number; kgBrutos: number; kgPagables: number }[]).sort((a, b) => a.semana - b.semana),
   };
 }
+
+/* ───────────── Estatus: cosecha de la semana ───────────── */
+
+export interface KgSemana {
+  kgBrutos: number;
+  kgPagables: number;
+  /** Viajes evaluados que aportaron kilos. */
+  viajes: number;
+  /** Salidas de la semana que aún no tienen evaluación (sus kilos todavía no cuentan). */
+  sinEvaluar: number;
+}
+
+/** Kilos cosechados en la semana (por fecha de salida), solo de viajes evaluados; `pasa` filtra cada lote. */
+export function kgCosechadosSemana(
+  viajes: Viaje[],
+  semana: number,
+  pasa: (r: RepartoKg) => boolean = () => true,
+): KgSemana {
+  let kgBrutos = 0;
+  let kgPagables = 0;
+  let n = 0;
+  let sinEvaluar = 0;
+  for (const v of viajes) {
+    if (semanaDeFecha(v.fecha) !== semana) continue;
+    if (!v.evaluacion) {
+      sinEvaluar += 1;
+      continue;
+    }
+    const rs = v.evaluacion.reparto.filter(pasa);
+    if (rs.length === 0) continue;
+    n += 1;
+    for (const r of rs) {
+      kgBrutos += r.kgBrutos;
+      kgPagables += r.kgPagables;
+    }
+  }
+  return { kgBrutos: redondear(kgBrutos), kgPagables: redondear(kgPagables), viajes: n, sinEvaluar };
+}
+
+export interface PorCosechar {
+  lote: Lote;
+  ha: number;
+}
+
+/**
+ * Hectáreas que entran a cosecha en la semana: cada avance de plantación llega a su cosecha
+ * `semanaCosechaLote` semanas después (así 6 ha plantadas en sem 30 y 6 ha en sem 31 se cosechan
+ * en semanas distintas). Excluye lotes cancelados, finalizados o con la cosecha ya terminada.
+ */
+export function haPorCosecharSemana(lotes: Lote[], semana: number): PorCosechar[] {
+  const out: PorCosechar[] = [];
+  for (const l of lotes) {
+    if (l.cancelado || l.finalizado || l.cosechaTerminada || l.avances.length === 0) continue;
+    const ciclo = semanaCosechaLote(l);
+    const ha = redondear(l.avances.filter((a) => a.semana + ciclo === semana).reduce((s, a) => s + a.ha, 0));
+    if (ha > 0) out.push({ lote: l, ha });
+  }
+  return out;
+}
