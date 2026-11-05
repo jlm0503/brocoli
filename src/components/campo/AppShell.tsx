@@ -58,6 +58,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/liquidacion": Receipt,
   "/rendimiento": TrendingUp,
   "/historicos": Archive,
+  "/consumo": Archive,
   "/gastos": Receipt,
   "/resultados": TrendingUp,
 };
