@@ -30,6 +30,7 @@ import { Route as AuthenticatedParametrosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
 import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
 import { Route as AuthenticatedRendimientoRouteImport } from './routes/_authenticated/rendimiento'
+import { Route as AuthenticatedResultadosRouteImport } from './routes/_authenticated/resultados'
 import { Route as AuthenticatedSolicitudesRouteImport } from './routes/_authenticated/solicitudes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
@@ -142,6 +143,11 @@ const AuthenticatedRendimientoRoute =
     path: '/rendimiento',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedResultadosRoute = AuthenticatedResultadosRouteImport.update({
+  id: '/resultados',
+  path: '/resultados',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSolicitudesRoute =
   AuthenticatedSolicitudesRouteImport.update({
     id: '/solicitudes',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/resultados': typeof AuthenticatedResultadosRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/resultados': typeof AuthenticatedResultadosRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
   '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
   '/_authenticated/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/_authenticated/resultados': typeof AuthenticatedResultadosRoute
   '/_authenticated/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/planeacion'
     | '/ranchos'
     | '/rendimiento'
+    | '/resultados'
     | '/solicitudes'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/planeacion'
     | '/ranchos'
     | '/rendimiento'
+    | '/resultados'
     | '/solicitudes'
     | '/usuarios'
   id:
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/_authenticated/planeacion'
     | '/_authenticated/ranchos'
     | '/_authenticated/rendimiento'
+    | '/_authenticated/resultados'
     | '/_authenticated/solicitudes'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
@@ -460,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRendimientoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/resultados': {
+      id: '/_authenticated/resultados'
+      path: '/resultados'
+      fullPath: '/resultados'
+      preLoaderRoute: typeof AuthenticatedResultadosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/solicitudes': {
       id: '/_authenticated/solicitudes'
       path: '/solicitudes'
@@ -495,6 +514,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
   AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
   AuthenticatedRendimientoRoute: typeof AuthenticatedRendimientoRoute
+  AuthenticatedResultadosRoute: typeof AuthenticatedResultadosRoute
   AuthenticatedSolicitudesRoute: typeof AuthenticatedSolicitudesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
@@ -517,6 +537,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
   AuthenticatedRendimientoRoute: AuthenticatedRendimientoRoute,
+  AuthenticatedResultadosRoute: AuthenticatedResultadosRoute,
   AuthenticatedSolicitudesRoute: AuthenticatedSolicitudesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
