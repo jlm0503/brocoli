@@ -231,7 +231,9 @@ describe("Fase 6 · utilidad real", () => {
     });
     const brocoli = t.filas.find((f) => f.cultivo === "brocoli");
     const coliflor = t.filas.find((f) => f.cultivo === "coliflor");
-    expect(broccoli(brocoli)).toBe(60000);
+    if (!brocoli) throw new Error("No aparece la fila de brócoli.");
+    expect(brocoli.gastoComunes).toBe(60000);
+    expect(brocoli.porConcepto.nomina).toBe(60000);
     expect(brocoli?.noAsignado).toBe(0);
     expect(brocoli?.utilidadReal).toBe(-60000);
     expect(coliflor?.noAsignado).toBe(40000);
@@ -239,9 +241,3 @@ describe("Fase 6 · utilidad real", () => {
     expect(t.totales.utilidadReal).toBe(-100000);
   });
 });
-
-/** El brócoli debe existir en el estado de resultados. */
-function broccoli(f: { gastoComunes: number } | undefined): number {
-  if (!f) throw new Error("No aparece la fila de brócoli.");
-  return f.gastoComunes;
-}
