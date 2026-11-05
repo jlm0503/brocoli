@@ -114,14 +114,16 @@ export function GastosProvider({ children }: { children: ReactNode }) {
   const guardarGasto = useCallback(
     (d: DatosGasto) => {
       if (!puedeCapturar) return "Tu puesto no captura gastos de rancho.";
+      const id = idGasto(d);
       const error = validarGasto(d, {
-        gastos,
+        // Volver a guardar la misma celda la actualiza: solo se avisa si sería un duplicado distinto.
+        gastos: gastos.filter((g) => g.id !== id),
         reparto: repartos.find((r) => r.ranchoId === d.ranchoId),
         cultivos: cultivosDelRancho(lotes, d.ranchoId),
       });
       if (error) return error;
       poner("gastos", {
-        id: idGasto(d),
+        id,
         semana: d.semana,
         ranchoId: d.ranchoId,
         cultivo: d.modo === "total" ? "*" : d.cultivo,

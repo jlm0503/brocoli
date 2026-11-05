@@ -141,10 +141,12 @@ function RootComponent() {
         <CampoProvider>
           <Fase3Provider>
             <CosechaProvider>
+            <GastosProvider>
             <FiltroProvider>
               <Outlet />
               <Toaster position="bottom-right" />
             </FiltroProvider>
+            </GastosProvider>
           </CosechaProvider>
           </Fase3Provider>
         </CampoProvider>
