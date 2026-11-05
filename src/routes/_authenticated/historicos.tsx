@@ -24,6 +24,7 @@ import {
   formatoNum,
   gastosComunesLote,
   leerViajesCsv,
+  nombreConceptoGasto,
   plantaHistorica,
   prorrateoRango,
   rendimientoLote,
@@ -39,7 +40,7 @@ import { useFiltro } from "@/lib/campo/filtro";
 import { useGastos } from "@/lib/campo/gastos";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
-import type { CicloCerrado, Lote, ViajeHistorico } from "@/lib/campo/types";
+import type { CicloCerrado, ConceptoGasto, Lote, ViajeHistorico } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/historicos")({
   head: () => ({
