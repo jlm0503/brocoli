@@ -25,3 +25,4 @@
 
 
 - Harvest data (`viajes`, `liquidaciones`) lives in `src/lib/campo/cosecha.tsx` (same per-item save/realtime pattern as `fase3.tsx`); a trip stores its evaluation with the kg split, dated price and discount it used, and lot direct cost comes from the shared `useCostos` in `src/lib/campo/costos.tsx`. Why: settlements and yields must never recalculate past trips, and Estatus and Rendimiento must show the same cost.
+- Closed cycles are frozen snapshots in `registros` collection `ciclos` (admin-only, built by `snapshotCiclo`/`cicloHistorico` in calc.ts); lots carry `cerrado` and reopening flags the snapshot `reabierto` with a bitácora entry. Why: historical results must never recalculate.
