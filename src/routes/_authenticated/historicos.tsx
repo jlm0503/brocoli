@@ -162,6 +162,19 @@ function PorCerrar() {
                   </li>
                 ))}
               </ul>
+              <p className="text-sm text-muted-foreground">
+                Gastos comunes del rancho: <span className="num">{formatoMXN(gastosDelLote(l.id).total)}</span>
+                {Object.entries(gastosDelLote(l.id).porConcepto).filter(([, v]) => v > 0).length > 0 && (
+                  <span className="text-muted-foreground/80">
+                    {" "}
+                    ·{" "}
+                    {Object.entries(gastosDelLote(l.id).porConcepto)
+                      .filter(([, v]) => v > 0)
+                      .map(([c, v]) => `${nombreConceptoGasto(c as ConceptoGasto)} ${formatoMXN(v)}`)
+                      .join(" · ")}
+                  </span>
+                )}
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" disabled={!listo} onClick={() => cerrar(l, false)}>
                   Cerrar ciclo
