@@ -599,7 +599,7 @@ function CapturaHistorica({ abierto, cerrar }: { abierto: boolean; cerrar: () =>
           </div>
           <div className="space-y-1">
             <Label>Tabla</Label>
-            <Select value={d.tablaId} onValueChange={(v) => { set("tablaId", v); const t = tablas.find((x) => x.id === v); if (t && !d.ha) set("ha", String(t.ha)); }}>
+            <Select value={d.tablaId} onValueChange={(v) => { set("tablaId", v); const t = tablas.find((x) => x.id === v); if (t && !d.ha) set("ha", String(t.hectareas)); }}>
               <SelectTrigger><SelectValue placeholder="Elige" /></SelectTrigger>
               <SelectContent>{tablas.filter((t) => t.ranchoId === d.ranchoId).map((t) => <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>)}</SelectContent>
             </Select>
