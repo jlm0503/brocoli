@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-import { evaluarViaje, parametroVigente, validarPago, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
+import { KG_POR_BIN, evaluarViaje, parametroVigente, validarPago, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
 import { PERMISOS_COSECHA, tiene } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";

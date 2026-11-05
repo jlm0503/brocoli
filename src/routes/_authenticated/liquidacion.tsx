@@ -93,6 +93,18 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
             {r.viajes.length} viajes{r.sinEvaluar > 0 && ` (${r.sinEvaluar} sin evaluar)`} · {formatoNum(r.kgBrutos)} kg brutos ·{" "}
             {formatoNum(r.kgPagables)} kg pagables
           </p>
+          {(() => {
+            const c = enviadoVsLlegado(r.viajes);
+            return c.bins > 0 ? (
+              <p className="num text-sm">
+                El rancho dijo que mandó {formatoNum(c.kgDicho)} kg ({formatoNum(c.bins)} bins) y llegaron {formatoNum(c.kgLlegado)} kg ·{" "}
+                <span className={c.diferencia < 0 ? "text-destructive" : ""}>
+                  {c.diferencia >= 0 ? "+" : ""}
+                  {formatoNum(c.diferencia)} kg ({c.pct}%)
+                </span>
+              </p>
+            ) : null;
+          })()}
         </div>
         <Badge variant={ESTATUS[est].variant}>{ESTATUS[est].label}</Badge>
       </div>
