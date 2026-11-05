@@ -21,6 +21,7 @@ import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authent
 import { Route as AuthenticatedDevolucionesRouteImport } from './routes/_authenticated/devoluciones'
 import { Route as AuthenticatedDireccionRouteImport } from './routes/_authenticated/direccion'
 import { Route as AuthenticatedExtraordinariosRouteImport } from './routes/_authenticated/extraordinarios'
+import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedLiquidacionRouteImport } from './routes/_authenticated/liquidacion'
 import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
@@ -29,6 +30,7 @@ import { Route as AuthenticatedParametrosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
 import { Route as AuthenticatedRanchosRouteImport } from './routes/_authenticated/ranchos'
 import { Route as AuthenticatedRendimientoRouteImport } from './routes/_authenticated/rendimiento'
+import { Route as AuthenticatedResultadosRouteImport } from './routes/_authenticated/resultados'
 import { Route as AuthenticatedSolicitudesRouteImport } from './routes/_authenticated/solicitudes'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
@@ -94,6 +96,11 @@ const AuthenticatedExtraordinariosRoute =
     path: '/extraordinarios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedGastosRoute = AuthenticatedGastosRouteImport.update({
+  id: '/gastos',
+  path: '/gastos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHistoricosRoute = AuthenticatedHistoricosRouteImport.update({
   id: '/historicos',
   path: '/historicos',
@@ -136,6 +143,11 @@ const AuthenticatedRendimientoRoute =
     path: '/rendimiento',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedResultadosRoute = AuthenticatedResultadosRouteImport.update({
+  id: '/resultados',
+  path: '/resultados',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSolicitudesRoute =
   AuthenticatedSolicitudesRouteImport.update({
     id: '/solicitudes',
@@ -160,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
@@ -168,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/resultados': typeof AuthenticatedResultadosRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -183,6 +197,7 @@ export interface FileRoutesByTo {
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
@@ -191,6 +206,7 @@ export interface FileRoutesByTo {
   '/planeacion': typeof AuthenticatedPlaneacionRoute
   '/ranchos': typeof AuthenticatedRanchosRoute
   '/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/resultados': typeof AuthenticatedResultadosRoute
   '/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -208,6 +224,7 @@ export interface FileRoutesById {
   '/_authenticated/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/_authenticated/direccion': typeof AuthenticatedDireccionRoute
   '/_authenticated/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
   '/_authenticated/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
@@ -216,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
   '/_authenticated/ranchos': typeof AuthenticatedRanchosRoute
   '/_authenticated/rendimiento': typeof AuthenticatedRendimientoRoute
+  '/_authenticated/resultados': typeof AuthenticatedResultadosRoute
   '/_authenticated/solicitudes': typeof AuthenticatedSolicitudesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -233,6 +251,7 @@ export interface FileRouteTypes {
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/gastos'
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
@@ -241,6 +260,7 @@ export interface FileRouteTypes {
     | '/planeacion'
     | '/ranchos'
     | '/rendimiento'
+    | '/resultados'
     | '/solicitudes'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
@@ -256,6 +276,7 @@ export interface FileRouteTypes {
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/gastos'
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
@@ -264,6 +285,7 @@ export interface FileRouteTypes {
     | '/planeacion'
     | '/ranchos'
     | '/rendimiento'
+    | '/resultados'
     | '/solicitudes'
     | '/usuarios'
   id:
@@ -280,6 +302,7 @@ export interface FileRouteTypes {
     | '/_authenticated/devoluciones'
     | '/_authenticated/direccion'
     | '/_authenticated/extraordinarios'
+    | '/_authenticated/gastos'
     | '/_authenticated/historicos'
     | '/_authenticated/liquidacion'
     | '/_authenticated/llegadas'
@@ -288,6 +311,7 @@ export interface FileRouteTypes {
     | '/_authenticated/planeacion'
     | '/_authenticated/ranchos'
     | '/_authenticated/rendimiento'
+    | '/_authenticated/resultados'
     | '/_authenticated/solicitudes'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
@@ -385,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExtraordinariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gastos': {
+      id: '/_authenticated/gastos'
+      path: '/gastos'
+      fullPath: '/gastos'
+      preLoaderRoute: typeof AuthenticatedGastosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/historicos': {
       id: '/_authenticated/historicos'
       path: '/historicos'
@@ -441,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRendimientoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/resultados': {
+      id: '/_authenticated/resultados'
+      path: '/resultados'
+      fullPath: '/resultados'
+      preLoaderRoute: typeof AuthenticatedResultadosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/solicitudes': {
       id: '/_authenticated/solicitudes'
       path: '/solicitudes'
@@ -467,6 +505,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDevolucionesRoute: typeof AuthenticatedDevolucionesRoute
   AuthenticatedDireccionRoute: typeof AuthenticatedDireccionRoute
   AuthenticatedExtraordinariosRoute: typeof AuthenticatedExtraordinariosRoute
+  AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
   AuthenticatedLiquidacionRoute: typeof AuthenticatedLiquidacionRoute
   AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
@@ -475,6 +514,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
   AuthenticatedRanchosRoute: typeof AuthenticatedRanchosRoute
   AuthenticatedRendimientoRoute: typeof AuthenticatedRendimientoRoute
+  AuthenticatedResultadosRoute: typeof AuthenticatedResultadosRoute
   AuthenticatedSolicitudesRoute: typeof AuthenticatedSolicitudesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
@@ -488,6 +528,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDevolucionesRoute: AuthenticatedDevolucionesRoute,
   AuthenticatedDireccionRoute: AuthenticatedDireccionRoute,
   AuthenticatedExtraordinariosRoute: AuthenticatedExtraordinariosRoute,
+  AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
   AuthenticatedLiquidacionRoute: AuthenticatedLiquidacionRoute,
   AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,
@@ -496,6 +537,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,
   AuthenticatedRanchosRoute: AuthenticatedRanchosRoute,
   AuthenticatedRendimientoRoute: AuthenticatedRendimientoRoute,
+  AuthenticatedResultadosRoute: AuthenticatedResultadosRoute,
   AuthenticatedSolicitudesRoute: AuthenticatedSolicitudesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }

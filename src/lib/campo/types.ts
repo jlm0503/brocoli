@@ -6,7 +6,8 @@ export type Role =
   | "ingeniero"
   | "compras"
   | "almacen"
-  | "direccion";
+  | "direccion"
+  | "encargado";
 
 export type Familia =
   | "Suelo"
@@ -586,4 +587,49 @@ export interface CicloCerrado {
   /** Monto pagado por semana de pago (jueves → monto), solo históricos. */
   pagos?: Record<string, number> | undefined;
   bitacora: MovimientoBitacora[];
+}
+
+/* ───────────── Fase 6: gastos comunes por rancho y cultivo ───────────── */
+
+/** Conceptos de gasto común del rancho. */
+export type ConceptoGasto =
+  | "nomina"
+  | "diesel"
+  | "gasolina"
+  | "mano_obra_extra"
+  | "mantenimiento"
+  | "otros";
+
+/** Gasto común capturado por semana, rancho y cultivo (o total del rancho). */
+export interface GastoRancho {
+  /** `semana|rancho|cultivo|concepto` (y detalle cuando es "otros") */
+  id: string;
+  semana: number;
+  ranchoId: string;
+  /** Cultivo, o "*" cuando es total del rancho que se reparte por %. */
+  cultivo: string;
+  concepto: ConceptoGasto;
+  monto: number;
+  /** "directo" = monto de un cultivo; "total" = total del rancho repartido por %. */
+  modo: "directo" | "total";
+  /** Texto del concepto cuando es "otros". */
+  detalle?: string | undefined;
+  comentario?: string | undefined;
+  /** Foto o PDF del comprobante. */
+  comprobante?: string | undefined;
+  por: string;
+  fecha: string;
+}
+
+/** % de reparto entre cultivos de un rancho (deben sumar 100). */
+export interface RepartoCultivo {
+  /** = ranchoId */
+  id: string;
+  ranchoId: string;
+  /** cultivo → % (suman 100) */
+  pct: Record<string, number>;
+  /** Ajuste de una semana concreta: semana → cultivo → %. */
+  ajustes?: Record<string, Record<string, number>> | undefined;
+  por: string;
+  fecha: string;
 }

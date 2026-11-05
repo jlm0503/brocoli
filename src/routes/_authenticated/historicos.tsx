@@ -22,9 +22,13 @@ import {
   cicloHistorico,
   formatoMXN,
   formatoNum,
+  gastosComunesLote,
   leerViajesCsv,
+  nombreConceptoGasto,
   plantaHistorica,
+  prorrateoRango,
   rendimientoLote,
+  semanaCierreLote,
   snapshotCiclo,
   totalesCiclos,
   variacionPct,
@@ -34,9 +38,10 @@ import { useCosecha } from "@/lib/campo/cosecha";
 import { useCostos } from "@/lib/campo/costos";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
+import { useGastos } from "@/lib/campo/gastos";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
-import type { CicloCerrado, Lote, ViajeHistorico } from "@/lib/campo/types";
+import type { CicloCerrado, ConceptoGasto, Lote, ViajeHistorico } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/historicos")({
   head: () => ({
@@ -82,15 +87,24 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 // ───────────────────────────── Por cerrar ─────────────────────────────
 
 function PorCerrar() {
-  const { lotes, parametros, hoy, marcarCerrado } = useCampo();
+  const { lotes, parametros, hoy, semanaActual, marcarCerrado } = useCampo();
   const { viajes, liquidaciones, ciclos, guardarCiclo } = useCosecha();
   const { extraordinarios, alertasDireccion } = useFase3();
   const { pasaLote } = useFiltro();
   const { costoLote, plantaLote } = useCostos();
+  const { gastos, repartos } = useGastos();
   const { nombre } = useSesion();
   const nombreLote = useNombreLote();
   const [forzar, setForzar] = useState<Lote | null>(null);
   const [motivo, setMotivo] = useState("");
+
+  // Gastos comunes prorrateados a cada lote desde que se planeó hasta su cierre.
+  // Gastos comunes prorrateados a cada lote desde que se planeó hasta la semana en que cerró su cosecha.
+  const gastosDelLote = (l: Lote) => {
+    const desde = Math.min(semanaActual, l.semanaPlaneada);
+    const hasta = Math.max(desde, Math.min(semanaActual, semanaCierreLote(l) ?? semanaActual));
+    return gastosComunesLote(l.id, prorrateoRango({ desde, hasta, lotes, gastos, repartos }));
+  };
 
   const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && !l.cerrado && l.avances.length > 0 && l.cosechaTerminada);
   const vencidos = lotes.filter((l) => pasaLote(l) && cosechaVencida(l, viajes, hoy));
@@ -105,7 +119,7 @@ function PorCerrar() {
     const r = rendimientoLote(l, viajes, parametros, costoLote(l.id));
     const previo = ciclos.find((c) => c.id === l.id);
     guardarCiclo({
-      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy }),
+      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy, gastosComunes: gastosDelLote(l).total }),
       conPendientes,
       bitacora: [
         ...(previo?.bitacora ?? []),
@@ -151,6 +165,19 @@ function PorCerrar() {
                   </li>
                 ))}
               </ul>
+              <p className="text-sm text-muted-foreground">
+                Gastos comunes del rancho: <span className="num">{formatoMXN(gastosDelLote(l).total)}</span>
+                {Object.entries(gastosDelLote(l).porConcepto).filter(([, v]) => v > 0).length > 0 && (
+                  <span className="text-muted-foreground/80">
+                    {" "}
+                    ·{" "}
+                    {Object.entries(gastosDelLote(l).porConcepto)
+                      .filter(([, v]) => v > 0)
+                      .map(([c, v]) => `${nombreConceptoGasto(c as ConceptoGasto)} ${formatoMXN(v)}`)
+                      .join(" · ")}
+                  </span>
+                )}
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" disabled={!listo} onClick={() => cerrar(l, false)}>
                   Cerrar ciclo
