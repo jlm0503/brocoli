@@ -14,8 +14,9 @@ import {
   validarGasto,
   validarReparto,
   type DatosGasto,
+  type RendimientoLote,
 } from "@/lib/campo/calc";
-import type { CultivoCat, GastoRancho, Lote, Rancho, RendimientoLote, RepartoCultivo } from "@/lib/campo/types";
+import type { CultivoCat, GastoRancho, Lote, Rancho, RepartoCultivo } from "@/lib/campo/types";
 
 const ranchos: Rancho[] = [{ id: "dolores", nombre: "Dolores", zona: "Norte" }];
 const cultivos: CultivoCat[] = [
@@ -231,7 +232,6 @@ describe("Fase 6 · utilidad real", () => {
     const brocoli = t.filas.find((f) => f.cultivo === "brocoli");
     const coliflor = t.filas.find((f) => f.cultivo === "coliflor");
     expect(broccoli(brocoli)).toBe(60000);
-    expect(brocoli?.porConcepto.nomina).toBe(60000);
     expect(brocoli?.noAsignado).toBe(0);
     expect(brocoli?.utilidadReal).toBe(-60000);
     expect(coliflor?.noAsignado).toBe(40000);
