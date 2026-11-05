@@ -2117,3 +2117,265 @@ export function repartirDevolucion(
   if (reparto.length && dif !== 0) reparto[reparto.length - 1]!.cantidad = Math.round((reparto[reparto.length - 1]!.cantidad + dif) * 1000) / 1000;
   return { reparto, entregado, error: null };
 }
+
+// ───────────────────────── Fase 5: cierre de ciclo e históricos ─────────────────────────
+
+export interface PuntoCierre {
+  clave: "cosecha" | "viajes" | "pagos" | "extraordinarios" | "alertas";
+  texto: string;
+  ok: boolean;
+  detalle?: string;
+}
+
+/** Lista de verificación para cerrar un lote: todo en verde para cerrar sin pendientes. */
+export function checklistCierre(
+  l: Lote,
+  ctx: {
+    viajes: Viaje[];
+    liquidaciones: Liquidacion[];
+    extraordinarios: Extraordinario[];
+    alertasDireccion: AlertaDireccion[];
+    hoy: string;
+  },
+): PuntoCierre[] {
+  const vs = ctx.viajes.filter((v) => v.loteIds.includes(l.id));
+  const sinEvaluar = vs.filter((v) => v.status !== "evaluado").length;
+  const semanas = [...new Set(vs.map((v) => semanaPago(v.fecha)))];
+  const sinPagar = semanas.filter((j) => {
+    const st = estatusLiquidacion(resumenSemanaPago(ctx.viajes, j), ctx.liquidaciones.find((x) => x.id === j), ctx.hoy);
+    return st !== "pagada" && st !== "pagada_diferencia";
+  });
+  const desde = fechaPlantacionLote(l);
+  const extras = ctx.extraordinarios.filter(
+    (e) => e.tablaIds.includes(l.tablaId) && e.fecha >= desde && (e.status === "por_autorizar" || e.status === "autorizada" || (e.status === "surtida" && !e.mejora)),
+  );
+  const alertas = ctx.alertasDireccion.filter((a) => a.tablaIds.includes(l.tablaId) && a.status === "abierta");
+  return [
+    { clave: "cosecha", texto: "Cosecha terminada", ok: !!l.cosechaTerminada },
+    { clave: "viajes", texto: "Todos los viajes evaluados", ok: sinEvaluar === 0, detalle: sinEvaluar ? `${sinEvaluar} sin evaluar` : undefined },
+    { clave: "pagos", texto: "Semanas de pago pagadas", ok: sinPagar.length === 0, detalle: sinPagar.length ? `${sinPagar.length} semana(s) sin pagar` : undefined },
+    { clave: "extraordinarios", texto: "Sin extraordinarios abiertos ni mejoras pendientes", ok: extras.length === 0, detalle: extras.length ? extras.map((e) => e.folio).join(", ") : undefined },
+    { clave: "alertas", texto: "Sin alertas de reubicación abiertas", ok: alertas.length === 0, detalle: alertas.length ? `${alertas.length} abierta(s)` : undefined },
+  ];
+}
+
+/** Foto fija del lote al cerrar. `planta` es el costo real de planta incluido en `gasto`. */
+export function snapshotCiclo(
+  l: Lote,
+  r: RendimientoLote,
+  extra: { planta: number; gastosComunes?: number; fin: string },
+): Omit<CicloCerrado, "conPendientes" | "bitacora"> {
+  const gastosComunes = extra.gastosComunes ?? 0;
+  return {
+    id: l.id,
+    tipo: "sistema",
+    loteId: l.id,
+    ranchoId: l.ranchoId,
+    tablaId: l.tablaId,
+    codigo: l.codigo,
+    cultivo: l.cultivo,
+    variedadId: l.variedadId,
+    ingeniero: l.ingeniero,
+    ha: r.ha,
+    plantas: l.plantas ?? 0,
+    fechaPlantacion: fechaPlantacionLote(l),
+    fechaFinCosecha: extra.fin,
+    viajes: r.viajes,
+    kgBrutos: r.kgBrutos,
+    kgPagables: r.kgPagables,
+    brutosHa: r.brutosHa,
+    pagablesHa: r.pagablesHa,
+    meta: r.meta,
+    pctMeta: r.pctMeta,
+    merma: r.merma,
+    calidad: r.calidad,
+    ingreso: r.ingreso,
+    insumos: redondear(r.gasto - extra.planta),
+    planta: redondear(extra.planta),
+    gastosComunes,
+    utilidadDirecta: r.utilidad,
+    utilidadReal: redondear(r.utilidad - gastosComunes),
+    retorno: r.retorno,
+    utilidadHa: r.ha > 0 ? redondear((r.utilidad - gastosComunes) / r.ha) : 0,
+  };
+}
+
+export interface DatosHistorico {
+  ranchoId: string;
+  tablaId: string;
+  codigo?: string;
+  cultivo: string;
+  variedadId?: string;
+  ingeniero: string;
+  ha: number;
+  plantas: number;
+  fechaPlantacion: string;
+  fechaFinCosecha: string;
+  /** Insumos totales capturados a mano (MXN). */
+  insumos: number;
+  /** Costo de planta; si no se da, ha × costo de planta por ha vigente a la fecha de plantación. */
+  planta?: number;
+  viajes: ViajeHistorico[];
+  pagos?: Record<string, number>;
+}
+
+/** Costo de planta sugerido para un ciclo histórico. */
+export function plantaHistorica(parametros: Parametro[], ha: number, fecha: string, variedadId?: string): number {
+  return redondear(ha * parametroVigente(parametros, "costoPlantaHa", fecha, variedadId));
+}
+
+/** Valida y arma un ciclo histórico con los parámetros vigentes en cada fecha. */
+export function cicloHistorico(
+  d: DatosHistorico,
+  ctx: { parametros: Parametro[]; ciclos: CicloCerrado[]; lotes: Lote[]; id: string },
+): { ciclo: Omit<CicloCerrado, "bitacora"> } | { error: string } {
+  if (!d.ranchoId || !d.tablaId) return { error: "Elige el rancho y la tabla." };
+  if (!(d.ha > 0)) return { error: "Las hectáreas deben ser mayores a 0." };
+  if (!d.fechaPlantacion || !d.fechaFinCosecha) return { error: "Faltan las fechas de plantación y de fin de cosecha." };
+  if (d.fechaFinCosecha < d.fechaPlantacion) return { error: "El fin de cosecha no puede ser antes de la plantación." };
+  if (!(d.insumos >= 0)) return { error: "Los insumos no pueden ser negativos." };
+  for (const v of d.viajes) {
+    if (!v.fecha) return { error: "Cada viaje necesita su fecha." };
+    if (!(v.kgBrutos > 0) || !(v.kgPagables >= 0) || v.kgPagables > v.kgBrutos)
+      return { error: `Viaje ${v.folio || v.fecha}: los kg pagables deben estar entre 0 y los kg brutos.` };
+    if (v.calidad !== undefined && !(v.calidad >= 1 && v.calidad <= 10)) return { error: `Viaje ${v.folio || v.fecha}: la calidad va de 1 a 10.` };
+  }
+  const choca = (a: string, b: string) => a <= d.fechaFinCosecha && b >= d.fechaPlantacion;
+  const otro = ctx.ciclos.find((c) => !c.reabierto && c.tipo === "historico" && c.tablaId === d.tablaId && choca(c.fechaPlantacion, c.fechaFinCosecha));
+  if (otro) return { error: `Las fechas se enciman con otro ciclo de esta tabla (${otro.fechaPlantacion} a ${otro.fechaFinCosecha}).` };
+  const lote = ctx.lotes.find((l) => l.tablaId === d.tablaId && !l.cancelado && l.avances.length > 0 && choca(fechaPlantacionLote(l), l.cosechaTerminada ?? fechaCosechaLote(l)));
+  if (lote) return { error: `Las fechas se enciman con el lote ${lote.codigo} de esta tabla.` };
+
+  const kgBrutos = redondear(d.viajes.reduce((s, v) => s + v.kgBrutos, 0));
+  const kgPagables = redondear(d.viajes.reduce((s, v) => s + v.kgPagables, 0));
+  const ingreso = redondear(d.viajes.reduce((s, v) => s + v.kgPagables * parametroVigente(ctx.parametros, "precioKg", v.fecha, d.variedadId), 0));
+  const planta = redondear(d.planta ?? plantaHistorica(ctx.parametros, d.ha, d.fechaPlantacion, d.variedadId));
+  const gasto = redondear(d.insumos + planta);
+  const meta = parametroVigente(ctx.parametros, "metaKgHa", d.fechaFinCosecha, d.variedadId);
+  const pagablesHa = redondear(kgPagables / d.ha);
+  const cal = d.viajes.map((v) => v.calidad).filter((c): c is number => c !== undefined);
+  const utilidad = redondear(ingreso - gasto);
+  return {
+    ciclo: {
+      id: ctx.id,
+      tipo: "historico",
+      ranchoId: d.ranchoId,
+      tablaId: d.tablaId,
+      codigo: d.codigo?.trim() || "Histórico",
+      cultivo: d.cultivo,
+      variedadId: d.variedadId,
+      ingeniero: d.ingeniero.trim(),
+      ha: d.ha,
+      plantas: d.plantas,
+      fechaPlantacion: d.fechaPlantacion,
+      fechaFinCosecha: d.fechaFinCosecha,
+      viajes: d.viajes.length,
+      kgBrutos,
+      kgPagables,
+      brutosHa: redondear(kgBrutos / d.ha),
+      pagablesHa,
+      meta,
+      pctMeta: meta > 0 ? redondear((pagablesHa / meta) * 100, 1) : 0,
+      merma: mermaPct(kgBrutos, kgPagables),
+      calidad: cal.length ? redondear(cal.reduce((s, c) => s + c, 0) / cal.length, 1) : null,
+      ingreso,
+      insumos: redondear(d.insumos),
+      planta,
+      gastosComunes: 0,
+      utilidadDirecta: utilidad,
+      utilidadReal: utilidad,
+      retorno: gasto > 0 ? redondear(ingreso / gasto, 2) : null,
+      utilidadHa: redondear(utilidad / d.ha),
+      conPendientes: false,
+      viajesHistoricos: d.viajes,
+      pagos: d.pagos,
+    },
+  };
+}
+
+export interface TotalesCiclos {
+  ciclos: number;
+  ha: number;
+  kgBrutos: number;
+  kgPagables: number;
+  ingreso: number;
+  gastos: number;
+  utilidad: number;
+  kgHa: number;
+  pagablesHa: number;
+  utilidadHa: number;
+  pctMeta: number;
+}
+
+/** Suma ha, kg, ingreso, gastos y utilidad; los "por ha" y el % de meta son promedio ponderado por ha. */
+export function totalesCiclos(cs: CicloCerrado[]): TotalesCiclos {
+  const s = (f: (c: CicloCerrado) => number) => redondear(cs.reduce((a, c) => a + f(c), 0));
+  const ha = s((c) => c.ha);
+  const kgPagables = s((c) => c.kgPagables);
+  const kgBrutos = s((c) => c.kgBrutos);
+  const utilidad = s((c) => c.utilidadReal);
+  const metaHa = s((c) => c.meta * c.ha);
+  return {
+    ciclos: cs.length,
+    ha,
+    kgBrutos,
+    kgPagables,
+    ingreso: s((c) => c.ingreso),
+    gastos: s((c) => c.insumos + c.planta + c.gastosComunes),
+    utilidad,
+    kgHa: ha > 0 ? redondear(kgBrutos / ha) : 0,
+    pagablesHa: ha > 0 ? redondear(kgPagables / ha) : 0,
+    utilidadHa: ha > 0 ? redondear(utilidad / ha) : 0,
+    pctMeta: metaHa > 0 ? redondear((kgPagables / metaHa) * 100, 1) : 0,
+  };
+}
+
+/** Variación % de b contra a (null si a es 0). */
+export function variacionPct(a: number, b: number): number | null {
+  return a === 0 ? null : redondear(((b - a) / Math.abs(a)) * 100, 1);
+}
+
+/** Separa una fila de CSV respetando comillas. */
+function celdasCsv(linea: string, sep: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let q = false;
+  for (let i = 0; i < linea.length; i++) {
+    const ch = linea[i];
+    if (ch === '"') {
+      if (q && linea[i + 1] === '"') { cur += '"'; i++; } else q = !q;
+    } else if (ch === sep && !q) { out.push(cur.trim()); cur = ""; } else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+export const PLANTILLA_VIAJES_CSV = "fecha,folio,chofer,kg_brutos,kg_pagables,calidad\n2025-03-10,F-001,,8200,7600,8\n";
+
+/** Lee viajes históricos de un CSV (plantilla: fecha,folio,chofer,kg_brutos,kg_pagables,calidad). Acepta coma, punto y coma o tabulador. */
+export function leerViajesCsv(texto: string): { viajes: ViajeHistorico[] } | { error: string } {
+  const lineas = texto.replace(/^\uFEFF/, "").split(/\r?\n/).filter((x) => x.trim());
+  if (lineas.length === 0) return { error: "El archivo está vacío." };
+  const sep = lineas[0].includes("\t") ? "\t" : lineas[0].includes(";") ? ";" : ",";
+  const enc = celdasCsv(lineas[0], sep).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+  const col = (n: string) => enc.indexOf(n);
+  const [cF, cFo, cC, cB, cP, cQ] = ["fecha", "folio", "chofer", "kg_brutos", "kg_pagables", "calidad"].map(col);
+  if (cF < 0 || cB < 0 || cP < 0) return { error: "Faltan columnas: usa la plantilla (fecha, folio, chofer, kg_brutos, kg_pagables, calidad)." };
+  const num = (x: string | undefined) => Number((x ?? "").replace(/[,$\s]/g, ""));
+  const viajes: ViajeHistorico[] = [];
+  for (let i = 1; i < lineas.length; i++) {
+    const c = celdasCsv(lineas[i], sep);
+    const fecha = c[cF] ?? "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: `Renglón ${i + 1}: la fecha debe ser AAAA-MM-DD.` };
+    const cal = cQ >= 0 && c[cQ] ? num(c[cQ]) : undefined;
+    viajes.push({
+      fecha,
+      folio: cFo >= 0 ? (c[cFo] ?? "") : "",
+      chofer: cC >= 0 && c[cC] ? c[cC] : undefined,
+      kgBrutos: num(c[cB]),
+      kgPagables: num(c[cP]),
+      calidad: cal,
+    });
+  }
+  return { viajes };
+}
