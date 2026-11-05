@@ -22,8 +22,10 @@ import {
   cicloHistorico,
   formatoMXN,
   formatoNum,
+  gastosComunesLote,
   leerViajesCsv,
   plantaHistorica,
+  prorrateoRango,
   rendimientoLote,
   snapshotCiclo,
   totalesCiclos,
@@ -34,6 +36,7 @@ import { useCosecha } from "@/lib/campo/cosecha";
 import { useCostos } from "@/lib/campo/costos";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
+import { useGastos } from "@/lib/campo/gastos";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import type { CicloCerrado, Lote, ViajeHistorico } from "@/lib/campo/types";
@@ -82,15 +85,23 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 // ───────────────────────────── Por cerrar ─────────────────────────────
 
 function PorCerrar() {
-  const { lotes, parametros, hoy, marcarCerrado } = useCampo();
+  const { lotes, parametros, hoy, semanaActual, marcarCerrado } = useCampo();
   const { viajes, liquidaciones, ciclos, guardarCiclo } = useCosecha();
   const { extraordinarios, alertasDireccion } = useFase3();
   const { pasaLote } = useFiltro();
   const { costoLote, plantaLote } = useCostos();
+  const { gastos, repartos } = useGastos();
   const { nombre } = useSesion();
   const nombreLote = useNombreLote();
   const [forzar, setForzar] = useState<Lote | null>(null);
   const [motivo, setMotivo] = useState("");
+
+  // Gastos comunes prorrateados a cada lote desde que se planeó hasta su cierre.
+  const prorrateo = useMemo(() => {
+    const desde = lotes.length > 0 ? Math.min(semanaActual, ...lotes.map((l) => l.semanaPlaneada)) : semanaActual;
+    return prorrateoRango({ desde, hasta: semanaActual, lotes, gastos, repartos });
+  }, [lotes, semanaActual, gastos, repartos]);
+  const gastosDelLote = (loteId: string) => gastosComunesLote(loteId, prorrateo);
 
   const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && !l.cerrado && l.avances.length > 0 && l.cosechaTerminada);
   const vencidos = lotes.filter((l) => pasaLote(l) && cosechaVencida(l, viajes, hoy));
@@ -105,7 +116,7 @@ function PorCerrar() {
     const r = rendimientoLote(l, viajes, parametros, costoLote(l.id));
     const previo = ciclos.find((c) => c.id === l.id);
     guardarCiclo({
-      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy }),
+      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy, gastosComunes: gastosDelLote(l.id).total }),
       conPendientes,
       bitacora: [
         ...(previo?.bitacora ?? []),
