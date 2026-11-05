@@ -80,6 +80,12 @@ interface Fase3Value {
     cantidad: number;
     foto?: string | undefined;
   }) => string | null;
+  registrarDevolucionSemana: (d: {
+    semanaOrigen: number;
+    productoId: string;
+    reparto: { loteId: string; tablaId: string; ranchoId: string; cantidad: number }[];
+    foto?: string | undefined;
+  }) => string | null;
   eliminarDevolucion: (id: string) => void;
   guardarAsignacion: (userId: string, ranchoIds: string[]) => void;
 }
@@ -331,6 +337,35 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       return null;
     },
     [tablas, productos, lotes, hoy, nombre, poner],
+  );
+
+  const registrarDevolucionSemana: Fase3Value["registrarDevolucionSemana"] = useCallback(
+    (d) => {
+      if (!d.productoId) return "Elige el producto.";
+      if (d.reparto.length === 0) return "Indica la cantidad devuelta.";
+      if (!d.foto) return "Toma la foto de lo retirado.";
+      const p = productos.find((x) => x.id === d.productoId);
+      if (!p) return "Producto no encontrado.";
+      const base = Date.now();
+      d.reparto.forEach((r, i) =>
+        poner("devoluciones", {
+          id: `dev-${base}-${i}`,
+          semana: semanaDeFecha(hoy),
+          semanaOrigen: d.semanaOrigen,
+          fecha: hoy,
+          ranchoId: r.ranchoId,
+          tablaId: r.tablaId,
+          loteId: r.loteId,
+          productoId: p.id,
+          cantidad: r.cantidad,
+          precio: precioVigente(p, hoy),
+          foto: d.foto!,
+          por: nombre,
+        } satisfies Devolucion),
+      );
+      return null;
+    },
+    [productos, hoy, nombre, poner],
   );
 
   const eliminarDevolucion = useCallback((id: string) => quitar("devoluciones", id), [quitar]);

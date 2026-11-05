@@ -438,6 +438,8 @@ export interface Devolucion {
   precio: number;
   foto: string;
   por: string;
+  /** Semana de entrega de la que se regresa el producto (si se eligió) */
+  semanaOrigen?: number | undefined;
 }
 
 /** Ranchos asignados a un ingeniero (id = id de la persona). Sin asignación ve todos. */
