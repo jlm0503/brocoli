@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { type Context, createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useFase3 } from "@/lib/campo/fase3";
 import { useCampo } from "@/lib/campo/store";
@@ -15,7 +15,9 @@ interface FiltroValue {
   setCultivos: (cs: Cultivo[]) => void;
 }
 
-const Ctx = createContext<FiltroValue | null>(null);
+// Misma instancia entre recargas en caliente para no dejar pantallas con un contexto viejo.
+const gFiltro = globalThis as unknown as Record<string, Context<FiltroValue | null>>;
+const Ctx: Context<FiltroValue | null> = gFiltro["__campoFiltro__"] ?? (gFiltro["__campoFiltro__"] = createContext<FiltroValue | null>(null));
 const CLAVE = "campo-filtro";
 
 export function FiltroProvider({ children }: { children: ReactNode }) {
