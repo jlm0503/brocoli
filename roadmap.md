@@ -47,8 +47,16 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Históricos: filtros, totales ponderados por ha, agrupar, comparar 2-4 ciclos, gráfica por tabla, Excel y PDF
 - [x] Captura histórica con viajes rápidos e importación CSV con plantilla; valida fechas encimadas
 - [x] Temporada = de la plantación al cierre de cosecha (máx. 2 semanas de cosecha; aviso para cerrar)
-- [ ] Gastos comunes en la foto fija (llegan en Fase 6; hoy en 0)
+- [x] Gastos comunes en la foto fija (llegan en Fase 6; se prorratean de la planeación al cierre)
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
+- [x] Captura semanal por rancho y cultivo: nómina, diésel, gasolina, mano de obra extra, mantenimiento, otros (con detalle)
+- [x] Modo "Total del rancho" repartido entre cultivos con % (generales y ajuste por semana)
+- [x] Prorrateo por hectáreas entre lotes activos del mismo cultivo y rancho; lo que no se puede repartir queda "Gasto no asignado"
+- [x] Importación desde Excel/CSV con plantilla (reconoce el nombre escrito a mano de rancho, cultivo y concepto)
+- [x] Comprobante (foto o PDF) y comentario por gasto; captura solo para Super Admin y Encargado de rancho
+- [x] Estado de resultados con utilidad directa y real, por rancho/cultivo, con comparativo, Excel y PDF (solo Super Admin)
+- [x] Caso de prueba de la Fase 6 en pruebas automáticas (60/40 y lote cerrado)
+- [ ] El encargado de rancho aún no se limita a sus ranchos asignados (hoy ve todos los ranchos para capturar)
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).
