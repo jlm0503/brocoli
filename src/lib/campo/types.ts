@@ -6,7 +6,8 @@ export type Role =
   | "ingeniero"
   | "compras"
   | "almacen"
-  | "direccion";
+  | "direccion"
+  | "encargado";
 
 export type Familia =
   | "Suelo"
