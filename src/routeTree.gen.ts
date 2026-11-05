@@ -21,6 +21,7 @@ import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authent
 import { Route as AuthenticatedDevolucionesRouteImport } from './routes/_authenticated/devoluciones'
 import { Route as AuthenticatedDireccionRouteImport } from './routes/_authenticated/direccion'
 import { Route as AuthenticatedExtraordinariosRouteImport } from './routes/_authenticated/extraordinarios'
+import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedLiquidacionRouteImport } from './routes/_authenticated/liquidacion'
 import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
@@ -94,6 +95,11 @@ const AuthenticatedExtraordinariosRoute =
     path: '/extraordinarios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedGastosRoute = AuthenticatedGastosRouteImport.update({
+  id: '/gastos',
+  path: '/gastos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHistoricosRoute = AuthenticatedHistoricosRouteImport.update({
   id: '/historicos',
   path: '/historicos',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/direccion': typeof AuthenticatedDireccionRoute
   '/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/_authenticated/devoluciones': typeof AuthenticatedDevolucionesRoute
   '/_authenticated/direccion': typeof AuthenticatedDireccionRoute
   '/_authenticated/extraordinarios': typeof AuthenticatedExtraordinariosRoute
+  '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
   '/_authenticated/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/gastos'
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/devoluciones'
     | '/direccion'
     | '/extraordinarios'
+    | '/gastos'
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/_authenticated/devoluciones'
     | '/_authenticated/direccion'
     | '/_authenticated/extraordinarios'
+    | '/_authenticated/gastos'
     | '/_authenticated/historicos'
     | '/_authenticated/liquidacion'
     | '/_authenticated/llegadas'
@@ -385,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExtraordinariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gastos': {
+      id: '/_authenticated/gastos'
+      path: '/gastos'
+      fullPath: '/gastos'
+      preLoaderRoute: typeof AuthenticatedGastosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/historicos': {
       id: '/_authenticated/historicos'
       path: '/historicos'
@@ -467,6 +486,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDevolucionesRoute: typeof AuthenticatedDevolucionesRoute
   AuthenticatedDireccionRoute: typeof AuthenticatedDireccionRoute
   AuthenticatedExtraordinariosRoute: typeof AuthenticatedExtraordinariosRoute
+  AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
   AuthenticatedLiquidacionRoute: typeof AuthenticatedLiquidacionRoute
   AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
@@ -488,6 +508,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDevolucionesRoute: AuthenticatedDevolucionesRoute,
   AuthenticatedDireccionRoute: AuthenticatedDireccionRoute,
   AuthenticatedExtraordinariosRoute: AuthenticatedExtraordinariosRoute,
+  AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
   AuthenticatedLiquidacionRoute: AuthenticatedLiquidacionRoute,
   AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,

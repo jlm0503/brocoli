@@ -2792,7 +2792,6 @@ export function estadoResultados(ctx: {
   for (const n of p.noAsignado) {
     const f = fila(n.ranchoId, n.cultivo);
     f.noAsignado = redondear(f.noAsignado + n.monto);
-    f.porConcepto[n.concepto] = redondear((f.porConcepto[n.concepto] ?? 0) + n.monto);
   }
   const filas = [...grupos.values()].map((f) => {
     const utilidadReal = redondear(f.utilidadDirecta - f.gastosComunes - f.noAsignado);

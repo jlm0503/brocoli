@@ -159,8 +159,6 @@ function GastosRancho() {
   );
   const nombreLote = (id: string) => {
     const l = lotes.find((x) => x.id === id);
-    const t = lotes && rancho ? undefined : undefined;
-    void t;
     return l ? `${l.codigo} · ${formatoNum(l.ha)} ha · ${nombreCultivo(cultivos, l.cultivo)}` : id;
   };
 
