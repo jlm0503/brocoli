@@ -2356,15 +2356,16 @@ export const PLANTILLA_VIAJES_CSV = "fecha,folio,chofer,kg_brutos,kg_pagables,ca
 export function leerViajesCsv(texto: string): { viajes: ViajeHistorico[] } | { error: string } {
   const lineas = texto.replace(/^\uFEFF/, "").split(/\r?\n/).filter((x) => x.trim());
   if (lineas.length === 0) return { error: "El archivo está vacío." };
-  const sep = lineas[0].includes("\t") ? "\t" : lineas[0].includes(";") ? ";" : ",";
-  const enc = celdasCsv(lineas[0], sep).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+  const primera = lineas[0] ?? "";
+  const sep = primera.includes("\t") ? "\t" : primera.includes(";") ? ";" : ",";
+  const enc = celdasCsv(primera, sep).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
   const col = (n: string) => enc.indexOf(n);
-  const [cF, cFo, cC, cB, cP, cQ] = ["fecha", "folio", "chofer", "kg_brutos", "kg_pagables", "calidad"].map(col);
+  const cF = col("fecha"), cFo = col("folio"), cC = col("chofer"), cB = col("kg_brutos"), cP = col("kg_pagables"), cQ = col("calidad");
   if (cF < 0 || cB < 0 || cP < 0) return { error: "Faltan columnas: usa la plantilla (fecha, folio, chofer, kg_brutos, kg_pagables, calidad)." };
   const num = (x: string | undefined) => Number((x ?? "").replace(/[,$\s]/g, ""));
   const viajes: ViajeHistorico[] = [];
   for (let i = 1; i < lineas.length; i++) {
-    const c = celdasCsv(lineas[i], sep);
+    const c = celdasCsv(lineas[i] ?? "", sep);
     const fecha = c[cF] ?? "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: `Renglón ${i + 1}: la fecha debe ser AAAA-MM-DD.` };
     const cal = cQ >= 0 && c[cQ] ? num(c[cQ]) : undefined;
