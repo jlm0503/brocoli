@@ -61,7 +61,9 @@ function GastosRancho() {
   const { ranchos, lotes, cultivos, semanaActual } = useCampo();
   const { gastos, repartos, puedeCapturar, guardarGasto, eliminarGasto, guardarReparto } = useGastos();
   const [semana, setSemana] = useState(semanaActual);
-  const [ranchoId, setRanchoId] = useState(ranchos[0]?.id ?? "");
+  const [ranchoElegido, setRanchoElegido] = useState("");
+  // Los ranchos llegan de la nube: si aún no se elige uno, usa el primero que exista.
+  const ranchoId = ranchos.some((r) => r.id === ranchoElegido) ? ranchoElegido : (ranchos[0]?.id ?? "");
   const [celda, setCelda] = useState<Celda | null>(null);
   const [editando, setEditando] = useState<GastoRancho | null>(null);
   const [monto, setMonto] = useState("");
@@ -188,7 +190,7 @@ function GastosRancho() {
         </div>
         <div className="space-y-2">
           <Label>Rancho</Label>
-          <Select value={ranchoId} onValueChange={setRanchoId}>
+          <Select value={ranchoId} onValueChange={setRanchoElegido}>
             <SelectTrigger aria-label="Rancho">
               <SelectValue placeholder="Sin ranchos" />
             </SelectTrigger>
