@@ -2901,13 +2901,13 @@ export function leerGastosCsv(
     }
     const semana = Number(celdas[0]);
     if (!Number.isFinite(semana)) {
-      if (sinAcentos(celdas[0]) === "semana") return;
-      errores.push(`Línea ${n}: la semana «${celdas[0]}» no es un número.`);
+      if (sinAcentos(celdas[0] ?? "") === "semana") return;
+      errores.push(`Línea ${n}: la semana «${celdas[0] ?? ""}» no es un número.`);
       return;
     }
-    const ranchoId = busca(ctx.ranchos, celdas[1], n, "el rancho");
-    const cultivo = busca(ctx.cultivos, celdas[2], n, "el cultivo");
-    const cv = sinAcentos(celdas[3]);
+    const ranchoId = busca(ctx.ranchos, celdas[1] ?? "", n, "el rancho");
+    const cultivo = busca(ctx.cultivos, celdas[2] ?? "", n, "el cultivo");
+    const cv = sinAcentos(celdas[3] ?? "");
     const concepto = CONCEPTOS_GASTO.find((c) => c.id === cv || sinAcentos(c.nombre) === cv)?.id;
     if (!concepto) {
       errores.push(`Línea ${n}: no conozco el concepto «${celdas[3]}».`);
