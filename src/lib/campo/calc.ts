@@ -2391,3 +2391,512 @@ export function cosechaVencida(l: Lote, viajes: Viaje[], hoy: string): boolean {
   const inicio = fechas[0] ?? fechaCosechaLote(l);
   return sumarDias(inicio, SEMANAS_MAX_COSECHA * 7) <= hoy;
 }
+
+/* ───────────── Fase 6: gastos comunes por rancho y cultivo ───────────── */
+
+/** Cultivo "*" = total del rancho, que se reparte entre cultivos con los % vigentes. */
+export const CULTIVO_TOTAL = "*";
+
+/** Conceptos de gasto común del rancho y su etiqueta. */
+export const CONCEPTOS_GASTO: { id: ConceptoGasto; nombre: string; requiereDetalle?: boolean }[] = [
+  { id: "nomina", nombre: "Nómina" },
+  { id: "diesel", nombre: "Diésel" },
+  { id: "gasolina", nombre: "Gasolina" },
+  { id: "mano_obra_extra", nombre: "Mano de obra extra" },
+  { id: "mantenimiento", nombre: "Mantenimiento de tractores y vehículos" },
+  { id: "otros", nombre: "Otros", requiereDetalle: true },
+];
+
+export function nombreConceptoGasto(c: ConceptoGasto): string {
+  return CONCEPTOS_GASTO.find((x) => x.id === c)?.nombre ?? c;
+}
+
+/** Minúsculas sin acentos, para reconocer nombres escritos a mano. */
+function sinAcentos(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** % de reparto de un rancho para una semana: el ajuste de esa semana si existe, si no los generales. */
+export function repartoVigente(r: RepartoCultivo | undefined, semana: number): Record<string, number> {
+  if (!r) return {};
+  const aj = r.ajustes?.[String(semana)];
+  return aj && Object.keys(aj).length > 0 ? aj : r.pct;
+}
+
+/** Los % de reparto entre cultivos deben sumar 100. */
+export function validarReparto(pct: Record<string, number>): string | null {
+  const valores = Object.values(pct);
+  if (valores.length === 0) return "Define al menos un cultivo con su % de reparto.";
+  if (valores.some((v) => !Number.isFinite(v) || v < 0 || v > 100)) return "Cada % debe estar entre 0 y 100.";
+  const suma = redondear(valores.reduce((s, v) => s + v, 0), 2);
+  if (suma !== 100) return `los % de reparto deben sumar 100 (suman ${formatoNum(suma)}%)`;
+  return null;
+}
+
+/** id fijo del gasto: evita duplicar semana + rancho + cultivo + concepto. */
+export function idGasto(d: {
+  semana: number;
+  ranchoId: string;
+  cultivo: string;
+  concepto: ConceptoGasto;
+  detalle?: string | undefined;
+}): string {
+  const extra = d.concepto === "otros" ? `|${(d.detalle ?? "").trim().toLowerCase()}` : "";
+  return `${d.semana}|${d.ranchoId}|${d.cultivo}|${d.concepto}${extra}`;
+}
+
+export interface DatosGasto {
+  semana: number;
+  ranchoId: string;
+  cultivo: string;
+  concepto: ConceptoGasto;
+  monto: number;
+  /** "directo" = monto de un cultivo; "total" = total del rancho repartido por %. */
+  modo: "directo" | "total";
+  detalle?: string | undefined;
+  comentario?: string | undefined;
+  comprobante?: string | undefined;
+}
+
+/** Valida la captura de un gasto común de rancho. */
+export function validarGasto(
+  d: DatosGasto,
+  ctx: { gastos: GastoRancho[]; reparto?: RepartoCultivo | undefined; cultivos: string[] },
+): string | null {
+  if (!d.ranchoId) return "Elige el rancho.";
+  if (!(d.monto > 0)) return "El monto debe ser mayor a 0.";
+  if (d.modo === "total") {
+    const error = validarReparto(repartoVigente(ctx.reparto, d.semana));
+    if (error) return `No se puede repartir el total del rancho: ${error}.`;
+  } else {
+    if (!d.cultivo || d.cultivo === CULTIVO_TOTAL) return "Elige el cultivo del gasto.";
+    if (!ctx.cultivos.includes(d.cultivo)) return "Ese cultivo no está en la lista del rancho.";
+  }
+  if (d.concepto === "otros" && !d.detalle?.trim()) return "En «Otros» escribe el concepto.";
+  const id = idGasto(d);
+  if (ctx.gastos.some((g) => g.id === id))
+    return `Ya existe un gasto de ${nombreConceptoGasto(d.concepto)} para esa semana${
+      d.modo === "total" ? " del total del rancho" : ` de ${d.cultivo}`
+    }. Edítalo en lugar de duplicarlo.`;
+  return null;
+}
+
+export interface GastoCultivo {
+  cultivo: string;
+  concepto: ConceptoGasto;
+  monto: number;
+  /** Gastos que lo originaron (para avisos y trazabilidad). */
+  ids: string[];
+}
+
+/**
+ * Gastos de una semana y rancho vueltos montos por cultivo y concepto: los directos tal cual
+ * y los "total del rancho" repartidos con los % vigentes esa semana.
+ */
+export function gastosPorCultivo(
+  gastos: GastoRancho[],
+  reparto: RepartoCultivo | undefined,
+  semana: number,
+  ranchoId: string,
+): GastoCultivo[] {
+  const deSemana = gastos.filter((g) => g.semana === semana && g.ranchoId === ranchoId);
+  const pct = repartoVigente(reparto, semana);
+  const porClave = new Map<string, GastoCultivo>();
+  const poner = (cultivo: string, concepto: ConceptoGasto, monto: number, id: string) => {
+    const k = `${cultivo}|${concepto}`;
+    const actual = porClave.get(k);
+    if (actual) {
+      actual.monto = redondear(actual.monto + monto);
+      actual.ids.push(id);
+    } else porClave.set(k, { cultivo, concepto, monto: redondear(monto), ids: [id] });
+  };
+  for (const g of deSemana) {
+    if (g.modo === "total") {
+      for (const [cultivo, p] of Object.entries(pct)) if (p > 0) poner(cultivo, g.concepto, (g.monto * p) / 100, g.id);
+    } else poner(g.cultivo, g.concepto, g.monto, g.id);
+  }
+  return [...porClave.values()];
+}
+
+/** Semana en que cierra un lote (su fin de cosecha). null = sigue abierto. */
+export function semanaCierreLote(l: Lote): number | null {
+  if (l.cosechaTerminada) return semanaDeFecha(l.cosechaTerminada);
+  if (l.cerrado) return semanaDeFecha(fechaCosechaLote(l));
+  return null;
+}
+
+/** Un lote está activo desde la semana en que se planea hasta la semana en que cierra. */
+export function loteActivoEnSemana(l: Lote, semana: number): boolean {
+  if (semana < l.semanaPlaneada) return false;
+  const cierre = semanaCierreLote(l);
+  return cierre === null || semana <= cierre;
+}
+
+/** Si el lote estuvo activo en alguna semana del rango. */
+export function loteActivoEnRango(l: Lote, desde: number, hasta: number): boolean {
+  const cierre = semanaCierreLote(l);
+  return l.semanaPlaneada <= hasta && (cierre === null || cierre >= desde);
+}
+
+/** Lotes del rancho y cultivo que entran al reparto de una semana (incluidos los cancelados). */
+export function lotesBaseSemana(lotes: Lote[], ranchoId: string, cultivo: string, semana: number): Lote[] {
+  return lotes.filter((l) => l.ranchoId === ranchoId && l.cultivo === cultivo && loteActivoEnSemana(l, semana));
+}
+
+export interface NoAsignado {
+  cultivo: string;
+  concepto: ConceptoGasto;
+  monto: number;
+  motivo: string;
+}
+
+export interface ProrrateoSemana {
+  semana: number;
+  ranchoId: string;
+  /** loteId → monto asignado */
+  porLote: Record<string, number>;
+  /** loteId → concepto → monto */
+  porLoteConcepto: Record<string, Partial<Record<ConceptoGasto, number>>>;
+  /** Gasto que no se pudo repartir */
+  noAsignado: NoAsignado[];
+  total: number;
+}
+
+/**
+ * Reparte el gasto de cada cultivo de una semana solo entre los lotes de ese cultivo y rancho
+ * activos esa semana, proporcional a hectáreas. Lo que tocaba a un lote cancelado, y lo de un
+ * cultivo sin lotes activos, queda como gasto no asignado del rancho y cultivo.
+ */
+export function prorrateoSemana(ctx: {
+  semana: number;
+  ranchoId: string;
+  lotes: Lote[];
+  gastos: GastoRancho[];
+  reparto?: RepartoCultivo | undefined;
+}): ProrrateoSemana {
+  const { semana, ranchoId } = ctx;
+  const porLote: Record<string, number> = {};
+  const porLoteConcepto: Record<string, Partial<Record<ConceptoGasto, number>>> = {};
+  const noAsignado: NoAsignado[] = [];
+  let total = 0;
+  for (const g of gastosPorCultivo(ctx.gastos, ctx.reparto, semana, ranchoId)) {
+    total = redondear(total + g.monto);
+    const base = lotesBaseSemana(ctx.lotes, ranchoId, g.cultivo, semana);
+    const ha = redondear(base.reduce((s, l) => s + l.ha, 0), 4);
+    if (base.length === 0 || ha <= 0) {
+      noAsignado.push({ cultivo: g.cultivo, concepto: g.concepto, monto: g.monto, motivo: "Sin lotes activos esa semana" });
+      continue;
+    }
+    for (const l of base) {
+      const monto = redondear(g.monto * (l.ha / ha));
+      if (l.cancelado) {
+        noAsignado.push({ cultivo: g.cultivo, concepto: g.concepto, monto, motivo: `Lote ${l.codigo} cancelado` });
+        continue;
+      }
+      porLote[l.id] = redondear((porLote[l.id] ?? 0) + monto);
+      const antes = porLoteConcepto[l.id]?.[g.concepto] ?? 0;
+      porLoteConcepto[l.id] = { ...(porLoteConcepto[l.id] ?? {}), [g.concepto]: redondear(antes + monto) };
+    }
+  }
+  return { semana, ranchoId, porLote, porLoteConcepto, noAsignado, total };
+}
+
+export interface ProrrateoRango {
+  porSemana: ProrrateoSemana[];
+  /** loteId → monto total del rango */
+  porLote: Record<string, number>;
+  /** loteId → concepto → monto */
+  porLoteConcepto: Record<string, Partial<Record<ConceptoGasto, number>>>;
+  noAsignado: (NoAsignado & { semana: number; ranchoId: string })[];
+  total: number;
+}
+
+/** Prorrateo de varias semanas de una sola vez (semanas y ranchos con gasto capturado). */
+export function prorrateoRango(ctx: {
+  desde: number;
+  hasta: number;
+  lotes: Lote[];
+  gastos: GastoRancho[];
+  repartos: RepartoCultivo[];
+}): ProrrateoRango {
+  const semanas = new Set<number>();
+  const ranchos = new Set<string>();
+  for (const g of ctx.gastos) {
+    if (g.semana < ctx.desde || g.semana > ctx.hasta) continue;
+    semanas.add(g.semana);
+    ranchos.add(g.ranchoId);
+  }
+  const porLote: Record<string, number> = {};
+  const porLoteConcepto: Record<string, Partial<Record<ConceptoGasto, number>>> = {};
+  const noAsignado: (NoAsignado & { semana: number; ranchoId: string })[] = [];
+  const porSemana: ProrrateoSemana[] = [];
+  let total = 0;
+  for (const semana of [...semanas].sort((a, b) => a - b)) {
+    for (const ranchoId of [...ranchos].sort()) {
+      const p = prorrateoSemana({
+        semana,
+        ranchoId,
+        lotes: ctx.lotes,
+        gastos: ctx.gastos,
+        reparto: ctx.repartos.find((r) => r.ranchoId === ranchoId),
+      });
+      porSemana.push(p);
+      total = redondear(total + p.total);
+      for (const [loteId, monto] of Object.entries(p.porLote)) porLote[loteId] = redondear((porLote[loteId] ?? 0) + monto);
+      for (const [loteId, conceptos] of Object.entries(p.porLoteConcepto))
+        for (const [c, monto] of Object.entries(conceptos)) {
+          const clave = c as ConceptoGasto;
+          porLoteConcepto[loteId] = { ...(porLoteConcepto[loteId] ?? {}), [clave]: redondear((porLoteConcepto[loteId]?.[clave] ?? 0) + (monto ?? 0)) };
+        }
+      for (const n of p.noAsignado) noAsignado.push({ ...n, semana, ranchoId });
+    }
+  }
+  return { porSemana, porLote, porLoteConcepto, noAsignado, total };
+}
+
+/** Gastos comunes asignados a un lote (monto total y desglose por concepto). */
+export function gastosComunesLote(
+  loteId: string,
+  p: Pick<ProrrateoRango, "porLote" | "porLoteConcepto">,
+): { total: number; porConcepto: Record<ConceptoGasto, number> } {
+  const porConcepto = Object.fromEntries(CONCEPTOS_GASTO.map((c) => [c.id, 0])) as Record<ConceptoGasto, number>;
+  for (const [c, monto] of Object.entries(p.porLoteConcepto[loteId] ?? {}))
+    porConcepto[c as ConceptoGasto] = redondear(monto ?? 0);
+  return { total: p.porLote[loteId] ?? 0, porConcepto };
+}
+
+export interface UtilidadLote {
+  loteId: string;
+  ha: number;
+  ingreso: number;
+  insumos: number;
+  planta: number;
+  gastoDirecto: number;
+  utilidadDirecta: number;
+  gastosComunes: number;
+  utilidadReal: number;
+  utilidadDirectaHa: number;
+  utilidadRealHa: number;
+  retornoDirecto: number | null;
+  retornoReal: number | null;
+}
+
+/** Utilidad directa (ingreso − insumos − planta) y real (menos gastos comunes), con su retorno y por ha. */
+export function utilidadLote(r: RendimientoLote, extra: { planta: number; gastosComunes: number }): UtilidadLote {
+  const planta = redondear(extra.planta);
+  const gastosComunes = redondear(extra.gastosComunes);
+  const utilidadDirecta = redondear(r.ingreso - r.gasto);
+  const utilidadReal = redondear(utilidadDirecta - gastosComunes);
+  const gastoTotal = redondear(r.gasto + gastosComunes);
+  return {
+    loteId: r.loteId,
+    ha: r.ha,
+    ingreso: r.ingreso,
+    insumos: redondear(r.gasto - planta),
+    planta,
+    gastoDirecto: r.gasto,
+    utilidadDirecta,
+    gastosComunes,
+    utilidadReal,
+    utilidadDirectaHa: r.ha > 0 ? redondear(utilidadDirecta / r.ha) : 0,
+    utilidadRealHa: r.ha > 0 ? redondear(utilidadReal / r.ha) : 0,
+    retornoDirecto: r.gasto > 0 ? redondear(r.ingreso / r.gasto, 2) : null,
+    retornoReal: gastoTotal > 0 ? redondear(r.ingreso / gastoTotal, 2) : null,
+  };
+}
+
+export interface FilaResultados {
+  /** `rancho|cultivo` */
+  clave: string;
+  ranchoId: string;
+  cultivo: string;
+  lotes: number;
+  ha: number;
+  ingreso: number;
+  insumos: number;
+  planta: number;
+  porConcepto: Record<ConceptoGasto, number>;
+  gastosComunes: number;
+  noAsignado: number;
+  utilidadDirecta: number;
+  utilidadReal: number;
+  utilidadRealHa: number;
+  retornoReal: number | null;
+}
+
+export interface EstadoResultados {
+  filas: FilaResultados[];
+  totales: Omit<FilaResultados, "clave" | "ranchoId" | "cultivo" | "retornoReal">;
+  desde: number;
+  hasta: number;
+}
+
+const filaVacia = (ranchoId: string, cultivo: string): FilaResultados => ({
+  clave: `${ranchoId}|${cultivo}`,
+  ranchoId,
+  cultivo,
+  lotes: 0,
+  ha: 0,
+  ingreso: 0,
+  insumos: 0,
+  planta: 0,
+  porConcepto: Object.fromEntries(CONCEPTOS_GASTO.map((c) => [c.id, 0])) as Record<ConceptoGasto, number>,
+  gastosComunes: 0,
+  noAsignado: 0,
+  utilidadDirecta: 0,
+  utilidadReal: 0,
+  utilidadRealHa: 0,
+  retornoReal: null,
+});
+
+/**
+ * Estado de resultados por rancho y cultivo en un rango de semanas:
+ * ingreso − insumos − planta − cada concepto − gasto no asignado = utilidad real.
+ */
+export function estadoResultados(ctx: {
+  desde: number;
+  hasta: number;
+  lotes: Lote[];
+  viajes: Viaje[];
+  parametros: Parametro[];
+  gastos: GastoRancho[];
+  repartos: RepartoCultivo[];
+  costoLote: (loteId: string) => number;
+  plantaLote: (loteId: string) => number;
+  pasa?: ((l: Lote) => boolean) | undefined;
+}): EstadoResultados {
+  const p = prorrateoRango(ctx);
+  const grupos = new Map<string, FilaResultados>();
+  const fila = (ranchoId: string, cultivo: string): FilaResultados => {
+    const clave = `${ranchoId}|${cultivo}`;
+    const f = grupos.get(clave) ?? filaVacia(ranchoId, cultivo);
+    grupos.set(clave, f);
+    return f;
+  };
+  for (const l of ctx.lotes) {
+    if (l.cancelado || !loteActivoEnRango(l, ctx.desde, ctx.hasta)) continue;
+    if (ctx.pasa && !ctx.pasa(l)) continue;
+    const r = rendimientoLote(l, ctx.viajes, ctx.parametros, ctx.costoLote(l.id));
+    const f = fila(l.ranchoId, l.cultivo);
+    const planta = ctx.plantaLote(l.id);
+    f.lotes += 1;
+    f.ha = redondear(f.ha + r.ha, 2);
+    f.ingreso = redondear(f.ingreso + r.ingreso);
+    f.insumos = redondear(f.insumos + (r.gasto - planta));
+    f.planta = redondear(f.planta + planta);
+    f.gastosComunes = redondear(f.gastosComunes + (p.porLote[l.id] ?? 0));
+    for (const [c, monto] of Object.entries(p.porLoteConcepto[l.id] ?? {}))
+      f.porConcepto[c as ConceptoGasto] = redondear((f.porConcepto[c as ConceptoGasto] ?? 0) + (monto ?? 0));
+    f.utilidadDirecta = redondear(f.utilidadDirecta + (r.ingreso - r.gasto));
+  }
+  for (const n of p.noAsignado) {
+    const f = fila(n.ranchoId, n.cultivo);
+    f.noAsignado = redondear(f.noAsignado + n.monto);
+    f.porConcepto[n.concepto] = redondear((f.porConcepto[n.concepto] ?? 0) + n.monto);
+  }
+  const filas = [...grupos.values()].map((f) => {
+    const utilidadReal = redondear(f.utilidadDirecta - f.gastosComunes - f.noAsignado);
+    const gastoTotal = redondear(f.insumos + f.planta + f.gastosComunes + f.noAsignado);
+    return {
+      ...f,
+      utilidadReal,
+      utilidadRealHa: f.ha > 0 ? redondear(utilidadReal / f.ha) : 0,
+      retornoReal: gastoTotal > 0 ? redondear(f.ingreso / gastoTotal, 2) : null,
+    };
+  });
+  filas.sort((a, b) => a.ranchoId.localeCompare(b.ranchoId) || a.cultivo.localeCompare(b.cultivo));
+  const suma = (f: (x: FilaResultados) => number) => redondear(filas.reduce((s, x) => s + f(x), 0));
+  const totales = {
+    lotes: filas.reduce((s, x) => s + x.lotes, 0),
+    ha: suma((x) => x.ha),
+    ingreso: suma((x) => x.ingreso),
+    insumos: suma((x) => x.insumos),
+    planta: suma((x) => x.planta),
+    porConcepto: Object.fromEntries(
+      CONCEPTOS_GASTO.map((c) => [c.id, suma((x) => x.porConcepto[c.id] ?? 0)]),
+    ) as Record<ConceptoGasto, number>,
+    gastosComunes: suma((x) => x.gastosComunes),
+    noAsignado: suma((x) => x.noAsignado),
+    utilidadDirecta: suma((x) => x.utilidadDirecta),
+    utilidadReal: suma((x) => x.utilidadReal),
+    utilidadRealHa: 0,
+  };
+  totales.utilidadRealHa = totales.ha > 0 ? redondear(totales.utilidadReal / totales.ha) : 0;
+  return { filas, totales, desde: ctx.desde, hasta: ctx.hasta };
+}
+
+/** Cultivos con lotes (planeados o plantados) de un rancho, para las filas de la cuadrícula. */
+export function cultivosDelRancho(lotes: Lote[], ranchoId: string, semana?: number): string[] {
+  const xs = lotes.filter(
+    (l) => l.ranchoId === ranchoId && (semana === undefined || loteActivoEnSemana(l, semana)),
+  );
+  return [...new Set(xs.map((l) => l.cultivo))].sort();
+}
+
+export const PLANTILLA_GASTOS_CSV = "semana,rancho,cultivo,concepto,monto\n45,Dolores,Brócoli,Nómina,60000\n";
+
+export interface FilaGastoCsv {
+  semana: number;
+  ranchoId: string;
+  cultivo: string;
+  concepto: ConceptoGasto;
+  monto: number;
+}
+
+/**
+ * Lee la cuadrícula de gastos desde Excel/CSV: semana, rancho, cultivo, concepto, monto.
+ * Acepta el id o el nombre escrito a mano de rancho, cultivo y concepto.
+ */
+export function leerGastosCsv(
+  texto: string,
+  ctx: { ranchos: Rancho[]; cultivos: CultivoCat[] },
+): { filas: FilaGastoCsv[]; errores: string[] } {
+  const filas: FilaGastoCsv[] = [];
+  const errores: string[] = [];
+  const lineas = texto.split(/\r?\n/).filter((l) => l.trim() !== "");
+  const busca = <T extends { id: string; nombre: string }>(
+    lista: T[],
+    valor: string,
+    fila: number,
+    que: string,
+  ): string | null => {
+    const v = sinAcentos(valor.trim());
+    const porId = lista.find((x) => x.id.toLowerCase() === v);
+    if (porId) return porId.id;
+    const porNombre = lista.find((x) => sinAcentos(x.nombre) === v);
+    if (porNombre) return porNombre.id;
+    errores.push(`Línea ${fila}: no encuentro ${que} «${valor}».`);
+    return null;
+  };
+  lineas.forEach((linea, i) => {
+    const n = i + 1;
+    const celdas = linea.split(",").map((c) => c.trim());
+    if (celdas.length < 5) {
+      if (sinAcentos(celdas[0] ?? "") === "semana") return;
+      errores.push(`Línea ${n}: hacen falta semana, rancho, cultivo, concepto y monto.`);
+      return;
+    }
+    const semana = Number(celdas[0]);
+    if (!Number.isFinite(semana)) {
+      if (sinAcentos(celdas[0]) === "semana") return;
+      errores.push(`Línea ${n}: la semana «${celdas[0]}» no es un número.`);
+      return;
+    }
+    const ranchoId = busca(ctx.ranchos, celdas[1], n, "el rancho");
+    const cultivo = busca(ctx.cultivos, celdas[2], n, "el cultivo");
+    const cv = sinAcentos(celdas[3]);
+    const concepto = CONCEPTOS_GASTO.find((c) => c.id === cv || sinAcentos(c.nombre) === cv)?.id;
+    if (!concepto) {
+      errores.push(`Línea ${n}: no conozco el concepto «${celdas[3]}».`);
+      return;
+    }
+    const monto = Number(String(celdas[4]).replace(/[$, ]/g, ""));
+    if (!(monto > 0)) {
+      errores.push(`Línea ${n}: el monto «${celdas[4]}» debe ser mayor a 0.`);
+      return;
+    }
+    if (!ranchoId || !cultivo) return;
+    filas.push({ semana, ranchoId, cultivo, concepto, monto: redondear(monto) });
+  });
+  return { filas, errores };
+}
