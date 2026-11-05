@@ -18,14 +18,14 @@ import { KG_POR_BIN, evaluarViaje, parametroVigente, validarPago, validarSalida,
 import { PERMISOS_COSECHA, tiene } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
-import type { Liquidacion, Viaje } from "./types";
+import type { CicloCerrado, Liquidacion, Viaje } from "./types";
 
 /**
  * Datos de la Fase 4 (viajes de cosecha y pagos semanales). Se guardan elemento por elemento
  * en `registros`; en la simulación de semanas solo cambian aquí.
  */
-type Col4 = "viajes" | "liquidaciones";
-const COLS: Col4[] = ["viajes", "liquidaciones"];
+type Col4 = "viajes" | "liquidaciones" | "ciclos";
+const COLS: Col4[] = ["viajes", "liquidaciones", "ciclos"];
 
 export interface DatosSalida {
   bins?: Record<string, number> | undefined;
@@ -42,6 +42,9 @@ export interface DatosSalida {
 interface CosechaValue {
   viajes: Viaje[];
   liquidaciones: Liquidacion[];
+  ciclos: CicloCerrado[];
+  /** Super Admin: guarda (o reemplaza) un ciclo cerrado. */
+  guardarCiclo: (c: CicloCerrado) => void;
   puedeViajes: boolean;
   puedeEvaluar: boolean;
   registrarSalida: (d: DatosSalida) => string | null;
@@ -62,9 +65,10 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
   simRef.current = simulando;
   const [viajes, setViajes] = useState<Viaje[]>([]);
   const [liquidaciones, setLiqs] = useState<Liquidacion[]>([]);
+  const [ciclos, setCiclos] = useState<CicloCerrado[]>([]);
   const setters = useMemo(
     () =>
-      ({ viajes: setViajes, liquidaciones: setLiqs }) as unknown as Record<
+      ({ viajes: setViajes, liquidaciones: setLiqs, ciclos: setCiclos }) as unknown as Record<
         Col4,
         (f: (xs: { id: string }[]) => { id: string }[]) => void
       >,
@@ -76,6 +80,7 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     if (error) return;
     setViajes(data.filter((f) => f.coleccion === "viajes").map((f) => f.data as unknown as Viaje));
     setLiqs(data.filter((f) => f.coleccion === "liquidaciones").map((f) => f.data as unknown as Liquidacion));
+    setCiclos(data.filter((f) => f.coleccion === "ciclos").map((f) => f.data as unknown as CicloCerrado));
   }, []);
 
   useEffect(() => {
@@ -194,9 +199,16 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     [superAdmin, nombre, poner],
   );
 
+  const guardarCiclo = useCallback(
+    (c: CicloCerrado) => {
+      if (superAdmin) poner("ciclos", c);
+    },
+    [superAdmin, poner],
+  );
+
   const value = useMemo<CosechaValue>(
-    () => ({ viajes, liquidaciones, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago }),
-    [viajes, liquidaciones, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago],
+    () => ({ viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago }),
+    [viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago],
   );
   return <CosechaContext.Provider value={value}>{children}</CosechaContext.Provider>;
 }

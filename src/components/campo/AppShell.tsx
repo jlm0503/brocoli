@@ -24,6 +24,7 @@ import {
   Tractor,
   Receipt,
   TrendingUp,
+  Archive,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -54,6 +55,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/cosecha": Tractor,
   "/liquidacion": Receipt,
   "/rendimiento": TrendingUp,
+  "/historicos": Archive,
 };
 
 interface AppShellProps {

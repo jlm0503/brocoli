@@ -32,7 +32,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] Ubicación GPS de tablas (Fase 7); mientras, las fotos salen "no verificable"
 - [x] Prueba completa con datos de prueba (3 nov): "Rancho Prueba", tablas Prueba 1-4, variedad "Prueba", EX-0001 a EX-0005, una devolución; el ingeniero Prueba quedó asignado solo a Rancho Prueba
 - [ ] Borrar los datos de prueba cuando Jimena lo pida (por ahora se quedan para pruebas; incluye Chofer Prueba y viaje PRUEBA-V1) (ids prueba-*, rancho prueba-rancho, ex-* de ese rancho, alertas y devolución ligadas)
-## Fase 4 — Cosecha (lista, esperando confirmación)
+## Fase 4 — Cosecha (cerrada por el usuario, 5 nov)
 - [x] Salida del embarque sin kilos (folio, fecha/hora, chofer, lotes, foto de la hoja); lote cerrado solo Super Admin con motivo
 - [x] Evaluación: kg brutos/pagables, calificación, problemas, reporte; reparto por ha o ajuste del Super Admin; merma, bruto, descuento, neto
 - [x] Descuento por viaje abona a la Cuenta de planta
@@ -42,7 +42,12 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Caso de prueba Fase 4 en pruebas automáticas
 - [ ] Salidas sin señal (va con el modo offline de la Fase 7)
 - [ ] Permisos de captura de cosecha editables por puesto (hoy solo Super Admin)
-## Fase 5 — Cierre de ciclo, históricos, captura histórica
+## Fase 5 — Cierre de ciclo, históricos, captura histórica (lista, esperando confirmación)
+- [x] Lista de verificación, "Listo para cerrar", forzar cierre con motivo, foto fija, reabrir con motivo y bitácora
+- [x] Históricos: filtros, totales ponderados por ha, agrupar, comparar 2-4 ciclos, gráfica por tabla, Excel y PDF
+- [x] Captura histórica con viajes rápidos e importación CSV con plantilla; valida fechas encimadas
+- [ ] Atajo de "temporada" (falta saber qué fechas abarca)
+- [ ] Gastos comunes en la foto fija (llegan en Fase 6; hoy en 0)
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 

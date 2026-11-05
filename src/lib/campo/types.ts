@@ -189,6 +189,8 @@ export interface Lote {
   viveroId?: string | undefined;
   /** Fecha requerida de entrega de la planta (por defecto, el lunes de la semana de plantación). */
   fechaEntregaPlanta?: string | undefined;
+  /** Ciclo cerrado (Fase 5): ya no admite cambios; solo el Super Admin lo reabre. */
+  cerrado?: boolean | undefined;
 }
 
 export type EstatusTabla =
@@ -523,3 +525,65 @@ export interface Liquidacion {
 }
 
 export type EstatusLiquidacion = "abierta" | "por_cobrar" | "pagada" | "pagada_diferencia";
+
+/** Viaje de un ciclo histórico (captura rápida o importado de Excel/CSV). */
+export interface ViajeHistorico {
+  fecha: string;
+  folio: string;
+  chofer?: string | undefined;
+  kgBrutos: number;
+  kgPagables: number;
+  /** Calificación 1 a 10 (opcional). */
+  calidad?: number | undefined;
+  foto?: string | undefined;
+}
+
+export interface MovimientoBitacora {
+  fecha: string;
+  por: string;
+  accion: "cerrado" | "cerrado_con_pendientes" | "reabierto" | "capturado";
+  motivo?: string | undefined;
+}
+
+/** Foto fija de un ciclo al cerrarse (del sistema) o capturado a mano (histórico). Nunca se recalcula. */
+export interface CicloCerrado {
+  /** Del sistema: id del lote. Histórico: "hist-…". */
+  id: string;
+  tipo: "sistema" | "historico";
+  loteId?: string | undefined;
+  ranchoId: string;
+  tablaId: string;
+  codigo: string;
+  cultivo: string;
+  variedadId?: string | undefined;
+  ingeniero: string;
+  ha: number;
+  plantas: number;
+  fechaPlantacion: string;
+  fechaFinCosecha: string;
+  viajes: number;
+  kgBrutos: number;
+  kgPagables: number;
+  brutosHa: number;
+  pagablesHa: number;
+  meta: number;
+  pctMeta: number;
+  merma: number;
+  calidad: number | null;
+  ingreso: number;
+  insumos: number;
+  planta: number;
+  /** Gastos comunes del rancho (Fase 6; por ahora 0). */
+  gastosComunes: number;
+  utilidadDirecta: number;
+  utilidadReal: number;
+  retorno: number | null;
+  utilidadHa: number;
+  conPendientes: boolean;
+  /** Reabierto por el Super Admin: no cuenta en históricos hasta volver a cerrarse. */
+  reabierto?: boolean | undefined;
+  viajesHistoricos?: ViajeHistorico[] | undefined;
+  /** Monto pagado por semana de pago (jueves → monto), solo históricos. */
+  pagos?: Record<string, number> | undefined;
+  bitacora: MovimientoBitacora[];
+}

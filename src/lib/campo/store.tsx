@@ -212,6 +212,8 @@ interface CampoContextValue {
   cancelarLote: (loteId: string) => void;
   /** Super Admin o ingeniero: marca el lote como "Cosecha terminada" (libera la tabla). */
   terminarCosecha: (loteId: string) => string | null;
+  /** Super Admin: marca o quita el cierre de ciclo del lote. */
+  marcarCerrado: (loteId: string, cerrado: boolean) => void;
   /** Solo administrador: corrige fechas de plantación (por avance) y cosecha (vacía = ciclo). */
   corregirFechas: (
     loteId: string,
@@ -1016,6 +1018,14 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     [roles, lotes, hoy],
   );
 
+  const marcarCerrado = useCallback(
+    (loteId: string, cerrado: boolean) => {
+      if (role !== "admin") return;
+      setLotes((ls) => ls.map((x) => (x.id === loteId ? { ...x, cerrado: cerrado || undefined } : x)));
+    },
+    [role],
+  );
+
   const cancelarLote = useCallback(
     (loteId: string) => {
       const l = lotes.find((x) => x.id === loteId);
@@ -1067,6 +1077,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       if (!puedeCorregirFechas(role)) return "Solo el administrador puede corregir fechas.";
       const l = lotes.find((x) => x.id === loteId);
       if (!l) return "Lote no encontrado.";
+      if (l.cerrado) return "El ciclo de este lote está cerrado. Reábrelo primero.";
       const r = corregirFechasLote(l, cambios, hoy);
       if ("error" in r) return r.error;
       setLotes((ls) =>
@@ -1454,6 +1465,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       planearLote,
       cancelarLote,
       terminarCosecha,
+      marcarCerrado,
       corregirFechas,
       registrarAvance,
       entregarPedido,
@@ -1515,6 +1527,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       planearLote,
       cancelarLote,
       terminarCosecha,
+      marcarCerrado,
       corregirFechas,
       registrarAvance,
       entregarPedido,
