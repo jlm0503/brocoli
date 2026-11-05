@@ -17,7 +17,12 @@ const nombre = (id: string, lista: { id: string; nombre: string }[]) => lista.fi
 /** Columnas del estado de resultados: concepto → etiqueta. */
 const COLUMNAS = ["Ingreso", "Insumos", "Planta", ...CONCEPTOS_GASTO.map((c) => c.nombre), "No asignado", "Utilidad directa", "Utilidad real", "Utilidad real / ha", "Retorno"];
 
-function celdas(f: Pick<FilaResultados, "ingreso" | "insumos" | "planta" | "porConcepto" | "noAsignado" | "utilidadDirecta" | "utilidadReal" | "utilidadRealHa" | "retornoReal">): string[] {
+type Celdas = Pick<
+  FilaResultados,
+  "ingreso" | "insumos" | "planta" | "porConcepto" | "noAsignado" | "utilidadDirecta" | "utilidadReal" | "utilidadRealHa"
+> & { retornoReal?: number | null | undefined };
+
+function celdas(f: Celdas): string[] {
   return [
     String(f.ingreso),
     String(f.insumos),
@@ -27,7 +32,7 @@ function celdas(f: Pick<FilaResultados, "ingreso" | "insumos" | "planta" | "porC
     String(f.utilidadDirecta),
     String(f.utilidadReal),
     String(f.utilidadRealHa),
-    f.retornoReal === null ? "" : String(f.retornoReal),
+    f.retornoReal === null || f.retornoReal === undefined ? "" : String(f.retornoReal),
   ];
 }
 

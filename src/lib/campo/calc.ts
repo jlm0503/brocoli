@@ -2422,10 +2422,10 @@ function dividir(linea: string): string[] {
   let actual = "";
   let dentro = false;
   for (let i = 0; i < linea.length; i++) {
-    const ch = linea[i];
+    const ch = linea[i] ?? "";
     if (dentro) {
       if (ch === '"') {
-        if (linea[i + 1] === '"') {
+        if ((linea[i + 1] ?? "") === '"') {
           actual += '"';
           i++;
         } else dentro = false;

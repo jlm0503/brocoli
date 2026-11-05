@@ -74,9 +74,9 @@ const nomina45 = gasto({ semana: 45, cultivo: "*", concepto: "nomina", monto: 10
 describe("Fase 6 · prorrateo de gastos comunes", () => {
   it("el total del rancho se reparte por % entre cultivos y por ha entre lotes", () => {
     const p = prorrateoSemana({ semana: 45, ranchoId: "dolores", lotes, gastos: [nomina45], reparto });
-    expect(p.porLote.A).toBe(30000);
-    expect(p.porLote.B).toBe(18000);
-    expect(p.porLote.C).toBe(12000);
+    expect(p.porLote["A"]).toBe(30000);
+    expect(p.porLote["B"]).toBe(18000);
+    expect(p.porLote["C"]).toBe(12000);
   });
 
   it("ningún lote de brócoli recibe el gasto de coliflor: queda no asignado", () => {
@@ -89,26 +89,26 @@ describe("Fase 6 · prorrateo de gastos comunes", () => {
     const Acerrado = { ...A, cosechaTerminada: fechaEnSemana(45, 4) };
     const brocoli46 = gasto({ semana: 46, cultivo: "brocoli", concepto: "nomina", monto: 30000, modo: "directo" });
     const p = prorrateoSemana({ semana: 46, ranchoId: "dolores", lotes: [Acerrado, B, C], gastos: [brocoli46], reparto });
-    expect(p.porLote.A).toBeUndefined();
-    expect(p.porLote.B).toBe(18000);
-    expect(p.porLote.C).toBe(12000);
+    expect(p.porLote["A"]).toBeUndefined();
+    expect(p.porLote["B"]).toBe(18000);
+    expect(p.porLote["C"]).toBe(12000);
   });
 
   it("el gasto de un lote cancelado no se reparte a los demás: queda no asignado", () => {
     const Bcancelado = { ...B, cancelado: true };
     const p = prorrateoSemana({ semana: 45, ranchoId: "dolores", lotes: [A, Bcancelado, C], gastos: [nomina45], reparto });
-    expect(p.porLote.B).toBeUndefined();
-    expect(p.porLote.A).toBe(30000); // su parte por ha; la del cancelado no se reparte a los demás
-    expect(p.porLote.C).toBe(12000);
+    expect(p.porLote["B"]).toBeUndefined();
+    expect(p.porLote["A"]).toBe(30000); // su parte por ha; la del cancelado no se reparte a los demás
+    expect(p.porLote["C"]).toBe(12000);
     expect(p.noAsignado.find((n) => n.motivo.includes("cancelado"))?.monto).toBe(18000);
   });
 
   it("antes de la semana planeada el lote no recibe gasto", () => {
     const nomina44 = gasto({ semana: 44, cultivo: "*", concepto: "nomina", monto: 100000, modo: "total" });
     const p = prorrateoSemana({ semana: 44, ranchoId: "dolores", lotes, gastos: [nomina44], reparto });
-    expect(p.porLote.C).toBeUndefined();
-    expect(p.porLote.A).toBe(37500); // 60,000 entre 5 + 3 ha
-    expect(p.porLote.B).toBe(22500);
+    expect(p.porLote["C"]).toBeUndefined();
+    expect(p.porLote["A"]).toBe(37500); // 60,000 entre 5 + 3 ha
+    expect(p.porLote["B"]).toBe(22500);
   });
 
   it("el ajuste de una semana manda sobre los % generales", () => {
@@ -116,7 +116,7 @@ describe("Fase 6 · prorrateo de gastos comunes", () => {
     expect(repartoVigente(conAjuste, 45)).toEqual({ brocoli: 100, coliflor: 0 });
     expect(repartoVigente(conAjuste, 46)).toEqual({ brocoli: 60, coliflor: 40 });
     const p = prorrateoSemana({ semana: 45, ranchoId: "dolores", lotes, gastos: [nomina45], reparto: conAjuste });
-    expect(p.porLote.A).toBe(50000);
+    expect(p.porLote["A"]).toBe(50000);
     expect(p.noAsignado).toEqual([]);
   });
 
