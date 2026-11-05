@@ -16,6 +16,7 @@ import {
   formatoMXN,
   formatoNum,
   lineasSemana,
+  repartirDevolucion,
 } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useCampo } from "@/lib/campo/store";
@@ -38,9 +39,9 @@ export const Route = createFileRoute("/_authenticated/devoluciones")({
 function Devoluciones() {
   const { tablas, productos, semanaActual, lotes, recetas, adicionales, recepciones } = useCampo();
   const { ranchos, pasaTabla } = useFiltro();
-  const { devoluciones: todasDev, registrarDevolucion, eliminarDevolucion, extraordinarios } = useFase3();
+  const { devoluciones: todasDev, registrarDevolucionSemana, eliminarDevolucion, extraordinarios } = useFase3();
   const [ranchoId, setRanchoId] = useState(ranchos[0]?.id ?? "");
-  const [tablaId, setTablaId] = useState("");
+  const [semanaOrigen, setSemanaOrigen] = useState(semanaActual);
   const [productoId, setProductoId] = useState("");
   const [cantidad, setCantidad] = useState("");
   const [foto, setFoto] = useState<string | undefined>();
@@ -76,8 +77,23 @@ function Devoluciones() {
     return [...filas.values()].filter((f) => f.retirado > 0);
   }, [lotes, recetas, adicionales, recepciones, semanaActual, devoluciones, extraordinarios, tablas]);
 
+  // Lo que se entregó en el rancho la semana elegida: de ahí salen productos y tablas a descontar.
+  const lineasOrigen = useMemo(
+    () =>
+      lineasSemana(lotes.filter((l) => tablas.find((t) => t.id === l.tablaId)?.ranchoId === ranchoId), recetas, adicionales, [semanaOrigen]).filter(
+        (l) => estatusLinea(l, recepciones, semanaActual) === "recibido",
+      ),
+    [lotes, tablas, ranchoId, recetas, adicionales, semanaOrigen, recepciones, semanaActual],
+  );
+  const productosOrigen = productos.filter((p) => lineasOrigen.some((l) => l.productoId === p.id && l.cantidad > 0));
+  const calculo = productoId && Number(cantidad) > 0 ? repartirDevolucion(lineasOrigen, productoId, Number(cantidad)) : null;
+  const semanasOpc = Array.from({ length: 12 }, (_, i) => semanaActual - i);
+
   const guardar = () => {
-    const e = registrarDevolucion({ tablaId, productoId, cantidad: Number(cantidad), foto });
+    if (!productoId) return void toast.error("Elige el producto.");
+    if (!calculo) return void toast.error("Indica la cantidad devuelta.");
+    if (calculo.error) return void toast.error(calculo.error);
+    const e = registrarDevolucionSemana({ semanaOrigen, productoId, reparto: calculo.reparto, foto });
     if (e) return void toast.error(e);
     toast.success("Devolución registrada; se resta del costo del lote.");
     setCantidad("");
@@ -105,7 +121,7 @@ function Devoluciones() {
               value={ranchoId}
               onValueChange={(v) => {
                 setRanchoId(v);
-                setTablaId("");
+                setProductoId("");
               }}
             >
               <SelectTrigger>
@@ -121,19 +137,24 @@ function Devoluciones() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Tabla</Label>
-            <Select value={tablaId} onValueChange={setTablaId}>
+            <Label>Semana de la que se regresa</Label>
+            <Select
+              value={String(semanaOrigen)}
+              onValueChange={(v) => {
+                setSemanaOrigen(Number(v));
+                setProductoId("");
+              }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Elige" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {tablas
-                  .filter((t) => t.ranchoId === ranchoId)
-                  .map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.nombre}
-                    </SelectItem>
-                  ))}
+                {semanasOpc.map((w) => (
+                  <SelectItem key={w} value={String(w)}>
+                    Semana {w}
+                    {w === semanaActual ? " (actual)" : ""}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -141,10 +162,10 @@ function Devoluciones() {
             <Label>Producto</Label>
             <Select value={productoId} onValueChange={setProductoId}>
               <SelectTrigger>
-                <SelectValue placeholder="Elige" />
+                <SelectValue placeholder={productosOrigen.length ? "Elige" : "Nada entregado esa semana"} />
               </SelectTrigger>
               <SelectContent>
-                {productos.map((p) => (
+                {productosOrigen.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nombre} ({p.unidad})
                   </SelectItem>
@@ -157,6 +178,27 @@ function Devoluciones() {
             <Input id="dv-cant" type="number" inputMode="decimal" className="num" value={cantidad} onChange={(e) => setCantidad(e.target.value)} />
           </div>
         </div>
+        {calculo && (
+          <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-3 text-sm">
+            {calculo.error ? (
+              <p className="text-destructive">{calculo.error}</p>
+            ) : (
+              <>
+                <p className="mb-1 text-muted-foreground">
+                  Se descuenta de las tablas que lo recibieron en la semana {semanaOrigen} (entregado: {formatoNum(calculo.entregado)}{" "}
+                  {prod(productoId)?.unidad}):
+                </p>
+                <ul className="space-y-0.5">
+                  {calculo.reparto.map((r) => (
+                    <li key={r.loteId} className="num">
+                      {nombreT(r.tablaId)}: {formatoNum(r.cantidad)} {prod(productoId)?.unidad}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
         <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <FotoInput key={clave} foto={foto} setFoto={setFoto} texto="Foto de lo retirado" />
           <Button onClick={guardar}>Guardar devolución</Button>
@@ -176,7 +218,8 @@ function Devoluciones() {
                   <span className="num">
                     {formatoNum(d.cantidad)} {prod(d.productoId)?.unidad}
                   </span>{" "}
-                  · {nombreT(d.tablaId)} · {formatoMXN(d.cantidad * d.precio)} menos al lote
+                  · {nombreT(d.tablaId)}
+                  {d.semanaOrigen != null ? ` · de semana ${d.semanaOrigen}` : ""} · {formatoMXN(d.cantidad * d.precio)} menos al lote
                 </span>
                 <span className="flex gap-1">
                   <VerEvidencia foto={d.foto} title="Ver foto">

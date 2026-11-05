@@ -102,3 +102,17 @@ describe("Parámetros por variedad", () => {
     expect(costoPorPlanta(ps, "2026-11-03", "diamante")).toBeCloseTo(16200 / 55000, 4);
   });
 });
+
+import { repartirDevolucion as repDev } from "@/lib/campo/calc";
+describe("devolución por semana", () => {
+  const l = (loteId: string, productoId: string, cantidad: number) =>
+    ({ key: loteId + productoId, loteId, tablaId: "t" + loteId, ranchoId: "r", productoId, semana: 45, semanaReceta: 3, cantidad });
+  it("reparte proporcional a lo entregado esa semana", () => {
+    const r = repDev([l("a", "p", 30), l("b", "p", 10), l("c", "q", 50)], "p", 8);
+    expect(r.error).toBeNull();
+    expect(r.reparto.map((x) => [x.loteId, x.cantidad])).toEqual([["a", 6], ["b", 2]]);
+  });
+  it("no deja devolver más de lo entregado", () => {
+    expect(repDev([l("a", "p", 5)], "p", 6).error).not.toBeNull();
+  });
+});
