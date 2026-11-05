@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
+import { Route as AuthenticatedConsumoRouteImport } from './routes/_authenticated/consumo'
 import { Route as AuthenticatedCosechaRouteImport } from './routes/_authenticated/cosecha'
 import { Route as AuthenticatedCuentaPlantaRouteImport } from './routes/_authenticated/cuenta-planta'
 import { Route as AuthenticatedDevolucionesRouteImport } from './routes/_authenticated/devoluciones'
@@ -66,6 +67,11 @@ const AuthenticatedCatalogosRoute = AuthenticatedCatalogosRouteImport.update({
 const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
   id: '/compras',
   path: '/compras',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConsumoRoute = AuthenticatedConsumoRouteImport.update({
+  id: '/consumo',
+  path: '/consumo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCosechaRoute = AuthenticatedCosechaRouteImport.update({
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/consumo': typeof AuthenticatedConsumoRoute
   '/cosecha': typeof AuthenticatedCosechaRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
+  '/consumo': typeof AuthenticatedConsumoRoute
   '/cosecha': typeof AuthenticatedCosechaRoute
   '/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/devoluciones': typeof AuthenticatedDevolucionesRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
+  '/_authenticated/consumo': typeof AuthenticatedConsumoRoute
   '/_authenticated/cosecha': typeof AuthenticatedCosechaRoute
   '/_authenticated/cuenta-planta': typeof AuthenticatedCuentaPlantaRoute
   '/_authenticated/devoluciones': typeof AuthenticatedDevolucionesRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/consumo'
     | '/cosecha'
     | '/cuenta-planta'
     | '/devoluciones'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/catalogos'
     | '/compras'
+    | '/consumo'
     | '/cosecha'
     | '/cuenta-planta'
     | '/devoluciones'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/_authenticated/alertas'
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
+    | '/_authenticated/consumo'
     | '/_authenticated/cosecha'
     | '/_authenticated/cuenta-planta'
     | '/_authenticated/devoluciones'
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/compras'
       fullPath: '/compras'
       preLoaderRoute: typeof AuthenticatedComprasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/consumo': {
+      id: '/_authenticated/consumo'
+      path: '/consumo'
+      fullPath: '/consumo'
+      preLoaderRoute: typeof AuthenticatedConsumoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cosecha': {
@@ -500,6 +519,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedConsumoRoute: typeof AuthenticatedConsumoRoute
   AuthenticatedCosechaRoute: typeof AuthenticatedCosechaRoute
   AuthenticatedCuentaPlantaRoute: typeof AuthenticatedCuentaPlantaRoute
   AuthenticatedDevolucionesRoute: typeof AuthenticatedDevolucionesRoute
@@ -523,6 +543,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
+  AuthenticatedConsumoRoute: AuthenticatedConsumoRoute,
   AuthenticatedCosechaRoute: AuthenticatedCosechaRoute,
   AuthenticatedCuentaPlantaRoute: AuthenticatedCuentaPlantaRoute,
   AuthenticatedDevolucionesRoute: AuthenticatedDevolucionesRoute,

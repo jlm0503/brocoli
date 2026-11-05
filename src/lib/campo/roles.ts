@@ -86,6 +86,7 @@ export type NavPath =
   | "/liquidacion"
   | "/rendimiento"
   | "/historicos"
+  | "/consumo"
   | "/gastos"
   | "/resultados";
 
@@ -99,6 +100,7 @@ export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/liquidacion", label: "Liquidación semanal", roles: ["admin"] },
   { to: "/rendimiento", label: "Rendimiento y calidad", roles: ["admin", "ingeniero"] },
   { to: "/historicos", label: "Cierre e históricos", roles: ["admin"] },
+  { to: "/consumo", label: "Consumo por tabla", roles: ["admin"] },
   { to: "/gastos", label: "Gastos de rancho", roles: ["admin", "encargado"] },
   { to: "/resultados", label: "Estado de resultados", roles: ["admin"] },
   { to: "/compras", label: "Compras y entregas", roles: ["admin", "compras"] },

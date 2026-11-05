@@ -2923,3 +2923,56 @@ export function leerGastosCsv(
   });
   return { filas, errores };
 }
+
+// ───────────────────────── Consumo real por tabla cerrada ─────────────────────────
+
+export interface ConsumoProducto {
+  productoId: string;
+  receta: number;
+  planeacion: number;
+  extraordinarios: number;
+  devuelto: number;
+  /** receta + planeación + extraordinarios − devuelto (nunca menos de 0) */
+  neto: number;
+  porHa: number;
+}
+
+/** Cantidad real de cada producto que consumió un lote: lo recibido menos lo devuelto. */
+export function consumoProductosLote(
+  l: Lote,
+  ctx: {
+    lineas: LineaDemanda[];
+    recepciones: Record<string, Recepcion>;
+    pedidos: PedidoPlaneacion[];
+    extraordinarios: Extraordinario[];
+    devoluciones: Devolucion[];
+  },
+): ConsumoProducto[] {
+  const m = new Map<string, ConsumoProducto>();
+  const get = (id: string) => {
+    let c = m.get(id);
+    if (!c) m.set(id, (c = { productoId: id, receta: 0, planeacion: 0, extraordinarios: 0, devuelto: 0, neto: 0, porHa: 0 }));
+    return c;
+  };
+  for (const x of ctx.lineas.filter((x) => x.loteId === l.id)) get(x.productoId).receta += cantidadRecibida(x, ctx.recepciones);
+  for (const i of insumosEntregados(l, ctx.pedidos)) get(i.productoId).planeacion += i.cantidad;
+  for (const e of ctx.extraordinarios.filter((e) => e.status === "surtida")) {
+    for (const r of (e.reparto ?? []).filter((r) => r.loteId === l.id))
+      for (const ln of e.lineas) get(ln.productoId).extraordinarios += ln.porHa * r.ha;
+  }
+  for (const d of ctx.devoluciones.filter((d) => d.loteId === l.id)) get(d.productoId).devuelto += d.cantidad;
+  return [...m.values()]
+    .map((c) => {
+      const neto = consumoTeorico(c.receta + c.planeacion + c.extraordinarios, c.devuelto);
+      return {
+        ...c,
+        receta: redondear(c.receta),
+        planeacion: redondear(c.planeacion),
+        extraordinarios: redondear(c.extraordinarios),
+        devuelto: redondear(c.devuelto),
+        neto,
+        porHa: l.ha > 0 ? redondear(neto / l.ha) : 0,
+      };
+    })
+    .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.devuelto);
+}
