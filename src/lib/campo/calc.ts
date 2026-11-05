@@ -1597,7 +1597,15 @@ export function lotesParaSalida(lotes: Lote[], incluirCerrados = false): Lote[] 
 }
 
 export function validarSalida(
-  d: { folio: string; fecha: string; loteIds: string[]; choferId: string; foto?: string | undefined; motivoCerrado?: string | undefined },
+  d: {
+    folio: string;
+    fecha: string;
+    loteIds: string[];
+    choferId: string;
+    foto?: string | undefined;
+    motivoCerrado?: string | undefined;
+    bins?: Record<string, number> | undefined;
+  },
   lotes: Lote[],
   viajes: Viaje[],
   hoy: string,
@@ -1609,6 +1617,10 @@ export function validarSalida(
   if (!d.fecha || d.fecha > hoy) return "La fecha de salida no puede ser futura.";
   if (d.loteIds.length === 0) return "Elige al menos una tabla o lote.";
   if (!d.choferId) return "Elige el chofer.";
+  for (const id of d.loteIds) {
+    const b = d.bins?.[id];
+    if (!(b !== undefined && Number.isInteger(b) && b > 0)) return "Escribe cuántos bins van de cada tabla (número entero mayor a 0).";
+  }
   if (!d.foto) return "Falta la foto de la hoja.";
   const cerrados = lotes.filter((l) => d.loteIds.includes(l.id) && l.finalizado);
   if (cerrados.length > 0) {
@@ -1627,11 +1639,14 @@ export function repartirKg(
   kgBrutos: number,
   kgPagables: number,
   ajuste?: { modo: "pct" | "kg"; valores: Record<string, number> },
+  bins?: Record<string, number>,
 ): { error: string } | { filas: Pick<RepartoKg, "loteId" | "tablaId" | "ranchoId" | "pct" | "kgBrutos" | "kgPagables">[] } {
   if (lotes.length === 0) return { error: "El viaje no tiene lotes." };
   let pesos: number[];
   if (lotes.length === 1 || !ajuste) {
-    pesos = lotes.map((l) => plantadasLote(l));
+    // Con bins capturados en la salida, se reparte proporcional a los bins; si no, por hectáreas.
+    const conBins = bins && lotes.every((l) => (bins[l.id] ?? 0) > 0);
+    pesos = lotes.map((l) => (conBins ? bins[l.id]! : plantadasLote(l)));
   } else if (ajuste.modo === "pct") {
     pesos = lotes.map((l) => ajuste.valores[l.id] ?? 0);
     if (pesos.some((p) => p < 0)) return { error: "Los porcentajes no pueden ser negativos." };
@@ -1691,7 +1706,7 @@ export function evaluarViaje(
     if (p.modo === "pct" && p.valor > 100) return { error: "El % castigado no puede pasar de 100." };
   }
   const ls = v.loteIds.map((id) => ctx.lotes.find((l) => l.id === id)).filter((l): l is Lote => !!l);
-  const r = repartirKg(ls, d.kgBrutos, d.kgPagables, ls.length > 1 ? d.ajuste : undefined);
+  const r = repartirKg(ls, d.kgBrutos, d.kgPagables, ls.length > 1 ? d.ajuste : undefined, v.bins);
   if ("error" in r) return r;
   const reparto: RepartoKg[] = r.filas.map((f) => {
     const l = ls.find((x) => x.id === f.loteId)!;
@@ -1778,6 +1793,36 @@ export function resumenSemanaPago(viajes: Viaje[], jueves: string): ResumenPago 
     descuentos: suma((e) => e.descuento),
     importeNeto: suma((e) => e.importeNeto),
   };
+}
+
+export const KG_POR_BIN = 200;
+
+/** Kg que el rancho dijo que mandó (bins × kg por bin), por lote y total. 0 si el viaje no tiene bins. */
+export function estimadoViaje(v: Viaje): { bins: number; kg: number; porLote: Record<string, { bins: number; kg: number }> } {
+  const kgBin = v.kgPorBin ?? KG_POR_BIN;
+  const porLote: Record<string, { bins: number; kg: number }> = {};
+  let bins = 0;
+  for (const id of v.loteIds) {
+    const b = v.bins?.[id] ?? 0;
+    porLote[id] = { bins: b, kg: b * kgBin };
+    bins += b;
+  }
+  return { bins, kg: bins * kgBin, porLote };
+}
+
+/** Lo que el rancho dijo que mandó contra lo que llegó (kg brutos), solo de viajes evaluados con bins. */
+export function enviadoVsLlegado(viajes: Viaje[]): { bins: number; kgDicho: number; kgLlegado: number; diferencia: number; pct: number } {
+  let bins = 0, kgDicho = 0, kgLlegado = 0;
+  for (const v of viajes) {
+    if (!v.evaluacion || !v.bins) continue;
+    const e = estimadoViaje(v);
+    if (e.bins === 0) continue;
+    bins += e.bins;
+    kgDicho += e.kg;
+    kgLlegado += v.evaluacion.kgBrutos;
+  }
+  const diferencia = redondear(kgLlegado - kgDicho);
+  return { bins, kgDicho, kgLlegado: redondear(kgLlegado), diferencia, pct: kgDicho > 0 ? redondear((diferencia / kgDicho) * 100, 1) : 0 };
 }
 
 /** Semanas de pago con viajes, de la más reciente a la más antigua. */

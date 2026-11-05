@@ -28,6 +28,8 @@ type Col4 = "viajes" | "liquidaciones";
 const COLS: Col4[] = ["viajes", "liquidaciones"];
 
 export interface DatosSalida {
+  bins?: Record<string, number> | undefined;
+  kgPorBin?: number | undefined;
   folio: string;
   fecha: string;
   hora: string;
@@ -135,6 +137,8 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
         fecha: d.fecha,
         hora: d.hora,
         loteIds: d.loteIds,
+        bins: Object.fromEntries(d.loteIds.map((id) => [id, d.bins?.[id] ?? 0])),
+        kgPorBin: d.kgPorBin && d.kgPorBin > 0 ? d.kgPorBin : KG_POR_BIN,
         choferId: d.choferId,
         congeladoraId: congeladoras[0]?.id ?? "principal",
         foto: d.foto!,
