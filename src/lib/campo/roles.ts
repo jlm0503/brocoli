@@ -9,6 +9,7 @@ export const ORDEN_PUESTOS: Role[] = [
   "ingeniero",
   "compras",
   "almacen",
+  "encargado",
 ];
 
 export const ROLES: Record<
