@@ -98,14 +98,17 @@ describe("Fase 6 · prorrateo de gastos comunes", () => {
     const Bcancelado = { ...B, cancelado: true };
     const p = prorrateoSemana({ semana: 45, ranchoId: "dolores", lotes: [A, Bcancelado, C], gastos: [nomina45], reparto });
     expect(p.porLote.B).toBeUndefined();
-    expect(p.porLote.A).toBe(40000); // 60,000 entre 5 + 2 ha
+    expect(p.porLote.A).toBe(30000); // su parte por ha; la del cancelado no se reparte a los demás
+    expect(p.porLote.C).toBe(12000);
     expect(p.noAsignado.find((n) => n.motivo.includes("cancelado"))?.monto).toBe(18000);
   });
 
   it("antes de la semana planeada el lote no recibe gasto", () => {
-    const p = prorrateoSemana({ semana: 44, ranchoId: "dolores", lotes, gastos: [nomina45], reparto });
+    const nomina44 = gasto({ semana: 44, cultivo: "*", concepto: "nomina", monto: 100000, modo: "total" });
+    const p = prorrateoSemana({ semana: 44, ranchoId: "dolores", lotes, gastos: [nomina44], reparto });
     expect(p.porLote.C).toBeUndefined();
     expect(p.porLote.A).toBe(37500); // 60,000 entre 5 + 3 ha
+    expect(p.porLote.B).toBe(22500);
   });
 
   it("el ajuste de una semana manda sobre los % generales", () => {
@@ -135,8 +138,10 @@ describe("Fase 6 · captura de gastos", () => {
   });
 
   it("no deja duplicar semana, rancho, cultivo y concepto", () => {
-    const duplicado = { ...d, semana: 45 };
-    expect(validarGasto(duplicado, ctx)).toContain("Ya existe");
+    const directo = gasto({ semana: 45, cultivo: "brocoli", concepto: "nomina", monto: 60000, modo: "directo" });
+    const conDirecto = { gastos: [nomina45, directo], reparto, cultivos: ["brocoli", "coliflor"] };
+    expect(validarGasto({ ...d, semana: 45 }, conDirecto)).toContain("Ya existe");
+    expect(validarGasto({ ...d, semana: 45, modo: "total", cultivo: "*" }, conDirecto)).toContain("Ya existe");
   });
 
   it("el monto debe ser mayor a 0", () => {
@@ -151,7 +156,7 @@ describe("Fase 6 · captura de gastos", () => {
 
   it("sin % que sumen 100 no se puede capturar el total del rancho", () => {
     const sinReparto = { gastos: [], reparto: undefined, cultivos: ["brocoli"] };
-    expect(validarGasto({ ...d, modo: "total", cultivo: "*" }, sinReparto)).toContain("100");
+    expect(validarGasto({ ...d, modo: "total", cultivo: "*" }, sinReparto)).toContain("No se puede repartir");
     expect(validarReparto({ brocoli: 60, coliflor: 30 })).toContain("suman 90");
     expect(validarReparto({ brocoli: 60, coliflor: 40 })).toBeNull();
   });
@@ -232,7 +237,7 @@ describe("Fase 6 · utilidad real", () => {
     const brocoli = t.filas.find((f) => f.cultivo === "brocoli");
     const coliflor = t.filas.find((f) => f.cultivo === "coliflor");
     if (!brocoli) throw new Error("No aparece la fila de brócoli.");
-    expect(brocoli.gastoComunes).toBe(60000);
+    expect(brocoli.gastosComunes).toBe(60000);
     expect(brocoli.porConcepto.nomina).toBe(60000);
     expect(brocoli?.noAsignado).toBe(0);
     expect(brocoli?.utilidadReal).toBe(-60000);

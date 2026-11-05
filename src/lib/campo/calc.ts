@@ -2416,6 +2416,30 @@ function sinAcentos(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+/** Divide una línea de CSV respetando las celdas que Excel escribe entre comillas. */
+function dividir(linea: string): string[] {
+  const celdas: string[] = [];
+  let actual = "";
+  let dentro = false;
+  for (let i = 0; i < linea.length; i++) {
+    const ch = linea[i];
+    if (dentro) {
+      if (ch === '"') {
+        if (linea[i + 1] === '"') {
+          actual += '"';
+          i++;
+        } else dentro = false;
+      } else actual += ch;
+    } else if (ch === '"') dentro = true;
+    else if (ch === ",") {
+      celdas.push(actual);
+      actual = "";
+    } else actual += ch;
+  }
+  celdas.push(actual);
+  return celdas.map((c) => c.trim());
+}
+
 /** % de reparto de un rancho para una semana: el ajuste de esa semana si existe, si no los generales. */
 export function repartoVigente(r: RepartoCultivo | undefined, semana: number): Record<string, number> {
   if (!r) return {};
@@ -2869,7 +2893,7 @@ export function leerGastosCsv(
   };
   lineas.forEach((linea, i) => {
     const n = i + 1;
-    const celdas = linea.split(",").map((c) => c.trim());
+    const celdas = dividir(linea);
     if (celdas.length < 5) {
       if (sinAcentos(celdas[0] ?? "") === "semana") return;
       errores.push(`Línea ${n}: hacen falta semana, rancho, cultivo, concepto y monto.`);
