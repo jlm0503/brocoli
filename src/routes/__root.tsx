@@ -16,6 +16,7 @@ import { SesionProvider } from "@/lib/campo/sesion";
 import { CampoProvider } from "@/lib/campo/store";
 import { Fase3Provider } from "@/lib/campo/fase3";
 import { CosechaProvider } from "@/lib/campo/cosecha";
+import { GastosProvider } from "@/lib/campo/gastos";
 import { FiltroProvider } from "@/lib/campo/filtro";
 import { Toaster } from "@/components/ui/sonner";
 
