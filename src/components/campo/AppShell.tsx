@@ -54,6 +54,7 @@ const ICONS: Record<NavPath, typeof Sprout> = {
   "/cosecha": Tractor,
   "/liquidacion": Receipt,
   "/rendimiento": TrendingUp,
+  "/historicos": Archive,
 };
 
 interface AppShellProps {
