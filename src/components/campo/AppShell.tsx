@@ -1,4 +1,6 @@
 import { Link, Navigate } from "@tanstack/react-router";
+
+import logoUltra from "@/assets/logo-ultra.jpg.asset.json";
 import {
   BellRing,
   BookOpen,
@@ -95,8 +97,10 @@ export function AppShell({ path, eyebrow, title, description, actions, filtros, 
       <aside className="flex flex-col bg-ink text-ink-foreground lg:sticky lg:top-0 lg:h-screen">
         <div className="flex items-center justify-between gap-3 px-5 py-5 lg:block">
           <Link to="/" className="block">
-            <span className="eyebrow !text-sidebar-primary">Control de insumos</span>
-            <span className="mt-1 block font-display text-3xl leading-none">Brócoli</span>
+            <span className="block rounded-md bg-white px-3 py-2">
+              <img src={logoUltra.url} alt="Ultrafarms" className="h-9 w-auto" />
+            </span>
+            <span className="eyebrow mt-2 block !text-sidebar-primary">Control de insumos</span>
           </Link>
           <div className="num rounded-md border border-sidebar-border px-2.5 py-1.5 text-xs lg:mt-5 lg:inline-block">
             Sem {semanaActual} · {fechaCorta(hoy)}
