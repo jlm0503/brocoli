@@ -2084,3 +2084,36 @@ export function haPorCosecharSemana(lotes: Lote[], semana: number): PorCosechar[
   }
   return out;
 }
+
+export interface RepartoDevolucion {
+  loteId: string;
+  tablaId: string;
+  ranchoId: string;
+  cantidad: number;
+}
+
+/**
+ * Reparte lo devuelto de un producto entre los lotes que lo recibieron en la semana elegida,
+ * en proporción a lo que se le entregó a cada uno. Error si se devuelve más de lo entregado.
+ */
+export function repartirDevolucion(
+  lineas: LineaDemanda[],
+  productoId: string,
+  cantidad: number,
+): { reparto: RepartoDevolucion[]; entregado: number; error: string | null } {
+  const porLote = new Map<string, RepartoDevolucion>();
+  for (const l of lineas.filter((x) => x.productoId === productoId && x.cantidad > 0)) {
+    const r = porLote.get(l.loteId) ?? { loteId: l.loteId, tablaId: l.tablaId, ranchoId: l.ranchoId, cantidad: 0 };
+    r.cantidad += l.cantidad;
+    porLote.set(l.loteId, r);
+  }
+  const base = [...porLote.values()];
+  const entregado = base.reduce((s, r) => s + r.cantidad, 0);
+  if (entregado <= 0) return { reparto: [], entregado: 0, error: "Ese producto no se entregó a ninguna tabla esa semana." };
+  if (cantidad > entregado + 1e-9)
+    return { reparto: [], entregado, error: `No puedes devolver más de lo entregado esa semana (${Math.round(entregado * 100) / 100}).` };
+  const reparto = base.map((r) => ({ ...r, cantidad: Math.round((cantidad * r.cantidad) / entregado * 1000) / 1000 }));
+  const dif = Math.round((cantidad - reparto.reduce((s, r) => s + r.cantidad, 0)) * 1000) / 1000;
+  if (reparto.length && dif !== 0) reparto[reparto.length - 1]!.cantidad = Math.round((reparto[reparto.length - 1]!.cantidad + dif) * 1000) / 1000;
+  return { reparto, entregado, error: null };
+}
