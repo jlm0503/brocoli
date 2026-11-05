@@ -46,7 +46,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Lista de verificación, "Listo para cerrar", forzar cierre con motivo, foto fija, reabrir con motivo y bitácora
 - [x] Históricos: filtros, totales ponderados por ha, agrupar, comparar 2-4 ciclos, gráfica por tabla, Excel y PDF
 - [x] Captura histórica con viajes rápidos e importación CSV con plantilla; valida fechas encimadas
-- [ ] Atajo de "temporada" (falta saber qué fechas abarca)
+- [x] Temporada = de la plantación al cierre de cosecha (máx. 2 semanas de cosecha; aviso para cerrar)
 - [ ] Gastos comunes en la foto fija (llegan en Fase 6; hoy en 0)
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
