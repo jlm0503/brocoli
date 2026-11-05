@@ -80,3 +80,15 @@ describe("Fase 5 · históricos", () => {
     expect(variacionPct(16000, 18000)).toBe(12.5);
   });
 });
+
+import { cosechaVencida } from "@/lib/campo/calc";
+describe("Fase 5 · máximo 2 semanas de cosecha", () => {
+  const l = { id: "x", avances: [{ id: "a", fecha: "2026-08-10", semana: 33, ha: 5 }], cicloDias: 84, semanaPlaneada: 33 } as unknown as Parameters<typeof cosechaVencida>[0];
+  const v = (fecha: string) => ({ loteIds: ["x"], fecha }) as Viaje;
+  it("a los 14 días del primer viaje la cosecha está vencida", () => {
+    expect(cosechaVencida(l, [v("2026-11-01")], "2026-11-15")).toBe(true);
+  });
+  it("a los 13 días todavía no", () => {
+    expect(cosechaVencida(l, [v("2026-11-01")], "2026-11-14")).toBe(false);
+  });
+});

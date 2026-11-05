@@ -2380,3 +2380,14 @@ export function leerViajesCsv(texto: string): { viajes: ViajeHistorico[] } | { e
   }
   return { viajes };
 }
+
+/** Semanas máximas de cosecha por lote (temporada = de la plantación al cierre de cosecha). */
+export const SEMANAS_MAX_COSECHA = 2;
+
+/** Lote que ya lleva 2 semanas o más cosechándose sin marcar "Cosecha terminada": debe cerrarse. */
+export function cosechaVencida(l: Lote, viajes: Viaje[], hoy: string): boolean {
+  if (l.cancelado || l.cerrado || l.cosechaTerminada || l.avances.length === 0) return false;
+  const fechas = viajes.filter((v) => v.loteIds.includes(l.id)).map((v) => v.fecha).sort();
+  const inicio = fechas[0] ?? fechaCosechaLote(l);
+  return sumarDias(inicio, SEMANAS_MAX_COSECHA * 7) <= hoy;
+}

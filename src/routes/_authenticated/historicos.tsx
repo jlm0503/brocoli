@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   PLANTILLA_VIAJES_CSV,
   checklistCierre,
+  cosechaVencida,
   cicloHistorico,
   formatoMXN,
   formatoNum,
@@ -92,6 +93,13 @@ function PorCerrar() {
   const [motivo, setMotivo] = useState("");
 
   const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && !l.cerrado && l.avances.length > 0 && l.cosechaTerminada);
+  const vencidos = lotes.filter((l) => pasaLote(l) && cosechaVencida(l, viajes, hoy));
+  const avisoVencidos = vencidos.length > 0 && (
+    <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+      <p className="font-medium text-destructive">Llevan 2 semanas o más cosechando: marca "Cosecha terminada" en Cosecha para cerrarlos.</p>
+      <p className="text-muted-foreground">{vencidos.map((l) => nombreLote(l)).join(" · ")}</p>
+    </div>
+  );
 
   const cerrar = (l: Lote, conPendientes: boolean, mot?: string) => {
     const r = rendimientoLote(l, viajes, parametros, costoLote(l.id));
@@ -109,9 +117,16 @@ function PorCerrar() {
   };
 
   if (ls.length === 0)
-    return <p className="text-sm text-muted-foreground">No hay lotes con la cosecha terminada pendientes de cerrar.</p>;
+    return (
+      <>
+        {avisoVencidos}
+        <p className="text-sm text-muted-foreground">No hay lotes con la cosecha terminada pendientes de cerrar.</p>
+      </>
+    );
 
   return (
+    <>
+    {avisoVencidos}
     <div className="grid gap-4 md:grid-cols-2">
       {ls.map((l) => {
         const lista = checklistCierre(l, { viajes, liquidaciones, extraordinarios, alertasDireccion, hoy });
@@ -171,6 +186,7 @@ function PorCerrar() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }
 
