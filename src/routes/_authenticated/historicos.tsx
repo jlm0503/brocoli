@@ -28,6 +28,7 @@ import {
   plantaHistorica,
   prorrateoRango,
   rendimientoLote,
+  semanaCierreLote,
   snapshotCiclo,
   totalesCiclos,
   variacionPct,
