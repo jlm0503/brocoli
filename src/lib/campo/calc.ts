@@ -2124,7 +2124,7 @@ export interface PuntoCierre {
   clave: "cosecha" | "viajes" | "pagos" | "extraordinarios" | "alertas";
   texto: string;
   ok: boolean;
-  detalle?: string;
+  detalle?: string | undefined;
 }
 
 /** Lista de verificación para cerrar un lote: todo en verde para cerrar sin pendientes. */
