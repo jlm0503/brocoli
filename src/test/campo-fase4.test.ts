@@ -191,3 +191,22 @@ describe("Fase 4 · reglas de salida, evaluación y liquidación", () => {
     expect(rep.problemas).toEqual([{ problemaId: "amarillo", veces: 1, kg: 500 }]);
   });
 });
+
+describe("bins por tabla en la salida", () => {
+  const lote = (id: string, ha: number) => ({ id, tablaId: "t-" + id, ranchoId: "r", plantadas: ha, haPlaneadas: ha }) as never;
+  it("reparte los kg reales proporcional a los bins (10 y 4 bins)", async () => {
+    const { repartirKg } = await import("@/lib/campo/calc");
+    const r = repartirKg([lote("a", 12), lote("b", 12)], 2800, 2520, undefined, { a: 10, b: 4 });
+    if ("error" in r) throw new Error(r.error);
+    expect(r.filas[0]!.kgBrutos).toBe(2000);
+    expect(r.filas[1]!.kgBrutos).toBe(800);
+    expect(r.filas[0]!.kgPagables).toBe(1800);
+    expect(r.filas[1]!.kgPagables).toBe(720);
+  });
+  it("estima 200 kg por bin y compara lo dicho contra lo que llegó", async () => {
+    const { estimadoViaje, enviadoVsLlegado } = await import("@/lib/campo/calc");
+    const v = { loteIds: ["a", "b"], bins: { a: 10, b: 4 }, evaluacion: { kgBrutos: 2600 } } as never;
+    expect(estimadoViaje(v).kg).toBe(2800);
+    expect(enviadoVsLlegado([v])).toMatchObject({ kgDicho: 2800, kgLlegado: 2600, diferencia: -200 });
+  });
+});
