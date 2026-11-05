@@ -496,6 +496,10 @@ export interface Viaje {
   fecha: string;
   hora: string;
   loteIds: string[];
+  /** Bins que mandó el rancho de cada lote (loteId → bins). Viajes anteriores pueden no tenerlos. */
+  bins?: Record<string, number> | undefined;
+  /** Kg aproximados por bin al registrar la salida. */
+  kgPorBin?: number | undefined;
   choferId: string;
   congeladoraId: string;
   /** Foto de la hoja (cámara o galería). */

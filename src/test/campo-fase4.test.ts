@@ -132,7 +132,7 @@ describe("Fase 4 · reparto de kilos", () => {
 describe("Fase 4 · reglas de salida, evaluación y liquidación", () => {
   const abierto = lote({ id: "l1" });
   const cerrado = lote({ id: "l2", finalizado: true, cosechaTerminada: "2026-11-01" });
-  const base = { folio: "H-1", fecha: "2026-11-10", loteIds: ["l2"], choferId: "c", foto: "f.jpg" };
+  const base = { folio: "H-1", fecha: "2026-11-10", loteIds: ["l2"], choferId: "c", foto: "f.jpg", bins: { l1: 5, l2: 5 } };
 
   it("no se permite un lote cerrado, salvo el Super Admin con motivo", () => {
     expect(validarSalida(base, [abierto, cerrado], [], "2026-11-10", false)).toBe("No se puede incluir un lote cerrado.");
@@ -189,5 +189,31 @@ describe("Fase 4 · reglas de salida, evaluación y liquidación", () => {
     if ("error" in r) throw new Error(r.error);
     const rep = reporteCalidad([{ ...viaje({ id: "v", fecha: "2026-11-10" }), status: "evaluado", evaluacion: r.evaluacion }], [abierto]);
     expect(rep.problemas).toEqual([{ problemaId: "amarillo", veces: 1, kg: 500 }]);
+  });
+});
+
+describe("bins por tabla en la salida", () => {
+  const lote = (id: string, ha: number) => ({ id, tablaId: "t-" + id, ranchoId: "r", plantadas: ha, haPlaneadas: ha }) as never;
+  it("reparte los kg reales proporcional a los bins (10 y 4 bins)", async () => {
+    const { repartirKg } = await import("@/lib/campo/calc");
+    const r = repartirKg([lote("a", 12), lote("b", 12)], 2800, 2520, undefined, { a: 10, b: 4 });
+    if ("error" in r) throw new Error(r.error);
+    expect(r.filas[0]!.kgBrutos).toBe(2000);
+    expect(r.filas[1]!.kgBrutos).toBe(800);
+    expect(r.filas[0]!.kgPagables).toBe(1800);
+    expect(r.filas[1]!.kgPagables).toBe(720);
+  });
+  it("estima 200 kg por bin y compara lo dicho contra lo que llegó", async () => {
+    const { estimadoViaje, enviadoVsLlegado } = await import("@/lib/campo/calc");
+    const v = { loteIds: ["a", "b"], bins: { a: 10, b: 4 }, evaluacion: { kgBrutos: 2600 } } as never;
+    expect(estimadoViaje(v).kg).toBe(2800);
+    expect(enviadoVsLlegado([v])).toMatchObject({ kgDicho: 2800, kgLlegado: 2600, diferencia: -200 });
+  });
+});
+
+describe("salida exige bins", () => {
+  it("rechaza la salida sin bins de una tabla", async () => {
+    const { validarSalida } = await import("@/lib/campo/calc");
+    expect(validarSalida({ folio: "H-9", fecha: "2026-11-10", loteIds: ["x"], choferId: "c", foto: "f" }, [], [], "2026-11-10", false)).toMatch(/bins/);
   });
 });

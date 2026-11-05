@@ -34,6 +34,7 @@ import {
   semaforoMeta,
   semanaPago,
   semanaRecetaLote,
+  estimadoViaje,
 } from "@/lib/campo/calc";
 import { useCosecha, useViajesAtrasados } from "@/lib/campo/cosecha";
 import { useFiltro } from "@/lib/campo/filtro";
@@ -301,6 +302,12 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
                     {v.folio} · {fechaCorta(v.fecha)} {v.hora} · {choferes.find((c) => c.id === v.choferId)?.nombre ?? "Chofer"}
                   </div>
                   <div className="text-xs text-muted-foreground">{v.loteIds.map((id) => nombreLote(lotes.find((l) => l.id === id))).join(" + ")}</div>
+                  {estimadoViaje(v).bins > 0 && (
+                    <div className="num text-xs text-muted-foreground">
+                      {estimadoViaje(v).bins} bins · el rancho dijo ≈ {formatoNum(estimadoViaje(v).kg)} kg
+                      {v.evaluacion && ` · llegaron ${formatoNum(v.evaluacion.kgBrutos)} kg (${v.evaluacion.kgBrutos - estimadoViaje(v).kg >= 0 ? "+" : ""}${formatoNum(v.evaluacion.kgBrutos - estimadoViaje(v).kg)})`}
+                    </div>
+                  )}
                   {v.motivoCerrado && <div className="text-xs text-muted-foreground">Lote cerrado: {v.motivoCerrado}</div>}
                   {v.evaluacion && (
                     <div className="num text-xs text-muted-foreground">
