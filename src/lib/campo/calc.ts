@@ -1,5 +1,5 @@
 import type { CicloCerrado, ViajeHistorico, EstatusLiquidacion, EvaluacionViaje, Liquidacion, ProblemaEvaluado, RepartoKg, Viaje } from "./types";
-import type { AlertaDireccion, Devolucion, EstadoUbicacion, Extraordinario, FotoGps, LineaExtra, RepartoExtra } from "./types";
+import type { AlertaDireccion, ConceptoGasto, Devolucion, EstadoUbicacion, Extraordinario, FotoGps, GastoRancho, LineaExtra, RepartoCultivo, RepartoExtra } from "./types";
 import type {
   Adicional,
   AlertaInsumos,
