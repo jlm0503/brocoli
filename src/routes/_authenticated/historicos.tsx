@@ -99,11 +99,12 @@ function PorCerrar() {
   const [motivo, setMotivo] = useState("");
 
   // Gastos comunes prorrateados a cada lote desde que se planeó hasta su cierre.
-  const prorrateo = useMemo(() => {
-    const desde = lotes.length > 0 ? Math.min(semanaActual, ...lotes.map((l) => l.semanaPlaneada)) : semanaActual;
-    return prorrateoRango({ desde, hasta: semanaActual, lotes, gastos, repartos });
-  }, [lotes, semanaActual, gastos, repartos]);
-  const gastosDelLote = (loteId: string) => gastosComunesLote(loteId, prorrateo);
+  // Gastos comunes prorrateados a cada lote desde que se planeó hasta la semana en que cerró su cosecha.
+  const gastosDelLote = (l: Lote) => {
+    const desde = Math.min(semanaActual, l.semanaPlaneada);
+    const hasta = Math.max(desde, Math.min(semanaActual, semanaCierreLote(l) ?? semanaActual));
+    return gastosComunesLote(l.id, prorrateoRango({ desde, hasta, lotes, gastos, repartos }));
+  };
 
   const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && !l.cerrado && l.avances.length > 0 && l.cosechaTerminada);
   const vencidos = lotes.filter((l) => pasaLote(l) && cosechaVencida(l, viajes, hoy));
@@ -118,7 +119,7 @@ function PorCerrar() {
     const r = rendimientoLote(l, viajes, parametros, costoLote(l.id));
     const previo = ciclos.find((c) => c.id === l.id);
     guardarCiclo({
-      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy, gastosComunes: gastosDelLote(l.id).total }),
+      ...snapshotCiclo(l, r, { planta: plantaLote(l.id), fin: l.cosechaTerminada ?? hoy, gastosComunes: gastosDelLote(l).total }),
       conPendientes,
       bitacora: [
         ...(previo?.bitacora ?? []),
@@ -165,12 +166,12 @@ function PorCerrar() {
                 ))}
               </ul>
               <p className="text-sm text-muted-foreground">
-                Gastos comunes del rancho: <span className="num">{formatoMXN(gastosDelLote(l.id).total)}</span>
-                {Object.entries(gastosDelLote(l.id).porConcepto).filter(([, v]) => v > 0).length > 0 && (
+                Gastos comunes del rancho: <span className="num">{formatoMXN(gastosDelLote(l).total)}</span>
+                {Object.entries(gastosDelLote(l).porConcepto).filter(([, v]) => v > 0).length > 0 && (
                   <span className="text-muted-foreground/80">
                     {" "}
                     ·{" "}
-                    {Object.entries(gastosDelLote(l.id).porConcepto)
+                    {Object.entries(gastosDelLote(l).porConcepto)
                       .filter(([, v]) => v > 0)
                       .map(([c, v]) => `${nombreConceptoGasto(c as ConceptoGasto)} ${formatoMXN(v)}`)
                       .join(" · ")}
