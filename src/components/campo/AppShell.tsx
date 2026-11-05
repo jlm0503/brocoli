@@ -1,4 +1,6 @@
 import { Link, Navigate } from "@tanstack/react-router";
+
+import logoUltra from "@/assets/logo-ultra.jpg.asset.json";
 import {
   BellRing,
   BookOpen,
