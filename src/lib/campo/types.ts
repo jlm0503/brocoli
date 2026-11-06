@@ -548,6 +548,16 @@ export interface MovimientoBitacora {
 
 /** Foto fija de un ciclo al cerrarse (del sistema) o capturado a mano (histórico). Nunca se recalcula. */
 export interface CicloCerrado {
+  /** Datos originales importados; se completan sin inventar importes ni fechas de cierre. */
+  importacion?: {
+    archivo: string;
+    folios: string[];
+    variedad: string;
+    fechaInicioCosecha: string;
+    pendiente: boolean;
+    productos: { nombre: string; unidad: string; categoria: string; cantidad: number; costo: number; aplicaciones: number; observacion: string; folio: string }[];
+    gastos: { concepto: ConceptoGasto; fecha: string; monto: number }[];
+  } | undefined;
   /** Del sistema: id del lote. Histórico: "hist-…". */
   id: string;
   tipo: "sistema" | "historico";

@@ -2224,6 +2224,29 @@ export function plantaHistorica(parametros: Parametro[], ha: number, fecha: stri
   return redondear(ha * parametroVigente(parametros, "costoPlantaHa", fecha, variedadId));
 }
 
+/** Completa un historial importado con importes reales, sin precios actuales ni gastos estimados. */
+export function completarImportado(c: CicloCerrado, d: {
+  kgBrutos: number; kgPagables: number; ingreso: number; planta: number;
+  fechaFinCosecha: string; gastos: { concepto: ConceptoGasto; fecha: string; monto: number }[]; cerrar: boolean;
+}): { ciclo: CicloCerrado } | { error: string } {
+  if (!c.importacion || !c.importacion.pendiente) return { error: "Este histórico ya está cerrado." };
+  if ([d.kgBrutos, d.kgPagables, d.ingreso, d.planta, ...d.gastos.map((g) => g.monto)].some((n) => !Number.isFinite(n) || n < 0)) return { error: "Los kilos e importes deben ser números positivos o cero." };
+  if (d.kgPagables > d.kgBrutos) return { error: "Los kg pagables no pueden superar los recibidos." };
+  if (d.fechaFinCosecha && d.fechaFinCosecha < c.importacion.fechaInicioCosecha) return { error: "El cierre no puede ser anterior al inicio de cosecha." };
+  if (d.gastos.some((g) => !g.fecha)) return { error: "Cada gasto necesita fecha." };
+  if (d.cerrar && (!d.fechaFinCosecha || d.kgBrutos <= 0)) return { error: "Captura el fin de cosecha y los kilos recibidos antes de cerrar." };
+  const gastosComunes = redondear(d.gastos.reduce((s, g) => s + g.monto, 0));
+  const costo = redondear(c.insumos + d.planta + gastosComunes);
+  const utilidadReal = redondear(d.ingreso - costo);
+  const pagablesHa = redondear(d.kgPagables / c.ha);
+  return { ciclo: { ...c, kgBrutos: d.kgBrutos, kgPagables: d.kgPagables, ingreso: d.ingreso, planta: d.planta,
+    fechaFinCosecha: d.fechaFinCosecha, gastosComunes, brutosHa: redondear(d.kgBrutos / c.ha), pagablesHa,
+    pctMeta: c.meta > 0 ? redondear(pagablesHa / c.meta * 100, 1) : 0, merma: mermaPct(d.kgBrutos, d.kgPagables),
+    utilidadDirecta: redondear(d.ingreso - c.insumos - d.planta), utilidadReal, utilidadHa: redondear(utilidadReal / c.ha),
+    retorno: costo > 0 ? redondear(d.ingreso / costo, 2) : null, conPendientes: !d.cerrar,
+    importacion: { ...c.importacion, gastos: d.gastos, pendiente: !d.cerrar } } };
+}
+
 /** Valida y arma un ciclo histórico con los parámetros vigentes en cada fecha. */
 export function cicloHistorico(
   d: DatosHistorico,
