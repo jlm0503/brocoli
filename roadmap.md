@@ -59,4 +59,10 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] El encargado de rancho aún no se limita a sus ranchos asignados (hoy ve todos los ranchos para capturar)
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
+## Importación del historial de otro sistema (6 nov)
+- [ ] Importar historio_Brocoli_cerrado.xlsx conservando folios, bloques de tablas, fechas, cantidades y costos originales, sin modificar Trejo ni sus tablas actuales.
+- [ ] Aclarar los dos folios de Santa Mónica tabla 8 con fechas iguales antes de consolidar hectáreas y consumos.
+- [ ] Permitir completar manualmente cosecha y gastos históricos sin generar pedidos ni inventar precios o gastos faltantes.
+- [ ] Verificar los registros importados y la captura manual en la app.
+
 Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).
