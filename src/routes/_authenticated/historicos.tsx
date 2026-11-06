@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
+import { CompletarHistorico } from "@/components/campo/CompletarHistorico";
 import { useNombreLote } from "@/components/campo/Cosecha";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -222,6 +223,7 @@ function PorCerrar() {
 type Grupo = "ciclo" | "rancho" | "tabla" | "ingeniero" | "mes" | "anio";
 
 function Consulta() {
+  const [completar, setCompletar] = useState<CicloCerrado | null>(null);
   const { tablas, ranchos, hoy, marcarCerrado } = useCampo();
   const { ciclos, guardarCiclo } = useCosecha();
   const { pasaRancho, pasaCultivo } = useFiltro();
@@ -240,7 +242,7 @@ function Consulta() {
 
   const nTabla = (id: string) => tablas.find((t) => t.id === id)?.nombre ?? "?";
   const nRancho = (id: string) => ranchos.find((r) => r.id === id)?.nombre ?? "?";
-  const fecha = (c: CicloCerrado) => (base === "fin" ? c.fechaFinCosecha : c.fechaPlantacion);
+  const fecha = (c: CicloCerrado) => (base === "fin" ? c.fechaFinCosecha || c.importacion?.fechaInicioCosecha || "" : c.fechaPlantacion);
 
   const cs = ciclos
     .filter((c) => !c.reabierto)
@@ -436,7 +438,8 @@ function Consulta() {
                     {f.nombre}
                     {grupo === "ciclo" && (
                       <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                        {c.fechaPlantacion} → {c.fechaFinCosecha}
+                        {c.fechaPlantacion} → {c.fechaFinCosecha || `Inicio cosecha ${c.importacion?.fechaInicioCosecha ?? "—"}`}
+                        {c.importacion?.pendiente && <Badge variant="outline">Pendiente de completar</Badge>}
                         {c.tipo === "historico" && <Badge variant="secondary">Histórico</Badge>}
                         {c.conPendientes && <Badge variant="outline">Cerrado con pendientes</Badge>}
                       </div>
@@ -451,6 +454,7 @@ function Consulta() {
                   <td className="p-2 text-right">{formatoMXN(t.utilidad)}</td>
                   {grupo === "ciclo" && (
                     <td className="p-2">
+                      {c.importacion && <Button size="sm" variant="outline" onClick={() => setCompletar(c)}>{c.importacion.pendiente ? "Completar" : "Ver detalle"}</Button>}
                       {c.tipo === "sistema" && (
                         <Button size="sm" variant="ghost" onClick={() => { setReabrir(c); setMotivo(""); }}>Reabrir</Button>
                       )}
@@ -488,6 +492,7 @@ function Consulta() {
       )}
 
       <CapturaHistorica abierto={captura} cerrar={() => setCaptura(false)} />
+      {completar && <CompletarHistorico key={completar.id} ciclo={completar} cerrar={() => setCompletar(null)} />}
 
       <Dialog open={!!reabrir} onOpenChange={(o) => !o && setReabrir(null)}>
         <DialogContent>
