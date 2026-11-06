@@ -60,9 +60,9 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Importación del historial de otro sistema (6 nov)
-- [ ] Importar historio_Brocoli_cerrado.xlsx conservando folios, bloques de tablas, fechas, cantidades y costos originales, sin modificar Trejo ni sus tablas actuales.
-- [ ] Aclarar los dos folios de Santa Mónica tabla 8 con fechas iguales antes de consolidar hectáreas y consumos.
-- [ ] Permitir completar manualmente cosecha y gastos históricos sin generar pedidos ni inventar precios o gastos faltantes.
-- [ ] Verificar los registros importados y la captura manual en la app.
+- [x] Importar historio_Brocoli_cerrado.xlsx: 24 históricos, 25 folios, 745 renglones, 155.17 ha y $5,480,112.56; conservar Trejo y sus 17 tablas actuales.
+- [x] Santa Mónica 8A/8B unificadas en 5.6 ha, sumando consumos y conservando ambos folios; fecha cosecha del archivo es inicio, no cierre.
+- [x] Completar manualmente cosecha, ingreso y gastos históricos, guardar avances y cerrar al terminar; no genera pedidos ni estima costos faltantes.
+- [x] Verificar importación en datos y captura manual con cuenta de Jimena: guardar/recargar kilos y nómina, retirar solo los datos de prueba; revisar consumos y celular.
 
 Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).

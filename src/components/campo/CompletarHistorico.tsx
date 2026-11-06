@@ -43,7 +43,7 @@ export function CompletarHistorico({ ciclo, cerrar }: { ciclo: CicloCerrado; cer
       {editable && <Button variant="ghost" onClick={() => setD({ ...d, gastos: d.gastos.filter((_, j) => j !== i) })}>Quitar</Button>}
     </div>)}
     {editable && <Button variant="outline" onClick={() => setD({ ...d, gastos: [...d.gastos, { concepto: "nomina", fecha: "", monto: 0 }] })}>Agregar gasto</Button>}
-    <h3 className="font-medium">Consumos de origen · {formatoMXN(ciclo.insumos)}</h3>
+    <h3 className="font-medium">Consumos de origen · {formatoMXN(ciclo.insumos + ciclo.planta)}</h3>
     <div className="max-h-64 overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th className="p-2">Producto</th><th className="p-2">Cantidad</th><th className="p-2">Costo</th></tr></thead><tbody>{imp.productos.map((p, i) => <tr key={i} className="border-t"><td className="p-2">{p.nombre}{p.observacion && <div className="text-xs text-muted-foreground">{p.observacion}</div>}</td><td className="p-2 font-mono">{formatoNum(p.cantidad)} {p.unidad}</td><td className="p-2 font-mono">{formatoMXN(p.costo)}</td></tr>)}</tbody></table></div>
     {error && <p className="text-sm text-destructive">{error}</p>}
     <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={cerrar}>Cerrar ventana</Button>{editable && <><Button variant="outline" onClick={() => guardar(false)}>Guardar avance</Button><Button onClick={() => guardar(true)}>Guardar y cerrar histórico</Button></>}</div>
