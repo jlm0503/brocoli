@@ -532,6 +532,9 @@ export interface ViajeHistorico {
   fecha: string;
   folio: string;
   chofer?: string | undefined;
+  placas?: string | undefined;
+  descuentoPlanta?: number | undefined;
+  precioKg?: number | undefined;
   kgBrutos: number;
   kgPagables: number;
   /** Calificación 1 a 10 (opcional). */
@@ -551,6 +554,8 @@ export interface CicloCerrado {
   /** Datos originales importados; se completan sin inventar importes ni fechas de cierre. */
   importacion?: {
     archivo: string;
+    archivoCosecha?: string | undefined;
+    descuentoPlanta?: number | undefined;
     folios: string[];
     variedad: string;
     fechaInicioCosecha: string;
