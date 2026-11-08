@@ -113,7 +113,7 @@ function CuentaPlanta() {
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="Plantas recibidas"
+          label="Plantas cargadas a cuenta"
           value={formatoNum(r.plantas)}
           hint={`${formatoNum(r.haEquivalentes)} ha equivalentes`}
         />

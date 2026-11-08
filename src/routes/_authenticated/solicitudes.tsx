@@ -205,17 +205,18 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
         </p>
       )}
       {s.observaciones && <p className="mt-2 text-xs text-muted-foreground">“{s.observaciones}”</p>}
+      {s.cargaParametro && <p className="mt-2 text-xs text-muted-foreground">Saldo inicial por parámetro · {formatoNum(s.cargaParametro.plantasPorHa)} plantas/ha · $0.27 por planta. No sustituye el ticket del vivero.</p>}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <Button size="sm" variant="outline" onClick={pdf} disabled={!blob}>
+        <Button size="sm" variant="outline" onClick={pdf} disabled={!blob || !!s.cargaParametro}>
           <FileDown /> {s.status === "generada" ? "PDF" : "Reimprimir"}
         </Button>
-        {s.status !== "cancelada" && (
+        {s.status !== "cancelada" && !s.cargaParametro && (
           <Button size="sm" variant="outline" onClick={compartir} disabled={!blob}>
             <Share2 /> Compartir
           </Button>
         )}
-        {s.status === "generada" && (
+        {s.status === "generada" && !s.cargaParametro && (
           <Button size="sm" variant="ghost" onClick={() => marcarSolicitudEnviada(s.id)}>
             <Send /> Marcar enviada
           </Button>

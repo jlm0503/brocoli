@@ -1266,7 +1266,21 @@ export function solicitudesAlCancelarLote(
 
 /** Cargos de planta: cada renglón recibido = plantas × costo por planta vigente el día que llegó. */
 export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[] {
-  return solicitudes
+  const iniciales: MovimientoPlanta[] = solicitudes
+    .filter((s) => s.cargaParametro && s.status !== "cancelada")
+    .flatMap((s) => {
+      const carga = s.cargaParametro;
+      if (!carga) return [];
+      return s.lineas.map((l) => ({
+        fecha: carga.fecha, tipo: "cargo" as const,
+        monto: redondear(l.plantas * carga.costoPlanta), plantas: l.plantas,
+        ha: carga.plantasPorHa > 0 ? l.plantas / carga.plantasPorHa : 0,
+        loteId: l.loteId, ranchoId: l.ranchoId, tablaId: l.tablaId,
+        lote: l.lote, tabla: l.tabla, folio: s.folio,
+      }));
+    });
+  const recibidos = solicitudes
+    .filter((s) => !s.cargaParametro)
     .filter((s) => s.status === "recibida" || s.status === "parcial")
     .flatMap((s) =>
       entregasSolicitud(s).flatMap((e) =>
@@ -1290,7 +1304,8 @@ export function cargosPlanta(solicitudes: SolicitudPlanta[]): MovimientoPlanta[]
             };
           }),
       ),
-    );
+  );
+  return [...iniciales, ...recibidos];
 }
 
 /** Costo real de la planta de un lote (plantas recibidas × costo por planta). */
