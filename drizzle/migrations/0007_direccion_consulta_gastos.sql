@@ -1,0 +1,1 @@
+CREATE POLICY "Dirección consulta gastos sin capturar" ON public.registros FOR SELECT TO authenticated USING (coleccion IN ('gastos', 'repartos') AND public.has_role(auth.uid(), 'direccion'::public.app_role));
