@@ -79,7 +79,7 @@ function Contenido() {
   const nombres = [...new Set(consumos.map((c) => c.nombre))].sort();
   const productosGrupo = new Map<string, { nombre: string; unidad: string; cantidad: number }>();
   for (const c of consumos.filter((c) => !producto || c.nombre === producto)) { const key = `${c.nombre}|${c.unidad.toUpperCase()}`; const prev = productosGrupo.get(key); productosGrupo.set(key, { nombre: c.nombre, unidad: c.unidad, cantidad: (prev?.cantidad ?? 0) + c.cantidad }); }
-  const agenda = ls.filter((l) => !l.finalizado && !l.cerrado && plantadasLote(l) > 0).sort((a, b) => fechaCosechaLote(a).localeCompare(fechaCosechaLote(b)));
+  const agenda = ls.filter((l) => !l.finalizado && !l.cerrado).sort((a, b) => fechaCosechaLote(a).localeCompare(fechaCosechaLote(b)));
   const siguiente = agenda.find((l) => fechaCosechaLote(l) >= hoy);
   const kpis = [{ icon: Sprout, nombre: "Plantado semana pasada", valor: `${area(semanaDatos[0]?.plantadas ?? 0)} ha` }, { icon: CalendarDays, nombre: "Por plantar esta semana", valor: `${area(semanaDatos[1]?.planeadas ?? 0)} ha` }, { icon: Tractor, nombre: "Por plantar próxima semana", valor: `${area(semanaDatos[2]?.planeadas ?? 0)} ha` }, { icon: Wheat, nombre: "Tablas activas", valor: entero(new Set(ls.filter((l) => !l.finalizado && !l.cerrado && plantadasLote(l) > 0).map((l) => l.tablaId)).size) }, { icon: Wallet, nombre: "Costo acumulado / ha", valor: dinero(total.costoHa) }, { icon: Users, nombre: "Nómina / ha", valor: dinero(total.nominaHa) }];
   return <div className="space-y-8">
