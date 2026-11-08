@@ -3099,7 +3099,7 @@ export function totalesPanel(filas: { ha: number; kgBrutos: number; kgPagables: 
 
 /** Costo de origen de las aplicaciones previas cargadas desde el sistema anterior. */
 export const CICLOS_PLANTACION = [
-  { id: "2026-1", nombre: "Primer ciclo · enero–junio 2026", desde: "2026-01-01", hasta: "2026-06-30" },
+  { id: "2026-1", nombre: "Primer ciclo · enero–15 junio 2026", desde: "2026-01-01", hasta: "2026-06-15" },
   { id: "2026-2", nombre: "Segundo ciclo · julio–diciembre 2026", desde: "2026-07-01", hasta: "2026-12-31" },
 ] as const;
 
