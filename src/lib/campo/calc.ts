@@ -3036,6 +3036,62 @@ export function plantacionPanel(lotes: Lote[], semana: number) {
 }
 
 /** Comparativos ponderados: sumar kilos/costos y dividir entre ha, nunca promediar razones. */
+export function superficiePanel(lotes: Lote[], semana: number) {
+  const vigentes = lotes.filter((l) => !l.cancelado && !l.finalizado && !l.cerrado);
+  const activas = vigentes.reduce((s, l) => {
+    const sr = semanaRecetaLote(l, semana);
+    return s + (sr !== null && sr >= 0 && sr <= semanaCosechaLote(l) ? plantadasLote(l) : 0);
+  }, 0);
+  const plantadas = vigentes.reduce((s, l) => s + plantadasLote(l), 0);
+  return { activas: redondear(activas), plantadas: redondear(plantadas), porPlantar: redondear(vigentes.reduce((s, l) => s + pendientesLote(l), 0)), fueraCiclo: redondear(plantadas - activas) };
+}
+
+/** Lunes–domingo por salida. Proyección uniforme de meta pagable en 14 días, nunca una evaluación ni pago real. */
+export function cosechaPanel(lotes: Lote[], viajes: Viaje[], ciclos: CicloCerrado[], parametros: Parametro[], semana: number, hoy: string) {
+  const inicio = fechaEnSemana(semana), fin = fechaEnSemana(semana, 6);
+  const porId = new Map(lotes.map((l) => [l.id, l]));
+  const areas = new Map<string, number>();
+  let kgBrutos = 0, kgPagables = 0, pago = 0, sinPrecio = 0, sinEvaluar = 0;
+  const acumulados = new Map<string, number>();
+  for (const v of viajes) {
+    const rs = v.evaluacion?.reparto.filter((r) => porId.has(r.loteId)) ?? [];
+    for (const r of rs) if (v.fecha <= hoy) acumulados.set(r.loteId, (acumulados.get(r.loteId) ?? 0) + r.kgPagables);
+    if (v.fecha < inicio || v.fecha > fin) continue;
+    if (!v.evaluacion) { if (v.loteIds.some((id) => porId.has(id))) sinEvaluar++; continue; }
+    for (const r of rs) {
+      kgBrutos += r.kgBrutos; kgPagables += r.kgPagables;
+      pago += r.importe - v.evaluacion.descuento * r.pct / 100;
+      const l = porId.get(r.loteId);
+      if (l) areas.set(l.id, plantadasLote(l));
+    }
+  }
+  for (const c of ciclos.filter((c) => !c.reabierto && c.tipo === "historico")) {
+    for (const v of c.viajesHistoricos ?? []) {
+      if (v.fecha < inicio || v.fecha > fin) continue;
+      kgBrutos += v.kgBrutos; kgPagables += v.kgPagables;
+      areas.set(c.id, c.ha);
+      if (v.precioKg === undefined) sinPrecio++;
+      else pago += v.kgPagables * v.precioKg - (v.descuentoPlanta ?? 0);
+    }
+  }
+  const ha = [...areas.values()].reduce((s, n) => s + n, 0);
+  let kgEsperados = 0, pagoEsperado = 0, haEsperadas = 0;
+  if (fin >= hoy) for (const l of lotes) {
+    if (l.cancelado || l.finalizado || l.cerrado || l.cosechaTerminada || !plantadasLote(l) || l.cicloDias <= 0) continue;
+    const cosecha = fechaCosechaLote(l), cierre = sumarDias(cosecha, 13);
+    const desde = [inicio, cosecha, sumarDias(hoy, 1)].sort().at(-1) ?? inicio;
+    const hasta = fin < cierre ? fin : cierre;
+    if (desde > hasta) continue;
+    const meta = plantadasLote(l) * parametroVigente(parametros, "metaKgHa", cosecha, l.variedadId);
+    const restante = Math.max(0, meta - (acumulados.get(l.id) ?? 0));
+    const diasRestantes = Math.max(1, diasEntre(cosecha > hoy ? cosecha : sumarDias(hoy, 1), cierre) + 1);
+    const kg = restante * (diasEntre(desde, hasta) + 1) / diasRestantes;
+    haEsperadas += plantadasLote(l); kgEsperados += kg;
+    pagoEsperado += kg * parametroVigente(parametros, "precioKg", desde, l.variedadId);
+  }
+  return { kgBrutos: redondear(kgBrutos), kgPagables: redondear(kgPagables), pago: sinPrecio ? null : redondear(pago), ha: redondear(ha), kgHa: ha ? redondear(kgPagables / ha) : 0, sinPrecio, sinEvaluar, kgEsperados: redondear(kgEsperados), pagoEsperado: redondear(pagoEsperado), haEsperadas: redondear(haEsperadas), kgHaEsperados: haEsperadas ? redondear(kgEsperados / haEsperadas) : 0 };
+}
+
 export function totalesPanel(filas: { ha: number; kgBrutos: number; kgPagables: number; costo: number; nomina: number }[]) {
   const total = filas.reduce((s, f) => ({ ha: s.ha + f.ha, kgBrutos: s.kgBrutos + f.kgBrutos, kgPagables: s.kgPagables + f.kgPagables, costo: s.costo + f.costo, nomina: s.nomina + f.nomina }), { ha: 0, kgBrutos: 0, kgPagables: 0, costo: 0, nomina: 0 });
   return { ...total, kgHa: total.ha > 0 ? total.kgPagables / total.ha : 0, costoHa: total.ha > 0 ? total.costo / total.ha : 0, nominaHa: total.ha > 0 ? total.nomina / total.ha : 0 };
