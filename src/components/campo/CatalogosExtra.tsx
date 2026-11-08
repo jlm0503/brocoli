@@ -1,10 +1,11 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -148,7 +149,10 @@ function ListaSimple({
 }
 
 function CultivosYVariedades() {
-  const { cultivos, variedades, agregarVariedad, eliminarVariedad } = useCampo();
+  const { cultivos, variedades, agregarVariedad, editarDiasVariedad, eliminarVariedad } = useCampo();
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [diasEditados, setDiasEditados] = useState("");
+  const editando = variedades.find((v) => v.id === editandoId);
   const [cultivoElegido, setCultivo] = useState("");
   const cultivo = cultivos.some((c) => c.id === cultivoElegido) ? cultivoElegido : (cultivos[0]?.id ?? "");
   const [nombre, setNombre] = useState("");
@@ -220,6 +224,10 @@ function CultivosYVariedades() {
                     {Math.ceil(v.cicloDias / 7)})
                   </span>
                 </span>
+                <div className="flex shrink-0 gap-1">
+                <Button size="icon" variant="ghost" className="size-8" aria-label={`Editar días a cosecha de ${v.nombre}`} title="Editar días a cosecha" onClick={() => { setEditandoId(v.id); setDiasEditados(String(v.cicloDias)); }}>
+                  <Pencil />
+                </Button>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -233,10 +241,33 @@ function CultivosYVariedades() {
                 >
                   <Trash2 />
                 </Button>
+                </div>
               </li>
             ));
           })}
         </ul>
+        <Dialog open={!!editando} onOpenChange={(open) => !open && setEditandoId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Días a cosecha · {editando?.nombre}</DialogTitle>
+              <DialogDescription>El cambio aplica a nuevas plantaciones. Las plantaciones registradas y los históricos conservan sus fechas.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="editar-var-dias">Días a cosecha</Label>
+              <Input id="editar-var-dias" type="number" min="1" step="1" inputMode="numeric" value={diasEditados} onChange={(e) => setDiasEditados(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditandoId(null)}>Cancelar</Button>
+              <Button disabled={!diasEditados} onClick={() => {
+                if (!editando) return;
+                const err = editarDiasVariedad(editando.id, Number(diasEditados));
+                if (err) return void toast.error(err);
+                toast.success("Días a cosecha guardados.");
+                setEditandoId(null);
+              }}>Guardar días</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
     </div>
   );
