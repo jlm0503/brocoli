@@ -67,6 +67,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] Verificar con cuenta de Dirección: aún no existe ninguna cuenta con ese puesto; pendiente de asignación por Jimena.
 
 ## Importación del historial de otro sistema (6 nov)
+- [x] Recuperar Santa Mónica 1 y 7 de junio en cosecha pendiente, conservando gastos y el histórico de febrero–mayo; evitar nueva finalización automática. 55 pruebas pasando; ambas seleccionables en Salidas sin mostrar cerrados y sin guardar viajes ficticios.
 - [x] Cargar planta por parámetro en los 50 lotes vigentes (16 planeados y 34 plantados; excluir 4 finalizados), sin tocar los 23 históricos: 6,851,100 plantas y $1,849,797. Comprobar cuenta, cero pendientes de solicitud y regla de abonos de viajes.
 - [x] Retirar las siete tablas agrupadas de Dolores y Vergel sin modificar históricos ni plantaciones; verificar disponibilidad y conservación.
 - [x] Cargar la plantilla completada del 8 nov: 195 viajes en 23 históricos, 2,183,440 kg recibidos, 1,689,123 kg pagables y $1,950,000 en descuentos de planta; eliminar solo T13 (Santa Mónica, Altamira, tabla 4), conservar los demás consumos y dejar gastos/fin de cosecha pendientes de confirmar. Verificado al recargar en la cuenta de Jimena.

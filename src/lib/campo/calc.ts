@@ -381,7 +381,7 @@ export const SEMANAS_CIERRE = 2;
 export function finalizarCosechados(lotes: Lote[], semanaActual: number): Lote[] {
   return lotes.map((l) => {
     const real = semanaRealLote(l);
-    if (l.finalizado || l.cancelado || real === null || pendientesLote(l) > 0) return l;
+    if (l.finalizado || l.cancelado || real === null || pendientesLote(l) > 0 || (l.cosechaPendienteCaptura && !l.cosechaTerminada && !l.cerrado)) return l;
     return semanaActual >= real + semanaCosechaLote(l) + SEMANAS_CIERRE
       ? { ...l, finalizado: true }
       : l;
