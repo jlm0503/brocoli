@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
 import { CompletarHistorico } from "@/components/campo/CompletarHistorico";
+import { CiclosPlantacion } from "@/components/campo/CiclosPlantacion";
 import { useNombreLote } from "@/components/campo/Cosecha";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,11 +68,13 @@ function Historicos() {
       description="Al cerrar, el lote guarda una foto fija de sus resultados que ya no cambia."
       filtros
     >
-      <Tabs defaultValue="cerrar">
-        <TabsList className="mb-6">
+      <Tabs defaultValue="plantaciones">
+        <TabsList className="mb-6 flex h-auto flex-wrap justify-start">
+          <TabsTrigger value="plantaciones">Ciclos de plantación</TabsTrigger>
           <TabsTrigger value="cerrar">Por cerrar</TabsTrigger>
           <TabsTrigger value="historicos">Históricos</TabsTrigger>
         </TabsList>
+        <TabsContent value="plantaciones"><CiclosPlantacion /></TabsContent>
         <TabsContent value="cerrar">
           <PorCerrar />
         </TabsContent>
