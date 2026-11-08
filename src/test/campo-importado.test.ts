@@ -31,4 +31,15 @@ describe("historial importado", () => {
     expect(r.ciclo.importacion?.pendiente).toBe(false);
     expect(completarImportado(r.ciclo, d)).toHaveProperty("error");
   });
+  it("conserva los viajes y descuentos sin duplicarlos como gasto al completar nómina", () => {
+    const viaje = { fecha: "2026-07-25", folio: "B2173", kgBrutos: 7850, kgPagables: 5809, descuentoPlanta: 10000, precioKg: 10.5 };
+    const original = { ...c, viajesHistoricos: [viaje], importacion: { ...c.importacion, descuentoPlanta: 10000 } } as CicloCerrado;
+    const r = completarImportado(original, d);
+    if ("error" in r) throw new Error(r.error);
+    expect(r.ciclo.viajesHistoricos).toEqual([viaje]);
+    expect(r.ciclo.importacion?.descuentoPlanta).toBe(10000);
+    expect(r.ciclo.insumos).toBe(361785.14);
+    expect(r.ciclo.gastosComunes).toBe(60000);
+    expect(r.ciclo.utilidadReal).toBeCloseTo(523214.86);
+  });
 });
