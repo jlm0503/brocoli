@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
@@ -133,6 +133,7 @@ function Ranchos() {
       filtros
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button variant="outline" asChild><Link to="/historicos">Ciclos de plantación</Link></Button>
         <label htmlFor="filtro-estatus" className="text-sm font-medium">Estatus</label>
         <Select value={filtroEstatus} onValueChange={setFiltroEstatus}>
           <SelectTrigger id="filtro-estatus" aria-label="Filtrar por estatus" className="w-48">
