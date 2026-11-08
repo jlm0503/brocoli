@@ -60,6 +60,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Importación del historial de otro sistema (6 nov)
+- [ ] Cargar planta por parámetro en los 54 lotes actuales, sin tocar históricos; comprobar cargos y abonos de viajes.
 - [x] Retirar las siete tablas agrupadas de Dolores y Vergel sin modificar históricos ni plantaciones; verificar disponibilidad y conservación.
 - [x] Cargar la plantilla completada del 8 nov: 195 viajes en 23 históricos, 2,183,440 kg recibidos, 1,689,123 kg pagables y $1,950,000 en descuentos de planta; eliminar solo T13 (Santa Mónica, Altamira, tabla 4), conservar los demás consumos y dejar gastos/fin de cosecha pendientes de confirmar. Verificado al recargar en la cuenta de Jimena.
 - [x] Entregar plantilla con la lista actual de tablas históricas y captura de viajes uno por uno (7 nov).
