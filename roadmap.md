@@ -60,7 +60,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Importación del historial de otro sistema (6 nov)
-- [ ] Cargar la plantilla completada del 8 nov sin viajes y eliminar únicamente el histórico T13 (Santa Mónica, Altamira, tabla 4), conservando los demás consumos.
+- [x] Cargar la plantilla completada del 8 nov: 195 viajes en 23 históricos, 2,183,440 kg recibidos, 1,689,123 kg pagables y $1,950,000 en descuentos de planta; eliminar solo T13 (Santa Mónica, Altamira, tabla 4), conservar los demás consumos y dejar gastos/fin de cosecha pendientes de confirmar. Verificado al recargar en la cuenta de Jimena.
 - [x] Entregar plantilla con la lista actual de tablas históricas y captura de viajes uno por uno (7 nov).
 - [x] Importar historio_Brocoli_cerrado.xlsx: 24 históricos, 25 folios, 745 renglones, 155.17 ha y $5,480,112.56; conservar Trejo y sus 17 tablas actuales.
 - [x] Santa Mónica 8A/8B unificadas en 5.6 ha, sumando consumos y conservando ambos folios; fecha cosecha del archivo es inicio, no cierre.
