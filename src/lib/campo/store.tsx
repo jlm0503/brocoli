@@ -160,6 +160,7 @@ interface CampoContextValue {
   renombrarSimple: (col: CatalogoSimple, id: string, nombre: string) => string | null;
   eliminarSimple: (col: CatalogoSimple, id: string) => string | null;
   agregarVariedad: (v: Omit<Variedad, "id">) => string | null;
+  editarDiasVariedad: (id: string, dias: number) => string | null;
   eliminarVariedad: (id: string) => string | null;
   recetas: Recetas;
   adicionales: Adicional[];
@@ -709,6 +710,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       const err = validarVariedad(v, variedades, cultivos);
       if (err) return err;
       setVariedades((vs) => [...vs, { ...v, nombre: v.nombre.trim(), id: nuevoId("va") }]);
+      return null;
+    },
+    [variedades, cultivos],
+  );
+
+  const editarDiasVariedad = useCallback(
+    (id: string, dias: number) => {
+      const variedad = variedades.find((v) => v.id === id);
+      if (!variedad) return "No se encontró la variedad.";
+      if (!Number.isInteger(dias) || dias <= 0) return "Los días a cosecha deben ser un número entero mayor que cero.";
+      const err = validarVariedad({ ...variedad, cicloDias: dias }, variedades.filter((v) => v.id !== id), cultivos);
+      if (err) return err;
+      setVariedades((vs) => vs.map((v) => v.id === id ? { ...v, cicloDias: dias } : v));
       return null;
     },
     [variedades, cultivos],
@@ -1444,6 +1458,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       renombrarSimple,
       eliminarSimple,
       agregarVariedad,
+      editarDiasVariedad,
       eliminarVariedad,
       recetas,
       adicionales,
@@ -1507,6 +1522,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       renombrarSimple,
       eliminarSimple,
       agregarVariedad,
+      editarDiasVariedad,
       eliminarVariedad,
       recetas,
       adicionales,
