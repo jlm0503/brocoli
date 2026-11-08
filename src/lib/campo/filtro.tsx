@@ -2,6 +2,7 @@ import { type Context, createContext, useCallback, useContext, useEffect, useMem
 
 import { useFase3 } from "@/lib/campo/fase3";
 import { useCampo } from "@/lib/campo/store";
+import { tablaDisponible } from "@/lib/campo/calc";
 import type { Cultivo, Lote } from "@/lib/campo/types";
 
 /**
@@ -77,7 +78,8 @@ export function useFiltro() {
    * Con `libres`, también pasan las tablas sin lotes vigentes (para poder planearlas).
    */
   const pasaTabla = useCallback(
-    (t: { id: string; ranchoId: string }, opciones?: { libres?: boolean }) => {
+    (t: { id: string; ranchoId: string; archivada?: boolean | undefined }, opciones?: { libres?: boolean }) => {
+      if (!tablaDisponible(t)) return false;
       if (!pasaRancho(t.ranchoId)) return false;
       if (cultivos.length === 0) return true;
       const vigentes = lotes.filter((l) => l.tablaId === t.id && !l.cancelado && !l.finalizado);

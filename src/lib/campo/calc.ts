@@ -499,6 +499,7 @@ export function validarApartado(
   ha: number,
   semanaActual: number,
 ): string | null {
+  if (t.archivada) return "Esta tabla está retirada y no está disponible para plantar.";
   const disponibles = hectareasDisponibles(t, lotes);
   if (disponibles <= 0) return "Toda la tabla ya está planeada.";
   if (semana < semanaActual) return "No se puede planear en una semana que ya pasó.";
@@ -511,6 +512,17 @@ export function validarApartado(
 /* ───────────────────────── Captura de catálogos ───────────────────────── */
 
 const normal = (x: string) => x.trim().toLowerCase();
+
+export function tablaDisponible(t: Pick<Tabla, "archivada">): boolean {
+  return !t.archivada;
+}
+
+/** Retirar no borra la tabla ni modifica lotes, consumos o históricos. */
+export function retirarTabla(tabla: Tabla, lotes: Pick<Lote, "tablaId" | "cancelado" | "finalizado" | "cerrado">[]): { tabla: Tabla } | { error: string } {
+  if (lotes.some((l) => l.tablaId === tabla.id && !l.cancelado && !l.finalizado && !l.cerrado))
+    return { error: "Esta tabla tiene una plantación vigente; termina su ciclo antes de retirarla." };
+  return { tabla: { ...tabla, archivada: true } };
+}
 
 /** Errores al agregar un elemento con nombre a un catálogo (cultivo, vivero, chofer, problema…). */
 export function validarNombreCatalogo(
@@ -573,6 +585,7 @@ export function validarPlantacionPrevia(
   hoy: string,
   fechaCosecha?: string,
 ): string | null {
+  if (t.archivada) return "Esta tabla está retirada y no está disponible para plantar.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaPlantacion)) return "Indica la fecha de plantación.";
   if (fechaPlantacion > hoy)
     return "La fecha de plantación no puede ser futura; para eso usa Planear lote.";

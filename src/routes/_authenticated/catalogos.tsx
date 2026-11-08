@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { History, MapPinOff, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, RotateCcw, History, MapPinOff, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -44,7 +44,7 @@ import {
   radioValidacion,
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
-import type { Familia, Producto, Unidad } from "@/lib/campo/types";
+import type { Familia, Producto, Tabla, Unidad } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/catalogos")({
   head: () => ({
@@ -144,7 +144,9 @@ function CambiarPrecio({ producto, onClose }: { producto: Producto | null; onClo
 function Catalogos() {
   const { ranchos, tablas, lotes, productos, semanaActual, hoy } = useCampo();
   const [cambiandoPrecio, setCambiandoPrecio] = useState<Producto | null>(null);
-  const { eliminarRancho, eliminarTabla } = useCampo();
+  const { eliminarRancho, eliminarTabla, reactivarTabla } = useCampo();
+  const [retirando, setRetirando] = useState<Tabla | null>(null);
+  const [verRetiradas, setVerRetiradas] = useState(false);
   const [nuevo, setNuevo] = useState(false);
   const [nuevoRancho, setNuevoRancho] = useState(false);
   const [nuevaTabla, setNuevaTabla] = useState(false);
@@ -213,7 +215,10 @@ function Catalogos() {
         </TabsContent>
 
         <TabsContent value="tablas">
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex flex-wrap justify-between gap-2">
+            <Button variant="outline" onClick={() => setVerRetiradas((v) => !v)} aria-pressed={verRetiradas}>
+              <Archive /> {verRetiradas ? "Ver disponibles" : "Ver retiradas"}
+            </Button>
             <Button onClick={() => setNuevaTabla(true)} disabled={ranchos.length === 0}>
               <Plus /> Nueva tabla
             </Button>
@@ -239,7 +244,7 @@ function Catalogos() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tablas.map((t) => {
+                {tablas.filter((t) => !!t.archivada === verRetiradas).map((t) => {
                   const est = estatusTabla(t, lotes, semanaActual);
                   return (
                     <TableRow key={t.id}>
@@ -265,17 +270,18 @@ function Catalogos() {
                         <div className="text-xs text-muted-foreground">{t.radio ? "manual" : "automático"}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={est}>{ESTATUS_TABLA_LABEL[est]}</Badge>
+                        <Badge variant={t.archivada ? "gris" : est}>{t.archivada ? "Retirada" : ESTATUS_TABLA_LABEL[est]}</Badge>
                       </TableCell>
                       <TableCell className="pr-5 text-right">
                         <Button
                           size="icon"
                           variant="ghost"
                           className="size-8"
-                          aria-label={`Eliminar ${t.nombre}`}
-                          onClick={() => quitar(eliminarTabla(t.id), `${t.nombre} eliminada`)}
+                          aria-label={`${t.archivada ? "Reactivar" : "Retirar"} ${t.nombre}`}
+                          title={t.archivada ? "Reactivar tabla" : "Retirar sin borrar históricos"}
+                          onClick={() => t.archivada ? reactivarTabla(t.id) : setRetirando(t)}
                         >
-                          <Trash2 />
+                          {t.archivada ? <RotateCcw /> : <Archive />}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -303,7 +309,7 @@ function Catalogos() {
           )}
           <div className="grid gap-4 md:grid-cols-3">
             {ranchos.map((r) => {
-              const ts = tablas.filter((t) => t.ranchoId === r.id);
+              const ts = tablas.filter((t) => t.ranchoId === r.id && !t.archivada);
               return (
                 <article key={r.id} className="rounded-xl border border-border bg-card p-5 shadow-card">
                   <div className="flex items-start justify-between gap-2">

@@ -338,7 +338,7 @@ function AdicionalDialog({ valor, onClose }: { valor: Adicional | "nuevo" | null
   const [semanas, setSemanas] = useState<string[]>(inicial?.semanas.map(String) ?? []);
   const [dosis, setDosisV] = useState(inicial ? String(inicial.dosis) : "");
   const [motivo, setMotivo] = useState(inicial?.motivo ?? "");
-  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
+  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId && !t.archivada);
 
   const guardar = () => {
     if (tablaIds.length === 0) return void toast.error("Elige al menos una tabla");
