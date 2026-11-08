@@ -183,6 +183,8 @@ export interface Lote {
   fechaCosecha?: string | undefined;
   /** Ya se cosechó: la tabla queda libre para el siguiente ciclo. */
   finalizado?: boolean | undefined;
+  /** Carga acumulada con cosecha pendiente: requiere terminarla explícitamente, no por calendario. */
+  cosechaPendienteCaptura?: boolean | undefined;
   /** Fecha en que el Super Admin o el ingeniero marcó "Cosecha terminada". */
   cosechaTerminada?: string | undefined;
   /** Plantas del lote (sugerido: ha × plantas por ha vigente al planear). */
