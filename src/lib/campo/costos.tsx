@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import {
   cargosPlanta,
+  costoAplicacionesPrevias,
   costoDevolucionesLote,
   costoExtraLote,
   costoLineas,
@@ -36,7 +37,7 @@ export function useCostos() {
       // Extraordinarios autorizados (por ha) suman; lo que el Almacén retiró se resta.
       return (
         semanal +
-        (lote ? costoPlaneacionLote(lote, pedidos, productos) : 0) +
+        (lote ? costoPlaneacionLote(lote, pedidos, productos) + costoAplicacionesPrevias(lote) : 0) +
         plantaLote(loteId) +
         costoExtraLote(loteId, extraordinarios) -
         costoDevolucionesLote(loteId, devoluciones)

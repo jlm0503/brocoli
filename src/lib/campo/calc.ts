@@ -2999,3 +2999,8 @@ export function consumoProductosLote(
     })
     .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.devuelto);
 }
+
+/** Costo de origen de las aplicaciones previas cargadas desde el sistema anterior. */
+export function costoAplicacionesPrevias(l: Pick<Lote, "aplicacionesPrevias">): number {
+  return redondear((l.aplicacionesPrevias ?? []).reduce((s, a) => s + a.costo, 0));
+}

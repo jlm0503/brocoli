@@ -15,9 +15,9 @@ import { useCampo } from "@/lib/campo/store";
 export const Route = createFileRoute("/_authenticated/consumo")({
   head: () => ({
     meta: [
-      { title: "Consumo por tabla cerrada · Brócoli" },
+      { title: "Consumo por tabla · Brócoli" },
       { name: "description", content: "Total real de cada producto que consumió una tabla cerrada, descontando devoluciones." },
-      { property: "og:title", content: "Consumo por tabla cerrada · Brócoli" },
+      { property: "og:title", content: "Consumo por tabla · Brócoli" },
       { property: "og:description", content: "Kilos y litros reales de cada producto por tabla, ya con devoluciones." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -31,7 +31,7 @@ function Consumo() {
     <AppShell
       path="/consumo"
       eyebrow="Cierre · insumos"
-      title="Consumo por tabla cerrada"
+      title="Consumo por tabla"
       description="Lo que realmente se usó de cada producto: recibido (receta, preparación y extraordinarios) menos lo devuelto."
       filtros
     >
@@ -48,7 +48,7 @@ function Contenido() {
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
   const importados = ciclos.filter((c) => c.importacion && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo));
   const nombreLote = useNombreLote();
-  const cerrados = lotes.filter((l) => !l.cancelado && (l.cerrado || l.finalizado || l.cosechaTerminada) && pasaLote(l));
+  const cerrados = lotes.filter((l) => !l.cancelado && (l.cerrado || l.finalizado || l.cosechaTerminada || l.avances.length > 0 || (l.aplicacionesPrevias?.length ?? 0) > 0) && pasaLote(l));
   const [sel, setSel] = useState("");
   const historico = importados.find((c) => c.id === sel) ?? (!cerrados.length && !sel ? importados[0] : undefined);
   const lote = cerrados.find((l) => l.id === sel) ?? cerrados[0];
@@ -67,14 +67,14 @@ function Contenido() {
   return (
     <div className="space-y-6">
       <div className="max-w-md space-y-2">
-        <Label>Tabla cerrada</Label>
+        <Label>Tabla</Label>
         <Select value={historico?.id ?? lote?.id ?? ""} onValueChange={setSel}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {importados.map((c) => <SelectItem key={c.id} value={c.id}>{ranchos.find((r) => r.id === c.ranchoId)?.nombre} · {tablas.find((t) => t.id === c.tablaId)?.nombre} · {c.codigo} · {formatoNum(c.ha)} ha (histórico)</SelectItem>)}
             {cerrados.map((l) => (
               <SelectItem key={l.id} value={l.id}>
-                {nombreLote(l)} · {formatoNum(l.ha)} ha{l.cerrado ? "" : " (cosecha terminada)"}
+                {nombreLote(l)} · {formatoNum(l.ha)} ha{l.cerrado ? "" : l.cosechaTerminada ? " (cosecha terminada)" : l.avances.length ? " (activa)" : " (planeada)"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -111,11 +111,19 @@ function Contenido() {
               );
             })}
             {!filas.length && (
-              <tr><td colSpan={7} className="p-3 text-muted-foreground">Esta tabla no tiene productos recibidos.</td></tr>
+              <tr><td colSpan={7} className="p-3 text-muted-foreground">Sin productos recibidos en la app.</td></tr>
             )}
           </tbody>
         </table>
       </div>}
+      {!historico && lote?.aplicacionesPrevias?.length ? (
+        <div className="space-y-2">
+          <h3 className="font-semibold">Aplicaciones previas (sistema anterior{lote.folioProgramacion ? ` · ${lote.folioProgramacion}` : ""})</h3>
+          <div className="overflow-x-auto rounded-lg border bg-card"><table className="w-full text-sm"><thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground"><tr><th className="p-3">Producto</th><th className="p-3">Categoría</th><th className="p-3 text-right">Consumo</th><th className="p-3 text-right">Por ha</th><th className="p-3 text-right">Costo</th></tr></thead>
+          <tbody>{lote.aplicacionesPrevias.map((a) => <tr key={`${a.nombre}|${a.unidad}`} className="border-t"><td className="p-3">{a.nombre}</td><td className="p-3">{a.categoria}</td><td className="p-3 text-right font-mono">{formatoNum(a.cantidad)} {a.unidad}</td><td className="p-3 text-right font-mono">{formatoNum(lote.ha ? a.cantidad / lote.ha : 0)} {a.unidad}/ha</td><td className="p-3 text-right font-mono">{formatoMXN(a.costo)}</td></tr>)}
+          <tr className="border-t font-semibold"><td className="p-3" colSpan={4}>Total</td><td className="p-3 text-right font-mono">{formatoMXN(lote.aplicacionesPrevias.reduce((s, a) => s + a.costo, 0))}</td></tr></tbody></table></div>
+        </div>
+      ) : null}
     </div>
   );
 }

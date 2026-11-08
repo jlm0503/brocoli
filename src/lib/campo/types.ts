@@ -192,6 +192,18 @@ export interface Lote {
   fechaEntregaPlanta?: string | undefined;
   /** Ciclo cerrado (Fase 5): ya no admite cambios; solo el Super Admin lo reabre. */
   cerrado?: boolean | undefined;
+  /** Folio de programación del sistema anterior. */
+  folioProgramacion?: string | undefined;
+  /** Aplicaciones ya hechas antes de usar la app (total por producto, con su costo de origen). */
+  aplicacionesPrevias?: AplicacionPrevia[] | undefined;
+}
+
+export interface AplicacionPrevia {
+  nombre: string;
+  categoria: string;
+  unidad: string;
+  cantidad: number;
+  costo: number;
 }
 
 export type EstatusTabla =
