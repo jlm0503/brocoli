@@ -60,6 +60,8 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Panel de Dirección
+- [x] Conciliar superficie sin cambiar capturas: 123.86 ha en ciclo, 13.8 ha con inicio de cosecha vencido sin cierre y 48.71 ha por plantar (antes mezcladas en 186.37 ha); verificado en la cuenta de Jimena.
+- [x] Agregar cosecha de semana pasada, actual y próxima con kilos, pago calculado/esperado y kg/ha; proyecciones distinguidas de registros. 60 pruebas pasando y verificación en computadora, 829 px y celular; no hay viajes capturados en las dos semanas recientes.
 - [x] Unificar plantación semanal, tablas activas, calendario de cosecha, kg/ha, costos, consumos y gastos con gráficas y filtros conjuntos. Verificado con 50 vigentes y 23 históricos, fechas y rancho, en computadora y celular.
 - [x] Permitir consulta a Dirección con gastos de solo lectura y mantener utilidad real privada; pruebas de permisos y cálculos pasando.
 - [ ] Verificar con cuenta de Dirección: aún no existe ninguna cuenta con ese puesto; pendiente de asignación por Jimena.
