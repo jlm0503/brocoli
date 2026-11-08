@@ -323,7 +323,7 @@ function RegistrarPlantacionDialog({
   const { ranchos: todosRanchos, tablas, lotes, variedades, cultivos, hoy, registrarPlantacion } = useCampo();
   const ranchos = useRanchosVisibles(todosRanchos);
   const [ranchoId, setRanchoId] = useState(ranchoInicial);
-  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId);
+  const deRancho = tablas.filter((t) => t.ranchoId === ranchoId && !t.archivada);
   const [tablaElegida, setTablaId] = useState("");
   const tabla = deRancho.find((t) => t.id === tablaElegida) ?? deRancho[0];
   const [variedadId, setVariedadId] = useState(variedades[0]?.id ?? "");

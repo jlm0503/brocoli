@@ -132,6 +132,8 @@ export interface Tabla {
   nombre: string;
   hectareas: number;
   /** Punto GPS central. Sin punto = "Sin ubicación". */
+  /** Retirada de operación; conserva su identidad para históricos y consumos. */
+  archivada?: boolean | undefined;
   gps?: { lat: number; lng: number } | undefined;
   /** Radio de validación en metros definido por el administrador (si no, se calcula). */
   radio?: number | undefined;

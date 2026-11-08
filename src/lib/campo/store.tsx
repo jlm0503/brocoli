@@ -58,6 +58,7 @@ import {
   validarPlantacionPrevia,
   validarRancho,
   validarTabla,
+  retirarTabla,
 } from "./calc";
 import { useSesion } from "./sesion";
 import {
@@ -202,6 +203,7 @@ interface CampoContextValue {
   eliminarRancho: (id: string) => string | null;
   agregarTabla: (t: { ranchoId: string; nombre: string; hectareas: number }) => string | null;
   eliminarTabla: (id: string) => string | null;
+  reactivarTabla: (id: string) => void;
   registrarPlantacion: (p: PlantacionPrevia) => string | null;
   planearLote: (
     tablaId: string,
@@ -786,18 +788,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const eliminarTabla = useCallback(
     (id: string) => {
-      if (lotes.some((l) => l.tablaId === id && !l.cancelado))
-        return "Esta tabla ya tiene lotes; no se puede eliminar.";
-      setTablas((ts) => ts.filter((t) => t.id !== id));
-      setAdicionales((as) =>
-        as
-          .map((a) => ({ ...a, tablaIds: a.tablaIds.filter((x) => x !== id) }))
-          .filter((a) => a.tablaIds.length > 0),
-      );
+      const tabla = tablas.find((t) => t.id === id);
+      if (!tabla) return "Tabla no encontrada.";
+      const resultado = retirarTabla(tabla, lotes);
+      if ("error" in resultado) return resultado.error;
+      setTablas((ts) => ts.map((t) => t.id === id ? resultado.tabla : t));
       return null;
     },
-    [lotes],
+    [lotes, tablas],
   );
+
+  const reactivarTabla = useCallback((id: string) => {
+    setTablas((ts) => ts.map((t) => t.id === id ? { ...t, archivada: false } : t));
+  }, []);
 
   const registrarPlantacion = useCallback(
     (p: PlantacionPrevia) => {
@@ -1478,6 +1481,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarRancho,
       agregarTabla,
       eliminarTabla,
+      reactivarTabla,
       registrarPlantacion,
       regresarSemana,
       volverAHoy,
@@ -1540,6 +1544,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       eliminarRancho,
       agregarTabla,
       eliminarTabla,
+      reactivarTabla,
       registrarPlantacion,
       regresarSemana,
       volverAHoy,
