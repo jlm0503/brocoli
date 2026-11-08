@@ -338,6 +338,24 @@ function Catalogos() {
       </Tabs>
 
       <CambiarPrecio producto={cambiandoPrecio} onClose={() => setCambiandoPrecio(null)} />
+      <Dialog open={!!retirando} onOpenChange={(o) => !o && setRetirando(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retirar tabla {retirando?.nombre}</DialogTitle>
+            <DialogDescription>Dejará de estar disponible para nuevas plantaciones. Sus históricos, consumos, gastos y viajes se conservan.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRetirando(null)}>Cancelar</Button>
+            <Button onClick={() => {
+              if (!retirando) return;
+              const error = eliminarTabla(retirando.id);
+              if (error) return void toast.error(error);
+              toast.success("Tabla retirada; históricos conservados.");
+              setRetirando(null);
+            }}><Archive /> Retirar tabla</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NuevoProducto open={nuevo} onClose={() => setNuevo(false)} />
       <NuevoRancho open={nuevoRancho} onClose={() => setNuevoRancho(false)} />
       <NuevaTabla open={nuevaTabla} onClose={() => setNuevaTabla(false)} />
