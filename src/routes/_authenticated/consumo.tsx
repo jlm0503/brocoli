@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/campo/AppShell";
 import { useNombreLote } from "@/components/campo/Cosecha";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown } from "lucide-react";
 import { consumoProductosLote, formatoNum, formatoMXN } from "@/lib/campo/calc";
 import { useCosecha } from "@/lib/campo/cosecha";
 import { useCostos } from "@/lib/campo/costos";
@@ -41,17 +44,62 @@ function Consumo() {
 }
 
 function Contenido() {
-  const { lotes, productos, recepciones, pedidos, tablas, ranchos } = useCampo();
+  const { lotes, tablas, ranchos } = useCampo();
   const { ciclos } = useCosecha();
-  const { extraordinarios, devoluciones } = useFase3();
-  const { porLote } = useCostos();
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
   const importados = ciclos.filter((c) => c.importacion && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo));
   const nombreLote = useNombreLote();
   const cerrados = lotes.filter((l) => !l.cancelado && (l.cerrado || l.finalizado || l.cosechaTerminada || l.avances.length > 0 || (l.aplicacionesPrevias?.length ?? 0) > 0) && pasaLote(l));
-  const [sel, setSel] = useState("");
-  const historico = importados.find((c) => c.id === sel) ?? (!cerrados.length && !sel ? importados[0] : undefined);
-  const lote = cerrados.find((l) => l.id === sel) ?? cerrados[0];
+  const [seleccion, setSeleccion] = useState<string[] | null>(null);
+  const opciones = [
+    ...cerrados.map((l) => ({ id: l.id, label: `${nombreLote(l)} · ${formatoNum(l.ha)} ha${l.cerrado ? "" : l.cosechaTerminada ? " (cosecha terminada)" : l.avances.length ? " (activa)" : " (planeada)"}` })),
+    ...importados.map((c) => ({ id: c.id, label: `${ranchos.find((r) => r.id === c.ranchoId)?.nombre} · ${tablas.find((t) => t.id === c.tablaId)?.nombre} · ${c.codigo} · ${formatoNum(c.ha)} ha (histórico)` })),
+  ];
+  const elegidas = (seleccion ?? opciones.slice(0, 1).map((o) => o.id)).filter((id) => opciones.some((o) => o.id === id));
+  const cambiar = (id: string, marcada: boolean) => setSeleccion(marcada ? [...elegidas.filter((x) => x !== id), id] : elegidas.filter((x) => x !== id));
+
+  if (!opciones.length) return <p className="text-sm text-muted-foreground">No hay tablas con los filtros seleccionados.</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="max-w-md space-y-2">
+        <Label>Tablas</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-between" aria-label="Seleccionar tablas">
+              {elegidas.length === 1 ? "1 tabla seleccionada" : `${elegidas.length} tablas seleccionadas`}<ChevronDown />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[min(28rem,calc(100vw-2rem))] p-2">
+            <div className="mb-2 flex justify-between border-b border-border pb-2">
+              <Button size="sm" variant="ghost" onClick={() => setSeleccion(opciones.map((o) => o.id))}>Seleccionar todas</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSeleccion([])}>Limpiar</Button>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {opciones.map((o) => <label key={o.id} className="flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm hover:bg-muted">
+                <Checkbox aria-label={o.label} checked={elegidas.includes(o.id)} onCheckedChange={(v) => cambiar(o.id, v === true)} className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">{o.label}</span>
+              </label>)}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+      {!elegidas.length && <p className="text-sm text-muted-foreground">Selecciona las tablas que quieres consultar.</p>}
+      {elegidas.map((id) => <section key={id} className="space-y-4 border-t border-border pt-5">
+        <h2 className="text-lg font-semibold">{opciones.find((o) => o.id === id)?.label}</h2>
+        <ReporteTabla sel={id} />
+      </section>)}
+    </div>
+  );
+}
+
+function ReporteTabla({ sel }: { sel: string }) {
+  const { lotes, productos, recepciones, pedidos } = useCampo();
+  const { ciclos } = useCosecha();
+  const { extraordinarios, devoluciones } = useFase3();
+  const { porLote } = useCostos();
+  const historico = ciclos.find((c) => c.id === sel && c.importacion);
+  const lote = lotes.find((l) => l.id === sel);
   const filas = useMemo(
     () =>
       lote
@@ -61,25 +109,8 @@ function Contenido() {
   );
   const prod = new Map(productos.map((p) => [p.id, p]));
 
-  if (!cerrados.length && !importados.length)
-    return <p className="text-sm text-muted-foreground">Aún no hay tablas cerradas o con cosecha terminada.</p>;
-
   return (
     <div className="space-y-6">
-      <div className="max-w-md space-y-2">
-        <Label>Tabla</Label>
-        <Select value={historico?.id ?? lote?.id ?? ""} onValueChange={setSel}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {importados.map((c) => <SelectItem key={c.id} value={c.id}>{ranchos.find((r) => r.id === c.ranchoId)?.nombre} · {tablas.find((t) => t.id === c.tablaId)?.nombre} · {c.codigo} · {formatoNum(c.ha)} ha (histórico)</SelectItem>)}
-            {cerrados.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {nombreLote(l)} · {formatoNum(l.ha)} ha{l.cerrado ? "" : l.cosechaTerminada ? " (cosecha terminada)" : l.avances.length ? " (activa)" : " (planeada)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       {historico?.importacion ? <div className="overflow-x-auto rounded-lg border bg-card"><table className="w-full text-sm"><thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground"><tr><th className="p-3">Producto</th><th className="p-3 text-right">Consumo de origen</th><th className="p-3 text-right">Por ha</th><th className="p-3 text-right">Costo de origen</th></tr></thead><tbody>{Object.values(historico.importacion.productos.reduce<Record<string, { nombre: string; unidad: string; cantidad: number; costo: number }>>((m, p) => { const k = `${p.nombre}|${p.unidad}`; const x = m[k] ?? { nombre: p.nombre, unidad: p.unidad, cantidad: 0, costo: 0 }; x.cantidad += p.cantidad; x.costo += p.costo; m[k] = x; return m; }, {})).map((p) => <tr key={`${p.nombre}|${p.unidad}`} className="border-t"><td className="p-3">{p.nombre}</td><td className="p-3 text-right font-mono">{formatoNum(p.cantidad)} {p.unidad}</td><td className="p-3 text-right font-mono">{formatoNum(p.cantidad / historico.ha)} {p.unidad}/ha</td><td className="p-3 text-right font-mono">{formatoMXN(p.costo)}</td></tr>)}</tbody></table></div> :
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
