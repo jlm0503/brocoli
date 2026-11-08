@@ -59,6 +59,10 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] El encargado de rancho aún no se limita a sus ranchos asignados (hoy ve todos los ranchos para capturar)
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
+## Panel de Dirección
+- [ ] Unificar plantación semanal, tablas activas, calendario de cosecha, kg/ha, costos, consumos y gastos con gráficas y filtros conjuntos.
+- [ ] Permitir consulta a Dirección, mantener utilidad real privada y verificar filtros con datos actuales e históricos.
+
 ## Importación del historial de otro sistema (6 nov)
 - [x] Cargar planta por parámetro en los 50 lotes vigentes (16 planeados y 34 plantados; excluir 4 finalizados), sin tocar los 23 históricos: 6,851,100 plantas y $1,849,797. Comprobar cuenta, cero pendientes de solicitud y regla de abonos de viajes.
 - [x] Retirar las siete tablas agrupadas de Dolores y Vergel sin modificar históricos ni plantaciones; verificar disponibilidad y conservación.
