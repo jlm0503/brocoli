@@ -1,0 +1,2 @@
+# Architecture rules
+- Keep all tables in the shared context and retire them with `Tabla.archivada`; operational filters and planting validation exclude retired tables, but historical and cost lookups retain them. Why: grouped imports must not duplicate available real tables or lose their records.
