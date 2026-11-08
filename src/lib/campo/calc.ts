@@ -3028,6 +3028,19 @@ export function consumoProductosLote(
     .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.devuelto);
 }
 
+/** Plantación real y pendiente por semana; nunca cuenta lotes cancelados o finalizados como plan futuro. */
+export function plantacionPanel(lotes: Lote[], semana: number) {
+  const plantadas = lotes.filter((l) => !l.cancelado).reduce((s, l) => s + l.avances.filter((a) => a.semana === semana).reduce((n, a) => n + a.ha, 0), 0);
+  const planeadas = lotes.filter((l) => !l.cancelado && !l.finalizado && !l.cerrado && l.semanaPlaneada === semana).reduce((s, l) => s + pendientesLote(l), 0);
+  return { plantadas: redondear(plantadas, 4), planeadas: redondear(planeadas, 4) };
+}
+
+/** Comparativos ponderados: sumar kilos/costos y dividir entre ha, nunca promediar razones. */
+export function totalesPanel(filas: { ha: number; kgBrutos: number; kgPagables: number; costo: number; nomina: number }[]) {
+  const total = filas.reduce((s, f) => ({ ha: s.ha + f.ha, kgBrutos: s.kgBrutos + f.kgBrutos, kgPagables: s.kgPagables + f.kgPagables, costo: s.costo + f.costo, nomina: s.nomina + f.nomina }), { ha: 0, kgBrutos: 0, kgPagables: 0, costo: 0, nomina: 0 });
+  return { ...total, kgHa: total.ha > 0 ? total.kgPagables / total.ha : 0, costoHa: total.ha > 0 ? total.costo / total.ha : 0, nominaHa: total.ha > 0 ? total.nomina / total.ha : 0 };
+}
+
 /** Costo de origen de las aplicaciones previas cargadas desde el sistema anterior. */
 export function costoAplicacionesPrevias(l: Pick<Lote, "aplicacionesPrevias">): number {
   return redondear((l.aplicacionesPrevias ?? []).reduce((s, a) => s + a.costo, 0));
