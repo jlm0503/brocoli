@@ -44,10 +44,8 @@ function Consumo() {
 }
 
 function Contenido() {
-  const { lotes, productos, recepciones, pedidos, tablas, ranchos } = useCampo();
+  const { lotes, tablas, ranchos } = useCampo();
   const { ciclos } = useCosecha();
-  const { extraordinarios, devoluciones } = useFase3();
-  const { porLote } = useCostos();
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
   const importados = ciclos.filter((c) => c.importacion && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo));
   const nombreLote = useNombreLote();
