@@ -68,7 +68,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] Verificar con cuenta de Dirección: aún no existe ninguna cuenta con ese puesto; pendiente de asignación por Jimena.
 
 ## Importación del historial de otro sistema (6 nov)
-- [ ] Cargar Final.xlsx con repartos confirmados de B0590/B0625/B0644/B0611, bins redondeados hacia arriba y descuento único por ticket; conservar datos anteriores y comprobar consulta en pantalla.
+- [x] Cargar Final.xlsx: 20 tickets únicos y 25 repartos, 452,600 kg recibidos, 368,303.09 kg pagables y $200,000 en descuentos únicos; repartos B0590/B0625/B0644/B0611 confirmados, bins redondeados hacia arriba conservando originales. Santa Mónica al brócoli de junio; 54 lotes, 23 históricos y 50 solicitudes intactos. Verificados los cuatro tickets en Salidas y lectura de Cuenta de planta; comprobantes pendientes, sin inventar pagos.
 - [x] Recuperar Santa Mónica 1 y 7 de junio en cosecha pendiente, conservando gastos y el histórico de febrero–mayo; evitar nueva finalización automática. 55 pruebas pasando; ambas seleccionables en Salidas sin mostrar cerrados y sin guardar viajes ficticios.
 - [x] Cargar planta por parámetro en los 50 lotes vigentes (16 planeados y 34 plantados; excluir 4 finalizados), sin tocar los 23 históricos: 6,851,100 plantas y $1,849,797. Comprobar cuenta, cero pendientes de solicitud y regla de abonos de viajes.
 - [x] Retirar las siete tablas agrupadas de Dolores y Vergel sin modificar históricos ni plantaciones; verificar disponibilidad y conservación.
