@@ -56,8 +56,8 @@ export const ROLES: Record<
   direccion: {
     nombre: "Dirección",
     persona: "",
-    descripcion: "Recibe las alertas de incumplimiento y el reporte mensual.",
-    home: "/direccion",
+    descripcion: "Consulta el panel de campo, costos, consumos y alertas, sin utilidad real.",
+    home: "/panel",
   },
   encargado: {
     nombre: "Encargado de rancho",
@@ -68,6 +68,7 @@ export const ROLES: Record<
 };
 
 export type NavPath =
+  | "/panel"
   | "/planeacion"
   | "/compras"
   | "/paquete"
@@ -91,6 +92,7 @@ export type NavPath =
   | "/resultados";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
+  { to: "/panel", label: "Panel de Dirección", roles: ["admin", "direccion"] },
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin", "administrador"] },
   { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero"] },
   { to: "/solicitudes", label: "Solicitudes de planta", roles: ["admin", "ingeniero"] },

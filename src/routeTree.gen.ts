@@ -26,6 +26,7 @@ import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedLiquidacionRouteImport } from './routes/_authenticated/liquidacion'
 import { Route as AuthenticatedLlegadasRouteImport } from './routes/_authenticated/llegadas'
+import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
 import { Route as AuthenticatedPaqueteRouteImport } from './routes/_authenticated/paquete'
 import { Route as AuthenticatedParametrosRouteImport } from './routes/_authenticated/parametros'
 import { Route as AuthenticatedPlaneacionRouteImport } from './routes/_authenticated/planeacion'
@@ -123,6 +124,11 @@ const AuthenticatedLlegadasRoute = AuthenticatedLlegadasRouteImport.update({
   path: '/llegadas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPanelRoute = AuthenticatedPanelRouteImport.update({
+  id: '/panel',
+  path: '/panel',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPaqueteRoute = AuthenticatedPaqueteRouteImport.update({
   id: '/paquete',
   path: '/paquete',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
+  '/panel': typeof AuthenticatedPanelRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/historicos': typeof AuthenticatedHistoricosRoute
   '/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/llegadas': typeof AuthenticatedLlegadasRoute
+  '/panel': typeof AuthenticatedPanelRoute
   '/paquete': typeof AuthenticatedPaqueteRoute
   '/parametros': typeof AuthenticatedParametrosRoute
   '/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
   '/_authenticated/liquidacion': typeof AuthenticatedLiquidacionRoute
   '/_authenticated/llegadas': typeof AuthenticatedLlegadasRoute
+  '/_authenticated/panel': typeof AuthenticatedPanelRoute
   '/_authenticated/paquete': typeof AuthenticatedPaqueteRoute
   '/_authenticated/parametros': typeof AuthenticatedParametrosRoute
   '/_authenticated/planeacion': typeof AuthenticatedPlaneacionRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
+    | '/panel'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/historicos'
     | '/liquidacion'
     | '/llegadas'
+    | '/panel'
     | '/paquete'
     | '/parametros'
     | '/planeacion'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/_authenticated/historicos'
     | '/_authenticated/liquidacion'
     | '/_authenticated/llegadas'
+    | '/_authenticated/panel'
     | '/_authenticated/paquete'
     | '/_authenticated/parametros'
     | '/_authenticated/planeacion'
@@ -456,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLlegadasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/panel': {
+      id: '/_authenticated/panel'
+      path: '/panel'
+      fullPath: '/panel'
+      preLoaderRoute: typeof AuthenticatedPanelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/paquete': {
       id: '/_authenticated/paquete'
       path: '/paquete'
@@ -529,6 +548,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
   AuthenticatedLiquidacionRoute: typeof AuthenticatedLiquidacionRoute
   AuthenticatedLlegadasRoute: typeof AuthenticatedLlegadasRoute
+  AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
   AuthenticatedPaqueteRoute: typeof AuthenticatedPaqueteRoute
   AuthenticatedParametrosRoute: typeof AuthenticatedParametrosRoute
   AuthenticatedPlaneacionRoute: typeof AuthenticatedPlaneacionRoute
@@ -553,6 +573,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
   AuthenticatedLiquidacionRoute: AuthenticatedLiquidacionRoute,
   AuthenticatedLlegadasRoute: AuthenticatedLlegadasRoute,
+  AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedPaqueteRoute: AuthenticatedPaqueteRoute,
   AuthenticatedParametrosRoute: AuthenticatedParametrosRoute,
   AuthenticatedPlaneacionRoute: AuthenticatedPlaneacionRoute,

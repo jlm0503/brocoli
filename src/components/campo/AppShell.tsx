@@ -40,6 +40,7 @@ import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 
 const ICONS: Record<NavPath, typeof Sprout> = {
+  "/panel": LayoutGrid,
   "/ranchos": LayoutGrid,
   "/planeacion": Sprout,
   "/compras": ClipboardList,

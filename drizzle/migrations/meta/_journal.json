@@ -50,6 +50,13 @@
       "when": 1793920974706,
       "tag": "0006_fase6_gastos_comunes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794165606955,
+      "tag": "0007_direccion_consulta_gastos",
+      "breakpoints": true
     }
   ]
 }
