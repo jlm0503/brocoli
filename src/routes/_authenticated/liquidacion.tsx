@@ -17,7 +17,6 @@ import {
   formatoNum,
   porTablaViajes,
   resumenSemanaPago,
-  semanaPago,
   semanasDePago,
   type ResumenPago,
   enviadoVsLlegado,
@@ -49,11 +48,8 @@ const ESTATUS: Record<EstatusLiquidacion, { label: string; variant: "pendiente" 
 };
 
 function LiquidacionPage() {
-  const { hoy } = useCampo();
   const { viajes, liquidaciones } = useCosecha();
-  const semanas = semanasDePago(viajes);
-  const actual = semanaPago(hoy);
-  if (!semanas.includes(actual)) semanas.unshift(actual);
+  const semanas = [...new Set([...semanasDePago(viajes), ...liquidaciones.map((l) => l.id)])].sort((a, b) => b.localeCompare(a));
 
   return (
     <AppShell
@@ -63,6 +59,7 @@ function LiquidacionPage() {
       description="Cada viaje cae en su semana de pago por la fecha de salida. Captura lo que pagó la congeladora; si no cuadra, se marca en rojo."
     >
       <div className="space-y-4">
+        {semanas.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No hay liquidaciones registradas.</p>}
         {semanas.map((j) => (
           <Semana key={j} r={resumenSemanaPago(viajes, j)} liq={liquidaciones.find((l) => l.id === j)} />
         ))}
