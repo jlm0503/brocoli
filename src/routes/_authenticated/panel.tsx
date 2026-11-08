@@ -14,7 +14,7 @@ import { useCostos } from "@/lib/campo/costos";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useGastos } from "@/lib/campo/gastos";
 import { useFiltro, useFiltroEstado } from "@/lib/campo/filtro";
-import { consumoProductosLote, cosechaPanel, superficiePanel, fechaCorta, fechaCosechaLote, fechaEnSemana, fechaPlantacionLote, plantacionPanel, plantadasLote, prorrateoRango, semanaDeFecha, totalesPanel } from "@/lib/campo/calc";
+import { CICLOS_PLANTACION, perteneceCicloPlantacion, consumoProductosLote, cosechaPanel, superficiePanel, fechaCorta, fechaCosechaLote, fechaEnSemana, fechaPlantacionLote, plantacionPanel, plantadasLote, prorrateoRango, semanaDeFecha, totalesPanel } from "@/lib/campo/calc";
 
 export const Route = createFileRoute("/_authenticated/panel")({
   head: () => ({ meta: [{ title: "Panel de Dirección · Ultra Farms" }, { name: "description", content: "Plantaciones, cosechas, costos, aplicaciones y nómina por tabla y rancho." }, { property: "og:title", content: "Panel de Dirección · Ultra Farms" }, { property: "og:description", content: "Comparativos de campo con filtros de fechas, semanas, ranchos, cultivos y tablas." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -40,19 +40,20 @@ function Contenido() {
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
   const { setRanchoIds, setCultivos } = useFiltroEstado();
   const [desde, setDesde] = useState(""); const [hasta, setHasta] = useState("");
+  const [cicloPlantacion, setCicloPlantacion] = useState("todos");
   const [semana, setSemana] = useState(semanaActual);
   const [tablaIds, setTablaIds] = useState<string[]>([]); const [variedadIds, setVariedadIds] = useState<string[]>([]);
   const [estado, setEstado] = useState("vigentes"); const [fechaTipo, setFechaTipo] = useState("plantacion");
   const [grupo, setGrupo] = useState("tabla"); const [productoIds, setProductoIds] = useState<string[]>([]); const [concepto, setConcepto] = useState("todos");
   const enFecha = (f: string) => (!desde || f >= desde) && (!hasta || f <= hasta);
-  const base = lotes.filter((l) => !l.cancelado && pasaLote(l) && (!tablaIds.length || tablaIds.includes(l.tablaId)) && (!variedadIds.length || variedadIds.includes(l.variedadId)));
+  const base = lotes.filter((l) => !l.cancelado && perteneceCicloPlantacion(fechaPlantacionLote(l), cicloPlantacion) && pasaLote(l) && (!tablaIds.length || tablaIds.includes(l.tablaId)) && (!variedadIds.length || variedadIds.includes(l.variedadId)));
   const ls = base.filter((l) => {
     const vigente = !l.finalizado && !l.cerrado;
     const est = plantadasLote(l) === 0 ? "planeado" : fechaCosechaLote(l) <= hoy ? "cosecha" : "plantado";
     return (estado === "todos" || (vigente && (estado === "vigentes" || estado === est))) && enFecha(fechaTipo === "cosecha" ? fechaCosechaLote(l) : fechaPlantacionLote(l));
   });
   const ids = new Set(ls.map((l) => l.id));
-  const hist = estado === "historicos" || estado === "todos" ? ciclos.filter((c) => !c.reabierto && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && (!tablaIds.length || tablaIds.includes(c.tablaId)) && (!variedadIds.length || (c.variedadId && variedadIds.includes(c.variedadId))) && enFecha(fechaTipo === "cosecha" ? c.importacion?.fechaInicioCosecha || c.fechaFinCosecha : c.fechaPlantacion)) : [];
+  const hist = estado === "historicos" || estado === "todos" ? ciclos.filter((c) => !c.reabierto && perteneceCicloPlantacion(c.fechaPlantacion, cicloPlantacion) && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && (!tablaIds.length || tablaIds.includes(c.tablaId)) && (!variedadIds.length || (c.variedadId && variedadIds.includes(c.variedadId))) && enFecha(fechaTipo === "cosecha" ? c.importacion?.fechaInicioCosecha || c.fechaFinCosecha : c.fechaPlantacion)) : [];
   const histLotes = new Set(hist.flatMap((c) => c.loteId ? [c.loteId] : []));
   const inicioGasto = desde ? semanaDeFecha(desde) : -100; const finGasto = hasta ? semanaDeFecha(hasta) : 200;
   const reparto = prorrateoRango({ desde: inicioGasto, hasta: finGasto, lotes, gastos, repartos });
@@ -68,7 +69,7 @@ function Contenido() {
   const total = totalesPanel(filas);
   const superficie = superficiePanel(ls, semana);
   const cosechaLotes = base.filter((l) => enFecha(fechaTipo === "cosecha" ? fechaCosechaLote(l) : fechaPlantacionLote(l)) && (estado === "todos" || estado === "historicos" ? estado === "todos" : !l.finalizado && !l.cerrado && (estado === "vigentes" || ls.some((x) => x.id === l.id))));
-  const cosechaHist = ciclos.filter((c) => !c.reabierto && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && (!tablaIds.length || tablaIds.includes(c.tablaId)) && (!variedadIds.length || (c.variedadId && variedadIds.includes(c.variedadId))) && enFecha(fechaTipo === "cosecha" ? c.importacion?.fechaInicioCosecha || c.fechaFinCosecha : c.fechaPlantacion) && (estado === "vigentes" || estado === "todos" || estado === "historicos"));
+  const cosechaHist = ciclos.filter((c) => !c.reabierto && perteneceCicloPlantacion(c.fechaPlantacion, cicloPlantacion) && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && (!tablaIds.length || tablaIds.includes(c.tablaId)) && (!variedadIds.length || (c.variedadId && variedadIds.includes(c.variedadId))) && enFecha(fechaTipo === "cosecha" ? c.importacion?.fechaInicioCosecha || c.fechaFinCosecha : c.fechaPlantacion) && (estado === "vigentes" || estado === "todos" || estado === "historicos"));
   const cosechaDatos = [semana - 1, semana, semana + 1].map((w, i) => ({ nombre: ["Semana pasada", "Semana actual", "Semana próxima"][i] ?? "", semana: w, ...cosechaPanel(cosechaLotes, viajes, cosechaHist, parametros, w, hoy) }));
   const semanaDatos = [semana - 1, semana, semana + 1].map((w) => ({ nombre: `Sem ${w}`, ...plantacionPanel(base.filter((l) => enFecha(fechaTipo === "cosecha" ? fechaCosechaLote(l) : fechaPlantacionLote(l))), w) }));
   const agrupados = new Map<string, typeof filas>();
@@ -88,6 +89,7 @@ function Contenido() {
   const kpis = [{ icon: Wheat, nombre: "Hectáreas activas · en ciclo", valor: `${area(superficie.activas)} ha` }, { icon: Sprout, nombre: "Plantado semana pasada", valor: `${area(semanaDatos[0]?.plantadas ?? 0)} ha` }, { icon: CalendarDays, nombre: "Por plantar esta semana", valor: `${area(semanaDatos[1]?.planeadas ?? 0)} ha` }, { icon: Tractor, nombre: "Por plantar próxima semana", valor: `${area(semanaDatos[2]?.planeadas ?? 0)} ha` }, { icon: Wallet, nombre: "Costo acumulado / ha", valor: dinero(total.costoHa) }, { icon: Users, nombre: "Nómina / ha", valor: dinero(total.nominaHa) }];
   return <div className="space-y-8">
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="min-w-0 space-y-1"><Label>Ciclo de plantación</Label><Select value={cicloPlantacion} onValueChange={setCicloPlantacion}><SelectTrigger aria-label="Ciclo de plantación" className="h-auto min-h-9 w-full [&>span]:whitespace-normal [&>span]:text-left"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos los ciclos</SelectItem>{CICLOS_PLANTACION.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-1"><Label>Desde</Label><Input aria-label="Fecha desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></div>
       <div className="space-y-1"><Label>Hasta</Label><Input aria-label="Fecha hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></div>
       <div className="space-y-1"><Label>Fecha de</Label><Select value={fechaTipo} onValueChange={setFechaTipo}><SelectTrigger aria-label="Fecha de"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="plantacion">Plantación</SelectItem><SelectItem value="cosecha">Inicio de cosecha</SelectItem></SelectContent></Select></div>
@@ -95,7 +97,7 @@ function Contenido() {
       <PanelMulti nombre="Tablas" valor={tablaIds} cambiar={setTablaIds} opciones={tablas.filter((t) => pasaRancho(t.ranchoId)).map((t) => ({ id: t.id, nombre: `${ranchos.find((r) => r.id === t.ranchoId)?.nombre} · ${t.nombre}` }))} />
       <PanelMulti nombre="Variedades" valor={variedadIds} cambiar={setVariedadIds} opciones={variedades.map((v) => ({ id: v.id, nombre: v.nombre }))} />
       <Select value={estado} onValueChange={setEstado}><SelectTrigger aria-label="Estado de plantaciones"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigentes">Vigentes (planeadas y plantadas)</SelectItem><SelectItem value="planeado">Planeadas</SelectItem><SelectItem value="plantado">Plantadas</SelectItem><SelectItem value="cosecha">En cosecha</SelectItem><SelectItem value="historicos">Históricos</SelectItem><SelectItem value="todos">Vigentes e históricos</SelectItem></SelectContent></Select>
-      <Button variant="ghost" onClick={() => { setDesde(""); setHasta(""); setTablaIds([]); setVariedadIds([]); setEstado("vigentes"); setSemana(semanaActual); setProductoIds([]); setRanchoIds([]); setCultivos([]); }}><RotateCcw /> Restablecer filtros</Button>
+      <Button variant="ghost" onClick={() => { setCicloPlantacion("todos"); setDesde(""); setHasta(""); setTablaIds([]); setVariedadIds([]); setEstado("vigentes"); setSemana(semanaActual); setProductoIds([]); setRanchoIds([]); setCultivos([]); }}><RotateCcw /> Restablecer filtros</Button>
     </section>
     {desde && hasta && desde > hasta ? <p role="alert" className="text-destructive">La fecha inicial debe ser anterior a la final.</p> : null}
     <p className="text-xs text-muted-foreground">Costos y consumos acumulados de las plantaciones seleccionadas. Nómina y gastos comunes del intervalo indicado. Semana de referencia: {fechaCorta(fechaEnSemana(semana))} al {fechaCorta(fechaEnSemana(semana, 6))}.</p>
