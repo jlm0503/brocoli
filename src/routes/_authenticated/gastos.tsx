@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileUp, ImageIcon, Pencil, Trash2, X } from "lucide-react";
+import { FileUp, ImageIcon, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -56,6 +56,13 @@ interface Celda {
   modo: "directo" | "total";
   concepto: ConceptoGasto;
 }
+
+const TIPOS_CAPTURA: { id: ConceptoGasto; nombre: string }[] = [
+  { id: "nomina", nombre: "Gasto de nómina" },
+  { id: "diesel", nombre: "Gasto de combustible" },
+  { id: "mantenimiento", nombre: "Gasto de reparaciones" },
+  { id: "otros", nombre: "Otros gastos" },
+];
 
 function GastosRancho() {
   const { ranchos, lotes, cultivos, semanaActual } = useCampo();
@@ -226,6 +233,12 @@ function GastosRancho() {
           </div>
         </div>
       </section>
+
+      <div className="mb-6">
+        <Button disabled={!puedeCapturar || !ranchoId} onClick={() => abrir({ cultivo: CULTIVO_TOTAL, modo: "total", concepto: "nomina" })}>
+          <Plus /> Agregar gasto de rancho
+        </Button>
+      </div>
 
       {csv && (
         <section className="mb-8 rounded-xl border border-border bg-card p-5 shadow-card">
@@ -440,6 +453,28 @@ function GastosRancho() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label>Tipo de gasto</Label>
+              <Select value={celda?.concepto ?? "nomina"} onValueChange={(v) => {
+                const tipo = TIPOS_CAPTURA.find((t) => t.id === v);
+                if (tipo && celda) setCelda({ ...celda, concepto: tipo.id });
+              }}>
+                <SelectTrigger aria-label="Tipo de gasto"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TIPOS_CAPTURA.map((t) => <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>)}
+                  {celda && !TIPOS_CAPTURA.some((t) => t.id === celda.concepto) && <SelectItem value={celda.concepto}>{nombreConceptoGasto(celda.concepto)}</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
+            {celda && (celda.concepto === "diesel" || celda.concepto === "gasolina") && <div className="space-y-2">
+              <Label>Combustible</Label>
+              <Select value={celda.concepto} onValueChange={(v) => {
+                if (v === "diesel" || v === "gasolina") setCelda({ ...celda, concepto: v });
+              }}>
+                <SelectTrigger aria-label="Combustible"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="diesel">Diésel</SelectItem><SelectItem value="gasolina">Gasolina</SelectItem></SelectContent>
+              </Select>
+            </div>}
             <div className="space-y-2">
               <Label htmlFor="gs-monto">Monto (MXN)</Label>
               <Input id="gs-monto" type="number" inputMode="decimal" className="num" value={monto} onChange={(e) => setMonto(e.target.value)} autoFocus />
