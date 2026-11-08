@@ -322,6 +322,8 @@ export interface LineaSolicitud {
 
 export interface SolicitudPlanta {
   id: string;
+  /** Saldo inicial autorizado por parámetro, no evidencia de un pedido o ticket real. */
+  cargaParametro?: { fecha: string; costoPlanta: number; plantasPorHa: number };
   /** Consecutivo: 1 → SP-0001 */
   folio: number;
   fecha: string;
