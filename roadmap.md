@@ -11,7 +11,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Arrastre divide plantas proporcionalmente; estatus "En cosecha"
 - [x] Pedido de planeación con semáforo, planeación tardía, cancelación con alerta
 - [x] Entregar N / Comprar N+2 con rollos redondeados y estatus por renglón
-- [ ] Receta de coliflor (la manda el usuario)
+- [ ] Revisar y cargar los dos paquetes de coliflor Trejo del Excel: primera hoja Lamas 1–6 y Torres 1–2; segunda hoja resto de tablas. Confirmar unidades, vigencia y diferencias del archivo antes de cargar.
 - [x] Nombre real de la congeladora: Ultracongelados
 - [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
 - [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)
