@@ -9,10 +9,10 @@ const recetas: Recetas = { coliflor: { dosis: {}, variantes: [
 const lote: Lote = { id: "l1", codigo: "Lamas 1", tablaId: "lamas1", ranchoId: "trejo", ha: 6, avances: [{ id: "a", fecha: "2026-11-09", semana: 46, ha: 0.5 }], semanaPlaneada: 46, ingeniero: "", insumos: [], cultivo: "coliflor", variedadId: "altamira", cicloDias: 95 };
 describe("Paquetes por tabla", () => {
   it("usa el aumento de fosfonitrato solo para Lamas y Torres", () => {
-    expect(recetaDe(recetas, "coliflor", "lamas1", "trejo").dosis[1]?.fosfo).toBe(150);
-    expect(recetaDe(recetas, "coliflor", "torres1", "trejo").dosis[4]?.fosfo).toBe(200);
-    expect(recetaDe(recetas, "coliflor", "rios1", "trejo").dosis[1]?.fosfo).toBe(100);
-    expect(recetaDe(recetas, "coliflor", "rios1", "trejo").dosis[4]?.fosfo).toBe(150);
+    expect(recetaDe(recetas, "coliflor", "lamas1", "trejo").dosis[1]?.['fosfo']).toBe(150);
+    expect(recetaDe(recetas, "coliflor", "torres1", "trejo").dosis[4]?.['fosfo']).toBe(200);
+    expect(recetaDe(recetas, "coliflor", "rios1", "trejo").dosis[1]?.['fosfo']).toBe(100);
+    expect(recetaDe(recetas, "coliflor", "rios1", "trejo").dosis[4]?.['fosfo']).toBe(150);
   });
   it("no asigna el paquete de Trejo a otro rancho o antes de su vigencia", () => {
     expect(recetaDe(recetas, "coliflor", "lamas1", "otro").dosis).toEqual({});

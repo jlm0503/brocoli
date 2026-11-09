@@ -104,7 +104,7 @@ export type DosisPorSemana = Record<number, Record<string, number>>;
 export interface Receta {
   dosis: DosisPorSemana;
   /** Paquetes por rancho y tablas; la base de otros ranchos no se modifica. */
-  variantes?: PaqueteTabla[];
+  variantes?: PaqueteTabla[] | undefined;
 }
 
 export interface PaqueteTabla {
