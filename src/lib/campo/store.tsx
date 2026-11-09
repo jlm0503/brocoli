@@ -194,7 +194,7 @@ interface CampoContextValue {
     },
   ) => string | null;
   cancelarSolicitud: (id: string) => string | null;
-  setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number) => void;
+  setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number, paqueteId?: string) => void;
   /** Cambia el precio de un producto a partir de `desde`; lo anterior conserva su precio. */
   setPrecio: (productoId: string, precio: number, desde: string) => string | null;
   agregarProducto: (p: Omit<Producto, "id">) => string | null;
@@ -585,12 +585,15 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const ready = lista && (!user || !role || cargado);
 
   const setDosis = useCallback(
-    (cultivo: Cultivo, productoId: string, semana: number, valor: number) => {
+    (cultivo: Cultivo, productoId: string, semana: number, valor: number, paqueteId?: string) => {
       setRecetas((rs) => {
         const r = recetaDe(rs, cultivo);
+        const dosis = Math.max(0, Number.isFinite(valor) ? valor : 0);
+        if (paqueteId) return { ...rs, [cultivo]: { ...r, variantes: r.variantes?.map((p) => p.id === paqueteId ? { ...p, dosis: { ...p.dosis, [semana]: { ...p.dosis[semana], [productoId]: dosis } } } : p) } };
         return {
           ...rs,
           [cultivo]: {
+            ...r,
             dosis: {
               ...r.dosis,
               [semana]: {
@@ -881,7 +884,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         parametroVigente(parametros, "rollosCintaHa", hoy, variedad.id),
       );
       const necesidad = lineasPlaneacion(
-        recetaDe(recetas, variedad.cultivo),
+        recetaDe(recetas, variedad.cultivo, tablaId, t.ranchoId, hoy),
         adicionales,
         tablaId,
         redondear(ha),
@@ -1127,11 +1130,11 @@ export function CampoProvider({ children }: { children: ReactNode }) {
             ...l,
             // Al plantarse, el lote guarda una copia de la receta vigente.
             receta:
-              l.receta ?? recetaEfectiva(recetaDe(recetas, l.cultivo), adicionales, l.tablaId),
+              l.receta ?? recetaEfectiva(recetaDe(recetas, l.cultivo, l.tablaId, l.ranchoId, hoy), adicionales, l.tablaId),
             avances: [...l.avances, { id: nuevoId("av"), fecha: hoy, semana: semanaActual, ha: h }],
           };
           const lineas = lineasPlaneacion(
-            recetaDe(recetas, l.cultivo),
+            recetaDe(recetas, l.cultivo, l.tablaId, l.ranchoId, hoy),
             adicionales,
             l.tablaId,
             l.ha,

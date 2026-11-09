@@ -11,7 +11,8 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Arrastre divide plantas proporcionalmente; estatus "En cosecha"
 - [x] Pedido de planeación con semáforo, planeación tardía, cancelación con alerta
 - [x] Entregar N / Comprar N+2 con rollos redondeados y estatus por renglón
-- [ ] Revisar y cargar los dos paquetes de coliflor Trejo del Excel: primera hoja Lamas 1–6 y Torres 1–2; segunda hoja resto de tablas. Confirmar unidades, vigencia y diferencias del archivo antes de cargar.
+- [x] Cargar los dos paquetes confirmados de coliflor Trejo en 8 lotes plantados, solo desde semana 46, sin tocar aplicaciones previas ni históricos; cinta 1.5 rollos/ha. 53 pruebas pasando y paquetes verificados con cuenta de Jimena.
+- [x] Entregar Excel de surtido externo semanas 46 y 47 (23 y 22 productos; fosfonitrato 5,135 y 4,300 kg), con detalle por tabla y fórmulas verificadas; semana 48 normal en Compras con 22 productos, sin marcar entregas ficticias. Precios pendientes de cotizar; unidades de productos nuevos propuestas para confirmar al surtir.
 - [x] Nombre real de la congeladora: Ultracongelados
 - [x] Cinta entregada a las coliflores ya plantadas (y evitar que se pierdan cambios de otros)
 - [x] Quitar fresa, frambuesa y zarzamora del paquete tecnológico (dejar maíz, coliflor, brócoli)

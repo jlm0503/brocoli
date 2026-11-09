@@ -103,6 +103,17 @@ export type DosisPorSemana = Record<number, Record<string, number>>;
 /** Paquete tecnológico base de un cultivo. */
 export interface Receta {
   dosis: DosisPorSemana;
+  /** Paquetes por rancho y tablas; la base de otros ranchos no se modifica. */
+  variantes?: PaqueteTabla[] | undefined;
+}
+
+export interface PaqueteTabla {
+  id: string;
+  nombre: string;
+  ranchoId: string;
+  tablaIds: string[];
+  desde: string;
+  dosis: DosisPorSemana;
 }
 
 /** Un paquete tecnológico por cultivo. */
@@ -175,6 +186,8 @@ export interface Lote {
   sinInsumos?: boolean | undefined;
   /** Copia de la receta (base + adicionales) guardada al plantarse. */
   receta?: DosisPorSemana | undefined;
+  /** Inicio autorizado del paquete nuevo; no genera consumos anteriores a esta fecha. */
+  recetaDesde?: string;
   variedadId: string;
   cultivo: Cultivo;
   /** Ciclo de la variedad (días) copiado al planear. */

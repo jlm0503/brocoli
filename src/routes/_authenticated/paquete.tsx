@@ -75,8 +75,12 @@ const ETAPA_CORTA: Record<string, string> = {
 function Paquete() {
   const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
   const [cultivo, setCultivo] = useState<Cultivo>("brocoli");
-  const receta = recetaDe(recetas, cultivo);
-  const cinta = cintaPlaneacion(productos, parametro("rollosCintaHa"));
+  const [paqueteId, setPaqueteId] = useState("base");
+  const base = recetaDe(recetas, cultivo);
+  const paquete = base.variantes?.find((p) => p.id === paqueteId);
+  const receta = paquete ? { dosis: paquete.dosis } : base;
+  const variedad = variedades.find((v) => v.cultivo === cultivo);
+  const cinta = cintaPlaneacion(productos, parametro("rollosCintaHa", hoy, variedad?.id));
   const precioHoy = (p: (typeof productos)[number]) => precioVigente(p, hoy);
   /** Dosis por ha de la celda; la cinta de la semana -2 sale del parámetro de rollos por ha. */
   const dosis = (w: number, pid: string) =>
@@ -98,7 +102,7 @@ function Paquete() {
   const costoCiclo = costoSemana.reduce((s, c) => s + c, 0);
   const costoPlaneacion = costoSemana[0] ?? 0;
   const max = Math.max(...costoSemana);
-  const picoW = SEMANAS[costoSemana.indexOf(max)]!;
+  const picoW = SEMANAS[costoSemana.indexOf(max)] ?? 0;
 
   return (
     <AppShell
@@ -107,7 +111,7 @@ function Paquete() {
       title="Paquete tecnológico"
       description="Cantidad por hectárea en cada semana de receta. La semana -2 es el paquete de planeación que se pide al planear un lote. Cada lote usa la receta hasta la semana de cosecha de su variedad. Al plantarse, guarda una copia: si cambias algo aquí, solo aplica a lotes nuevos."
     >
-      <Tabs value={cultivo} onValueChange={(v) => setCultivo(v as Cultivo)} className="mb-4">
+      <Tabs value={cultivo} onValueChange={(v) => { setCultivo(v as Cultivo); setPaqueteId("base"); }} className="mb-4">
         <TabsList>
           {cultivos.map((c) => (
             <TabsTrigger key={c.id} value={c.id}>
@@ -116,6 +120,15 @@ function Paquete() {
           ))}
         </TabsList>
       </Tabs>
+      {base.variantes?.length ? <div className="mb-5 max-w-xl space-y-2">
+        <Label>Programación</Label>
+        <Select value={paqueteId} onValueChange={setPaqueteId}>
+          <SelectTrigger aria-label="Programación"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="base">Base · otros ranchos</SelectItem>
+            {base.variantes.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div> : null}
       <p className="mb-6 text-sm text-muted-foreground">
         Variedades:{" "}
         {variedades
@@ -216,7 +229,7 @@ function Paquete() {
                               step="0.1"
                               value={v === 0 ? "" : v}
                               placeholder="·"
-                              onChange={(e) => setDosis(cultivo, p.id, w, Number(e.target.value))}
+                              onChange={(e) => setDosis(cultivo, p.id, w, Number(e.target.value), paquete?.id)}
                               className={`num w-full min-w-11 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none ${v > 0 ? (w < 0 ? "bg-soil-soft text-soil-foreground" : "bg-primary-soft text-accent-foreground") : "bg-transparent hover:bg-muted"}`}
                               aria-label={`${p.nombre} semana ${w}`}
                             />
