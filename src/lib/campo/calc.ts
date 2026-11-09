@@ -282,13 +282,16 @@ export function recetaEfectiva(
   return out;
 }
 
-export function recetaDe(recetas: Recetas, cultivo: Cultivo): Receta {
-  return recetas[cultivo] ?? { dosis: {} };
+export function recetaDe(recetas: Recetas, cultivo: Cultivo, tablaId?: string, ranchoId?: string, fecha?: string): Receta {
+  const base = recetas[cultivo] ?? { dosis: {} };
+  const variante = base.variantes?.filter((p) => p.ranchoId === ranchoId && p.tablaIds.includes(tablaId ?? "") && (!fecha || p.desde <= fecha))
+    .sort((a, b) => b.desde.localeCompare(a.desde))[0];
+  return variante ? { dosis: variante.dosis } : base;
 }
 
 /** La receta de un lote plantado es su copia guardada; si aún no se planta, la vigente de su cultivo. */
 export function recetaLote(lote: Lote, recetas: Recetas, adicionales: Adicional[]): DosisPorSemana {
-  return lote.receta ?? recetaEfectiva(recetaDe(recetas, lote.cultivo), adicionales, lote.tablaId);
+  return lote.receta ?? recetaEfectiva(recetaDe(recetas, lote.cultivo, lote.tablaId, lote.ranchoId), adicionales, lote.tablaId);
 }
 
 /** Cinta del paquete de planeación: el primer producto en rollos, a los rollos por ha del parámetro. */
@@ -619,7 +622,7 @@ export function crearLotePlantado(p: {
   const ha = redondear(p.ha);
   const semana = semanaDeFecha(p.fechaPlantacion);
   const loteId = p.nuevoId("lt");
-  const receta = recetaDe(p.recetas, p.variedad.cultivo);
+  const receta = recetaDe(p.recetas, p.variedad.cultivo, p.tabla.id, p.tabla.ranchoId, p.fechaPlantacion);
   const lineas = lineasPlaneacion(receta, p.adicionales, p.tabla.id, ha, p.cinta);
   const pedido: PedidoPlaneacion | null =
     lineas.length > 0
@@ -830,7 +833,7 @@ export function lineasLote(
   adicionales: Adicional[],
   semana: number,
 ): LineaDemanda[] {
-  if (l.cancelado) return [];
+  if (l.cancelado || (l.recetaDesde && semana < semanaDeFecha(l.recetaDesde))) return [];
   const dosis = recetaLote(l, recetas, adicionales);
   const plantadas = plantadasLote(l);
   let sr: number | null = null;
