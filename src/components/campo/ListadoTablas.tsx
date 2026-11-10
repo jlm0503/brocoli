@@ -39,7 +39,7 @@ export function ListadoTablas({ filas, abrir, costo }: { filas: FilaTabla[]; abr
     <tbody>{filas.map((f) => <tr key={`${f.tabla.id}-${f.lote?.id ?? "libre"}`} className="border-b border-border">
       <td className="whitespace-nowrap p-3">{ranchos.find((r) => r.id === f.tabla.ranchoId)?.nombre ?? "—"}</td>
       <td className="p-3"><strong>{f.tabla.nombre}</strong>{f.lote && <span className="block text-xs text-muted-foreground">{f.lote.folioProgramacion || f.lote.codigo}</span>}</td>
-      <td className="p-3">{f.lote ? nombreCultivo(f.lote.cultivo, cultivos) : "—"}</td>
+      <td className="p-3">{f.lote ? nombreCultivo(cultivos, f.lote.cultivo) : "—"}</td>
       <td className="whitespace-nowrap p-3">{f.lote ? <>{fechaCorta(fechaPlantacionLote(f.lote))}{!f.lote.avances.length && <span className="block text-xs text-muted-foreground">Planeada</span>}</> : "—"}</td>
       <td className="whitespace-nowrap p-3">{f.lote ? <>{fechaCorta(fechaCosechaLote(f.lote))}{!f.lote.fechaCosecha && <span className="block text-xs text-muted-foreground">Estimada</span>}</> : "—"}</td>
       <td className="p-3"><Badge variant={f.estatus}>{ESTATUS_TABLA_LABEL[f.estatus]}</Badge></td>
