@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
-import { ControlesListado, ListadoTablas, useFilasTablas } from "@/components/campo/ListadoTablas";
+import { ControlesListado, ListadoTablas, TotalesTablas, useFilasTablas } from "@/components/campo/ListadoTablas";
 import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
 import { GenerarSolicitudDialog, SolicitudListaDialog } from "@/components/campo/SolicitudPlanta";
 import { Badge } from "@/components/ui/badge";
@@ -140,7 +140,8 @@ function Planeacion() {
   const [detalle, setDetalle] = useState<Tabla | null>(null);
 
   const delRancho = tablas.filter((t) => t.ranchoId === rancho && pasaTabla(t, { libres: true }));
-  const filas = useFilasTablas(delRancho, estados);
+  const filasBase = useFilasTablas(delRancho, []);
+  const filas = filasBase.filter((f) => !estados.length || estados.includes(f.estatus));
   const idsVisibles = new Set(filas.map((f) => f.tabla.id));
   const lotesRancho = lotes.filter((l) => l.ranchoId === rancho && !l.cancelado && pasaCultivo(l.cultivo));
   const plantadasSemana = lotesRancho
@@ -209,6 +210,7 @@ function Planeacion() {
           {pendientes.length > 0 && <Pendientes lotes={pendientes} />}
 
           <div className="mb-4"><ControlesListado vista={vista} cambiarVista={setVista} estados={estados} cambiarEstados={setEstados} /></div>
+          <TotalesTablas tablas={tablas.filter((t) => t.ranchoId === rancho)} filas={filasBase} estados={estados} />
           {vista === "lista" ? <ListadoTablas filas={filas} abrir={setDetalle} /> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {delRancho.filter((t) => idsVisibles.has(t.id)).map((t) => (
               <TablaCard key={t.id} tabla={t} onPlanear={() => setPlaneando(t)} />

@@ -3,23 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PanelMulti } from "@/components/campo/PanelFiltros";
-import { ESTATUS_TABLA_LABEL, estatusTabla, fechaCorta, fechaPlantacionLote, fechaCosechaLote, formatoNum, formatoMXN, lotesDeTabla, nombreCultivo } from "@/lib/campo/calc";
+import { ESTATUS_TABLA_LABEL, filasSuperficieTablas, totalesSuperficieTablas, fechaCorta, fechaPlantacionLote, fechaCosechaLote, formatoNum, formatoMXN, nombreCultivo, type FilaSuperficieTabla } from "@/lib/campo/calc";
+import { Stat } from "@/components/campo/AppShell";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
-import type { EstatusTabla, Tabla, Lote } from "@/lib/campo/types";
+import type { Tabla } from "@/lib/campo/types";
 
-export type FilaTabla = { tabla: Tabla; lote?: Lote; estatus: EstatusTabla };
+export type FilaTabla = FilaSuperficieTabla;
 
 export function useFilasTablas(tablas: Tabla[], estados: string[]) {
   const { lotes, semanaActual } = useCampo();
   const { pasaCultivo } = useFiltro();
-  return tablas.flatMap((tabla): FilaTabla[] => {
-    const activos = lotesDeTabla(lotes, tabla.id);
-    const filas = activos.length
-      ? activos.filter((l) => pasaCultivo(l.cultivo)).map((lote) => ({ tabla, lote, estatus: estatusTabla({ ...tabla, hectareas: lote.ha }, [lote], semanaActual) }))
-      : [{ tabla, estatus: estatusTabla(tabla, lotes, semanaActual) }];
-    return filas.filter((f) => !estados.length || estados.includes(f.estatus));
-  });
+  return filasSuperficieTablas(tablas, lotes, semanaActual, pasaCultivo).filter((f) => !estados.length || estados.includes(f.estatus));
+}
+
+export function TotalesTablas({ tablas, filas, estados }: { tablas: Tabla[]; filas: FilaTabla[]; estados: string[] }) {
+  const t = totalesSuperficieTablas(tablas, filas, estados);
+  return <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Totales de hectáreas">
+    <Stat label="Total de hectáreas del rancho" value={`${formatoNum(t.total)} ha`} />
+    <Stat label="Total planeadas" value={`${formatoNum(t.planeadas)} ha`} tone="soil" />
+    <Stat label="Total plantadas" value={`${formatoNum(t.plantadas)} ha`} />
+    <Stat label="Total en cosecha" value={`${formatoNum(t.cosecha)} ha`} tone="soil" />
+    <Stat label="Total disponible" value={`${formatoNum(t.disponibles)} ha`} />
+    <Stat label="Total de la selección" value={`${formatoNum(t.seleccion)} ha`} tone="primary" />
+  </div>;
 }
 
 export function ControlesListado({ vista, cambiarVista, estados, cambiarEstados }: { vista: string; cambiarVista: (v: string) => void; estados: string[]; cambiarEstados: (v: string[]) => void }) {
@@ -43,9 +50,10 @@ export function ListadoTablas({ filas, abrir, costo }: { filas: FilaTabla[]; abr
       <td className="whitespace-nowrap p-3">{f.lote ? <>{fechaCorta(fechaPlantacionLote(f.lote))}{!f.lote.avances.length && <span className="block text-xs text-muted-foreground">Planeada</span>}</> : "—"}</td>
       <td className="whitespace-nowrap p-3">{f.lote ? <>{fechaCorta(fechaCosechaLote(f.lote))}{!f.lote.fechaCosecha && <span className="block text-xs text-muted-foreground">Estimada</span>}</> : "—"}</td>
       <td className="p-3"><Badge variant={f.estatus}>{ESTATUS_TABLA_LABEL[f.estatus]}</Badge></td>
-      <td className="whitespace-nowrap p-3 text-right font-mono">{formatoNum(f.lote?.ha ?? f.tabla.hectareas)}</td>
+      <td className="whitespace-nowrap p-3 text-right font-mono">{formatoNum(f.ha)}</td>
       {costo && <td className="whitespace-nowrap p-3 text-right font-mono">{formatoMXN(costo(f))}</td>}
       <td className="p-3"><Button variant="ghost" size="icon" title={`Ver detalle de ${f.tabla.nombre}`} aria-label={`Ver detalle de ${f.tabla.nombre}`} onClick={() => abrir(f.tabla)}><Eye className="size-4" /></Button></td>
     </tr>)}{!filas.length && <tr><td colSpan={costo ? 9 : 8} className="p-4 text-muted-foreground">No hay tablas con los filtros seleccionados.</td></tr>}</tbody>
+    <tfoot><tr className="border-t border-border bg-muted font-semibold"><td colSpan={6} className="p-3">Total de la selección</td><td className="whitespace-nowrap p-3 text-right font-mono">{formatoNum(totalesSuperficieTablas([], filas, []).seleccion)} ha</td><td colSpan={costo ? 2 : 1} /></tr></tfoot>
   </table></div>;
 }

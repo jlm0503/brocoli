@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
-import { ControlesListado, ListadoTablas, useFilasTablas } from "@/components/campo/ListadoTablas";
+import { ControlesListado, ListadoTablas, TotalesTablas, useFilasTablas } from "@/components/campo/ListadoTablas";
 import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,11 +90,12 @@ const TILE: Record<EstatusTabla, string> = {
 
 function Ranchos() {
   const { tablas: todasTablas, lotes, semanaActual, variedades } = useCampo();
-  const { ranchos, pasaTabla, pasaCultivo } = useFiltro();
+  const { ranchos, pasaTabla, pasaCultivo, pasaRancho } = useFiltro();
   const [vista, setVista] = useState("cuadros");
   const [estados, setEstados] = useState<string[]>([]);
-  const candidatas = todasTablas.filter((t) => pasaTabla(t));
-  const filas = useFilasTablas(candidatas, estados);
+  const candidatas = todasTablas.filter((t) => pasaTabla(t, { libres: true }));
+  const filasBase = useFilasTablas(candidatas, []);
+  const filas = filasBase.filter((f) => !estados.length || estados.includes(f.estatus));
   const idsVisibles = new Set(filas.map((f) => f.tabla.id));
   const tablas = candidatas.filter((t) => idsVisibles.has(t.id));
   const nombreVariedad = (id: string) => nombreDe(variedades, id);
@@ -134,6 +135,7 @@ function Ranchos() {
         <Button variant="outline" asChild><Link to="/historicos">Ciclos de plantación</Link></Button>
         <ControlesListado vista={vista} cambiarVista={setVista} estados={estados} cambiarEstados={setEstados} />
       </div>
+      <TotalesTablas tablas={todasTablas.filter((t) => pasaRancho(t.ranchoId))} filas={filasBase} estados={estados} />
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
         <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} hint="Plantadas, de la siembra a la cosecha" />
@@ -214,7 +216,7 @@ function Ranchos() {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
           if (ts.length === 0) return null;
           const costo = ts.reduce((s, t) => s + costoTabla(t.id), 0);
-          const ha = ts.reduce((s, t) => s + t.hectareas, 0);
+          const ha = filas.filter((f) => f.tabla.ranchoId === r.id).reduce((s, f) => s + f.ha, 0);
           const idsRancho = new Set(ts.map((t) => t.id));
           const kgR = kgDe(idsRancho).kgPagables;
           const haR = sumaHa(proxima.filter((x) => idsRancho.has(x.lote.tablaId)));
@@ -251,7 +253,7 @@ function Ranchos() {
                     >
                       <div>
                         <div className="text-sm font-medium">{t.nombre}</div>
-                        <div className="num text-xs opacity-70">{formatoNum(t.hectareas)} ha</div>
+                        <div className="num text-xs opacity-70">{formatoNum(filas.filter((f) => f.tabla.id === t.id).reduce((s, f) => s + f.ha, 0))} ha seleccionadas</div>
                         <div className="mt-1 text-[0.7rem] leading-tight opacity-80">
                           {ESTATUS_TABLA_LABEL[est]}
                         </div>
