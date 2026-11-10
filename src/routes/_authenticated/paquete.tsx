@@ -73,7 +73,7 @@ const ETAPA_CORTA: Record<string, string> = {
 };
 
 function Paquete() {
-  const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
+  const { productos, recetas, variedades, cultivos, ranchos, tablas, lotes, setDosis, parametro, hoy } = useCampo();
   const [cultivo, setCultivo] = useState<Cultivo>("brocoli");
   const [paqueteId, setPaqueteId] = useState("base");
   const base = recetaDe(recetas, cultivo);
@@ -85,7 +85,7 @@ function Paquete() {
   /** Dosis por ha de la celda; la cinta de la semana -2 sale del parámetro de rollos por ha. */
   const dosis = (w: number, pid: string) =>
     w === SEMANA_PLANEACION && pid === cinta?.productoId ? cinta.porHa : (receta.dosis[w]?.[pid] ?? 0);
-  const SEMANAS = useMemo(() => semanasReceta(cultivo, variedades), [cultivo, variedades]);
+  const SEMANAS = useMemo(() => [...new Set([...semanasReceta(cultivo, variedades), ...Object.keys(receta.dosis).map(Number)])].sort((a, b) => a - b), [cultivo, variedades, receta]);
   const vacia = Object.values(receta.dosis).every((sem) => Object.values(sem).every((d) => !(d > 0)));
   const sinPrecio = productos.filter(
     (p) => precioHoy(p) <= 0 && SEMANAS.some((w) => dosis(w, p.id) > 0),
@@ -124,11 +124,19 @@ function Paquete() {
         <Label>Programación</Label>
         <Select value={paqueteId} onValueChange={setPaqueteId}>
           <SelectTrigger aria-label="Programación"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="base">Base · otros ranchos</SelectItem>
+          <SelectContent><SelectItem value="base">Base anterior</SelectItem>
             {base.variantes.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
           </SelectContent>
         </Select>
       </div> : null}
+      {paquete && <section className="mb-5 space-y-2 text-sm">
+        <p className="font-medium">{nombreCultivo(cultivos, cultivo)} · vigente desde {paquete.desde.split("-").reverse().join("/")}</p>
+        <p>Ranchos: {(paquete.ranchoIds ?? [paquete.ranchoId]).map((id) => ranchos.find((r) => r.id === id)?.nombre ?? id).join(", ")}</p>
+        <details><summary className="cursor-pointer text-primary">Tablas y cultivos</summary><ul className="mt-2 grid gap-1 sm:grid-cols-2">{tablas.filter((t) => (paquete.ranchoIds ?? [paquete.ranchoId]).includes(t.ranchoId) && (!paquete.tablaIds.length || paquete.tablaIds.includes(t.id))).map((t) => {
+          const cultivosTabla = [...new Set(lotes.filter((l) => l.tablaId === t.id && !l.cancelado && !l.cerrado).map((l) => nombreCultivo(cultivos, l.cultivo)))];
+          return <li key={t.id}>{ranchos.find((r) => r.id === t.ranchoId)?.nombre} · {t.nombre} · {cultivosTabla.join(" / ") || "Sin plantación"}</li>;
+        })}</ul></details>
+      </section>}
       <p className="mb-6 text-sm text-muted-foreground">
         Variedades:{" "}
         {variedades

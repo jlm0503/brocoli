@@ -48,6 +48,7 @@ export const ANTICIPACION_SEMANAS = 2;
 export const DIAS_ALERTA_ROJA = 7;
 
 export const FAMILIAS: Familia[] = [
+  "Insumo",
   "Suelo",
   "Agroquímico",
   "Herbicida",
@@ -284,7 +285,7 @@ export function recetaEfectiva(
 
 export function recetaDe(recetas: Recetas, cultivo: Cultivo, tablaId?: string, ranchoId?: string, fecha?: string): Receta {
   const base = recetas[cultivo] ?? { dosis: {} };
-  const variante = base.variantes?.filter((p) => p.ranchoId === ranchoId && p.tablaIds.includes(tablaId ?? "") && (!fecha || p.desde <= fecha))
+  const variante = base.variantes?.filter((p) => (p.ranchoIds ? p.ranchoIds.includes(ranchoId ?? "") : p.ranchoId === ranchoId) && (!p.tablaIds.length || p.tablaIds.includes(tablaId ?? "")) && (!fecha || p.desde <= fecha))
     .sort((a, b) => b.desde.localeCompare(a.desde))[0];
   return variante ? { dosis: variante.dosis } : base;
 }

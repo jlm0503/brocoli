@@ -10,6 +10,7 @@ export type Role =
   | "encargado";
 
 export type Familia =
+  | "Insumo"
   | "Suelo"
   | "Agroquímico"
   | "Riego"
@@ -95,6 +96,7 @@ export interface Producto {
   precio: number;
   /** Cambios de precio con fecha de vigencia; cada uno aplica desde su fecha. */
   precios?: { desde: string; precio: number }[] | undefined;
+  precioPendiente?: boolean;
 }
 
 /** Dosis por hectárea: semana de receta (-2 a 12) -> productoId -> cantidad. */
@@ -111,6 +113,8 @@ export interface PaqueteTabla {
   id: string;
   nombre: string;
   ranchoId: string;
+  /** Alcance por ranchos; tablaIds vacío significa todo el rancho. */
+  ranchoIds?: string[];
   tablaIds: string[];
   desde: string;
   dosis: DosisPorSemana;
