@@ -61,6 +61,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
+- [ ] Preparar Excel de surtido semanas 46 y 47 por rancho, totales Trejo/Otros y detalle; incluir preparación atrasada de plantaciones semana 46 y preparación futura; cargar pendientes en Compras/Llegadas sin ficticias recepciones y conservar funcionamiento normal desde semana 48.
 - [x] Reemplazar paquetes con dosis verificadas contra los dos Excel: Trejo para todas sus coliflores (11 plantaciones, 8 plantadas); Otros brócoli (19) y Otros coliflor (8), excluyendo Trejo. Conservar 5 lotes de brócoli Trejo, históricos, catálogo y capturas; quitar selección por tablas/ranchos y comprobar demanda por ha.
 - [x] Cargar paquetes Norte de brócoli y coliflor fuera de Trejo desde 9 nov 2026; 28 productos por paquete, datos compartidos y precios faltantes en rojo con captura manual; alcance y cultivos por tabla comprobados, 7 pruebas pasando y dosis de Trejo intactas. Plantaciones anteriores conservan su copia.
 - [x] Agregar filtros combinados por ciclo, rancho, varias tablas y cultivo en Estado de resultados, conservando cálculos y permisos; 23 pruebas pasando, selección múltiple, totales, descarga Excel y celular comprobados con cuenta de Jimena.
