@@ -88,14 +88,15 @@ function Paquete() {
     w === SEMANA_PLANEACION && pid === cinta?.productoId ? cinta.porHa : (receta.dosis[w]?.[pid] ?? 0);
   const SEMANAS = useMemo(() => [...new Set([...semanasReceta(cultivo, variedades), ...Object.keys(receta.dosis).map(Number)])].sort((a, b) => a - b), [cultivo, variedades, receta]);
   const vacia = Object.values(receta.dosis).every((sem) => Object.values(sem).every((d) => !(d > 0)));
-  const sinPrecio = productos.filter(
+  const productosPaquete = productos.filter((p) => Object.values(receta.dosis).some((sem) => (sem[p.id] ?? 0) > 0));
+  const sinPrecio = productosPaquete.filter(
     (p) => precioHoy(p) <= 0 && SEMANAS.some((w) => dosis(w, p.id) > 0),
   );
 
   const costoSemana = useMemo(
     () =>
       SEMANAS.map((w) =>
-        productos.reduce((s, p) => s + dosis(w, p.id) * precioHoy(p), 0),
+        productosPaquete.reduce((s, p) => s + dosis(w, p.id) * precioHoy(p), 0),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [productos, receta, SEMANAS, cinta?.porHa, hoy],
@@ -157,7 +158,7 @@ function Paquete() {
           hint={`${formatoMXN(max)} por ha · ${etapa(picoW)}`}
           tone="soil"
         />
-        <Stat label="Productos en catálogo" value={productos.length} hint="Precios en Catálogos" />
+        <Stat label="Productos del paquete" value={productosPaquete.length} hint="Precios en Catálogos" />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
@@ -180,8 +181,8 @@ function Paquete() {
             </tr>
           </thead>
           <tbody>
-            {[...FAMILIAS, "Familia por actualizar"].map((fam) => {
-              const items = productos.filter((p) => fam === "Familia por actualizar" ? !FAMILIAS.includes(p.familia) : p.familia === fam);
+            {["Cinta de riego", ...FAMILIAS, "Familia por actualizar"].map((fam) => {
+              const items = productosPaquete.filter((p) => fam === "Cinta de riego" ? p.id === cinta?.productoId : p.id !== cinta?.productoId && (fam === "Familia por actualizar" ? !FAMILIAS.includes(p.familia) : p.familia === fam));
               if (items.length === 0) return null;
               return (
                 <Fragment key={fam}>
