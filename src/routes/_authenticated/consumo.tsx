@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
-import { consumoProductosLote, formatoNum, formatoMXN } from "@/lib/campo/calc";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CICLOS_PLANTACION, perteneceCicloPlantacion, fechaPlantacionLote, consumoProductosLote, formatoNum, formatoMXN } from "@/lib/campo/calc";
 import { useCosecha } from "@/lib/campo/cosecha";
 import { useCostos } from "@/lib/campo/costos";
 import { useFase3 } from "@/lib/campo/fase3";
@@ -47,9 +48,10 @@ function Contenido() {
   const { lotes, tablas, ranchos } = useCampo();
   const { ciclos } = useCosecha();
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
-  const importados = ciclos.filter((c) => c.importacion && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo));
+  const [ciclo, setCiclo] = useState("todos");
+  const importados = ciclos.filter((c) => c.importacion && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && perteneceCicloPlantacion(c.fechaPlantacion, ciclo));
   const nombreLote = useNombreLote();
-  const cerrados = lotes.filter((l) => !l.cancelado && (l.cerrado || l.finalizado || l.cosechaTerminada || l.avances.length > 0 || (l.aplicacionesPrevias?.length ?? 0) > 0) && pasaLote(l));
+  const cerrados = lotes.filter((l) => !l.cancelado && (l.cerrado || l.finalizado || l.cosechaTerminada || l.avances.length > 0 || (l.aplicacionesPrevias?.length ?? 0) > 0) && pasaLote(l) && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo));
   const [seleccion, setSeleccion] = useState<string[] | null>(null);
   const opciones = [
     ...cerrados.map((l) => ({ id: l.id, label: `${nombreLote(l)} · ${formatoNum(l.ha)} ha${l.cerrado ? "" : l.cosechaTerminada ? " (cosecha terminada)" : l.avances.length ? " (activa)" : " (planeada)"}` })),
@@ -58,15 +60,21 @@ function Contenido() {
   const elegidas = (seleccion ?? opciones.slice(0, 1).map((o) => o.id)).filter((id) => opciones.some((o) => o.id === id));
   const cambiar = (id: string, marcada: boolean) => setSeleccion(marcada ? [...elegidas.filter((x) => x !== id), id] : elegidas.filter((x) => x !== id));
 
-  if (!opciones.length) return <p className="text-sm text-muted-foreground">No hay tablas con los filtros seleccionados.</p>;
-
   return (
     <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="ciclo-consumo">Ciclo de plantación</Label>
+        <Select value={ciclo} onValueChange={(valor) => { setCiclo(valor); setSeleccion(null); }}>
+          <SelectTrigger id="ciclo-consumo" aria-label="Ciclo de plantación" className="w-full sm:w-80"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="todos">Todos los ciclos</SelectItem>{CICLOS_PLANTACION.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      {!opciones.length && <p className="text-sm text-muted-foreground">No hay tablas con los filtros seleccionados.</p>}
       <div className="max-w-md space-y-2">
         <Label>Tablas</Label>
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-between" aria-label="Seleccionar tablas">
+            <Button variant="outline" className="w-full justify-between" aria-label="Seleccionar tablas" disabled={!opciones.length}>
               {elegidas.length === 1 ? "1 tabla seleccionada" : `${elegidas.length} tablas seleccionadas`}<ChevronDown />
             </Button>
           </PopoverTrigger>
