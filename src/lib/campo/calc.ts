@@ -919,8 +919,8 @@ export function repartirRecepcion(lineas: { key: string; cantidad: number }[], c
 }
 
 export function recibirPreparacion(p: PedidoPlaneacion, cantidades: Record<string, number>): PedidoPlaneacion {
-  for (const l of p.lineas) if (!Number.isFinite(cantidades[l.productoId]) || cantidades[l.productoId] < 0) throw new Error("Cantidad inválida");
-  return { ...p, cantidadesRecibidas: cantidades, status: p.lineas.every(l => cantidades[l.productoId] >= l.cantidad) ? "entregado" : "pendiente" };
+  for (const l of p.lineas) if (!Number.isFinite(cantidades[l.productoId]) || (cantidades[l.productoId] ?? -1) < 0) throw new Error("Cantidad inválida");
+  return { ...p, cantidadesRecibidas: cantidades, status: p.lineas.every(l => (cantidades[l.productoId] ?? 0) >= l.cantidad) ? "entregado" : "pendiente" };
 }
 
 export function cantidadRecibida(l: LineaDemanda, recepciones: Record<string, Recepcion>): number {

@@ -307,7 +307,7 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
               const reales = Object.fromEntries(pedido.lineas.map(x => [x.productoId, Number(cantidades[x.productoId] ?? pedido.cantidadesRecibidas?.[x.productoId] ?? x.cantidad)]));
               if (Object.values(reales).some(n => !Number.isFinite(n) || n < 0)) { toast.error("Cantidad inválida"); return; }
               entregarPedido(pedido.id, foto, reales);
-              toast.success(pedido.lineas.every(x => reales[x.productoId] >= x.cantidad) ? "Pedido recibido" : "Pedido recibido parcialmente");
+              toast.success(pedido.lineas.every(x => (reales[x.productoId] ?? 0) >= x.cantidad) ? "Pedido recibido" : "Pedido recibido parcialmente");
               cerrar();
             }}
           >

@@ -246,7 +246,7 @@ export interface PedidoPlaneacion {
   semanaPlantacion: number;
   ha: number;
   lineas: { productoId: string; cantidad: number }[];
-  cantidadesRecibidas?: Record<string, number>;
+  cantidadesRecibidas?: Record<string, number> | undefined;
   fecha: string;
   ingeniero: string;
   urgente: boolean;
