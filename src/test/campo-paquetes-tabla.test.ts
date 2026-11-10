@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recetaDe, lineasLote, lineasPlaneacion, cintaPlaneacion } from "@/lib/campo/calc";
+import { recetaDe, lineasLote, lineasPlaneacion, cintaPlaneacion, precioVigente } from "@/lib/campo/calc";
 import type { Lote, Recetas, Producto } from "@/lib/campo/types";
 
 const recetas: Recetas = { coliflor: { dosis: {}, variantes: [
@@ -8,6 +8,19 @@ const recetas: Recetas = { coliflor: { dosis: {}, variantes: [
 ] } };
 const lote: Lote = { id: "l1", codigo: "Lamas 1", tablaId: "lamas1", ranchoId: "trejo", ha: 6, avances: [{ id: "a", fecha: "2026-11-09", semana: 46, ha: 0.5 }], semanaPlaneada: 46, ingeniero: "", insumos: [], cultivo: "coliflor", variedadId: "altamira", cicloDias: 95 };
 describe("Paquetes por tabla", () => {
+  it("Norte aplica a todos sus ranchos sin sustituir Trejo ni fechas anteriores", () => {
+    const rs: Recetas = { ...recetas, coliflor: { dosis: {}, variantes: [...(recetas['coliflor']?.variantes ?? []), { id: "norte", nombre: "Norte", ranchoId: "", ranchoIds: ["dolores", "vergel"], tablaIds: [], desde: "2026-11-09", dosis: { 1: { fosfo: 70 } } }] } };
+    expect(recetaDe(rs, "coliflor", "t1", "dolores", "2026-11-09").dosis[1]?.['fosfo']).toBe(70);
+    expect(recetaDe(rs, "coliflor", "t2", "vergel", "2026-11-09").dosis[1]?.['fosfo']).toBe(70);
+    expect(recetaDe(rs, "coliflor", "lamas1", "trejo", "2026-11-09").dosis[1]?.['fosfo']).toBe(150);
+    expect(recetaDe(rs, "coliflor", "t1", "dolores", "2026-11-08").dosis).toEqual({});
+    expect(recetaDe(rs, "brocoli", "t1", "dolores", "2026-11-09").dosis).toEqual({});
+  });
+  it("el nuevo precio de cinta no recalcula fechas previas", () => {
+    const p: Producto = { id: "cinta", codigo: "C", nombre: "Cinta", familia: "Insumo", unidad: "rollo", precio: 3000, precios: [{ desde: "2026-11-09", precio: 3145 }] };
+    expect(precioVigente(p, "2026-11-08")).toBe(3000);
+    expect(precioVigente(p, "2026-11-09")).toBe(3145);
+  });
   it("usa el aumento de fosfonitrato solo para Lamas y Torres", () => {
     expect(recetaDe(recetas, "coliflor", "lamas1", "trejo").dosis[1]?.['fosfo']).toBe(150);
     expect(recetaDe(recetas, "coliflor", "torres1", "trejo").dosis[4]?.['fosfo']).toBe(200);

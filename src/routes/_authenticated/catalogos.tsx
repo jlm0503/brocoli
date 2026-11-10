@@ -196,16 +196,15 @@ function Catalogos() {
                     <TableCell className="text-muted-foreground">{p.familia}</TableCell>
                     <TableCell className="text-muted-foreground">{p.unidad}</TableCell>
                     <TableCell className="pr-5 text-right">
-                      <button
-                        type="button"
+                      <Button variant="ghost" size="sm"
                         onClick={() => setCambiandoPrecio(p)}
-                        className="num inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted"
+                        className={`num inline-flex items-center gap-1.5 rounded px-1.5 py-1 ${precioVigente(p, hoy) <= 0 ? "text-destructive" : ""}`}
                         aria-label={`Cambiar precio de ${p.nombre}`}
                       >
-                        {formatoMXN2(precioVigente(p, hoy))}
+                        {precioVigente(p, hoy) <= 0 ? "Precio pendiente" : formatoMXN2(precioVigente(p, hoy))}
                         {(p.precios?.length ?? 0) > 0 && <History className="size-3 text-muted-foreground" />}
                         <Pencil className="size-3 text-muted-foreground" />
-                      </button>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

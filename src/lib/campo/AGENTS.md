@@ -1,4 +1,5 @@
 # Architecture rules
+- Recipe variants may target several ranches with an empty table list meaning the whole ranch; resolve by crop and dated scope without changing planted snapshots. Why: imported programs stay isolated and prior demand is preserved.
 - The executive panel reuses shared cost, consumption and expense allocation functions; date filters select planting/harvest cohorts and costs remain cumulative. Dirección receives read-only expense access, never result-screen access. Why: comparable denominators and no duplicated business math or new editing privileges.
 - Parameter-based opening plant balances are marked on requests and charged once independently of receipts; normal receipt charges exclude them. Why: imported active lots can carry an authorized opening balance without fabricated tickets or duplicate costs.
 - Keep all tables in the shared context and retire them with `Tabla.archivada`; operational filters and planting validation exclude retired tables, but historical and cost lookups retain them. Why: grouped imports must not duplicate available real tables or lose their records.
