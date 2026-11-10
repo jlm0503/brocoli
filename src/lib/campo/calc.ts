@@ -448,6 +448,31 @@ export const ESTATUS_TABLA_LABEL: Record<EstatusTabla, string> = {
   "en-cosecha": "En cosecha",
 };
 
+export type FilaSuperficieTabla = { tabla: Tabla; lote?: Lote; estatus: EstatusTabla; ha: number };
+
+/** Una fila por lote sin cerrar y otra por el remanente disponible, sin duplicar la superficie de la tabla. */
+export function filasSuperficieTablas(tablas: Tabla[], lotes: Lote[], semana: number, pasaCultivo: (cultivo: Cultivo) => boolean = () => true): FilaSuperficieTabla[] {
+  return tablas.filter(tablaDisponible).flatMap((tabla) => {
+    const filas: FilaSuperficieTabla[] = lotesDeTabla(lotes, tabla.id).filter((l) => pasaCultivo(l.cultivo)).map((lote) => ({ tabla, lote, ha: lote.ha, estatus: estatusTabla({ ...tabla, hectareas: lote.ha }, [lote], semana) }));
+    const libre = hectareasDisponibles(tabla, lotes);
+    if (libre > 0) filas.push({ tabla, estatus: "libre", ha: libre });
+    return filas;
+  });
+}
+
+/** Los subtotales describen la vista base; la selección suma únicamente los estatus elegidos. */
+export function totalesSuperficieTablas(tablas: Tabla[], filas: FilaSuperficieTabla[], estados: string[]) {
+  const suma = (seleccion: FilaSuperficieTabla[]) => redondear(seleccion.reduce((s, f) => s + f.ha, 0));
+  return {
+    total: redondear([...new Map(tablas.filter(tablaDisponible).map((t) => [t.id, t])).values()].reduce((s, t) => s + t.hectareas, 0)),
+    planeadas: suma(filas.filter((f) => f.estatus === "planeada" || f.estatus === "parcial-planeada")),
+    plantadas: suma(filas.filter((f) => f.estatus === "plantada" || f.estatus === "plantada-parcial")),
+    cosecha: suma(filas.filter((f) => f.estatus === "en-cosecha")),
+    disponibles: suma(filas.filter((f) => f.estatus === "libre")),
+    seleccion: suma(filas.filter((f) => !estados.length || estados.includes(f.estatus))),
+  };
+}
+
 /** Semana de cultivo de la tabla según su primer lote plantado. */
 export function semanaCultivoTabla(
   lotes: Lote[],
