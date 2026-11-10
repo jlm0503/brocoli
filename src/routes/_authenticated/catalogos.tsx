@@ -144,6 +144,7 @@ function CambiarPrecio({ producto, onClose }: { producto: Producto | null; onClo
 function Catalogos() {
   const { ranchos, tablas, lotes, productos, semanaActual, hoy } = useCampo();
   const [cambiandoPrecio, setCambiandoPrecio] = useState<Producto | null>(null);
+  const [editandoProducto, setEditandoProducto] = useState<Producto | null>(null);
   const { eliminarRancho, eliminarTabla, reactivarTabla } = useCampo();
   const [retirando, setRetirando] = useState<Tabla | null>(null);
   const [verRetiradas, setVerRetiradas] = useState(false);
@@ -186,6 +187,7 @@ function Catalogos() {
                   <TableHead>Familia</TableHead>
                   <TableHead>Unidad</TableHead>
                   <TableHead className="pr-5 text-right">Precio unitario (MXN)</TableHead>
+                  <TableHead><span className="sr-only">Editar producto</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -204,6 +206,11 @@ function Catalogos() {
                         {precioVigente(p, hoy) <= 0 ? "Precio pendiente" : formatoMXN2(precioVigente(p, hoy))}
                         {(p.precios?.length ?? 0) > 0 && <History className="size-3 text-muted-foreground" />}
                         <Pencil className="size-3 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" aria-label={`Editar unidad y familia de ${p.nombre}`} title="Editar unidad y familia" onClick={() => setEditandoProducto(p)}>
+                        <Pencil className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -337,6 +344,7 @@ function Catalogos() {
       </Tabs>
 
       <CambiarPrecio producto={cambiandoPrecio} onClose={() => setCambiandoPrecio(null)} />
+      {editandoProducto && <EditarProducto key={editandoProducto.id} producto={editandoProducto} onClose={() => setEditandoProducto(null)} />}
       <Dialog open={!!retirando} onOpenChange={(o) => !o && setRetirando(null)}>
         <DialogContent>
           <DialogHeader>
@@ -467,6 +475,48 @@ function NuevaTabla({ open, onClose }: { open: boolean; onClose: () => void }) {
             Listo
           </Button>
           <Button onClick={guardar}>Agregar tabla</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditarProducto({ producto, onClose }: { producto: Producto; onClose: () => void }) {
+  const { editarProducto } = useCampo();
+  const [familia, setFamilia] = useState<Familia>(producto.familia);
+  const [unidad, setUnidad] = useState<Unidad>(producto.unidad);
+  const guardar = () => {
+    const error = editarProducto(producto.id, { familia, unidad });
+    if (error) return void toast.error(error);
+    toast.success(`${producto.nombre} actualizado`);
+    onClose();
+  };
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar · {producto.nombre}</DialogTitle>
+          <DialogDescription>Código {producto.codigo}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="ep-familia">Familia</Label>
+            <Select value={familia} onValueChange={(v) => setFamilia(v as Familia)}>
+              <SelectTrigger id="ep-familia"><SelectValue /></SelectTrigger>
+              <SelectContent>{FAMILIAS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ep-unidad">Unidad de medida</Label>
+            <Select value={unidad} onValueChange={(v) => setUnidad(v as Unidad)}>
+              <SelectTrigger id="ep-unidad"><SelectValue /></SelectTrigger>
+              <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={guardar}>Guardar cambios</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

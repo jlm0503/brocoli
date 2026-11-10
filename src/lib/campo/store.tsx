@@ -18,6 +18,7 @@ import {
   cerrarSemana,
   cintaPlaneacion,
   codigoDisponible,
+  editarClasificacionProducto,
   costoPorPlanta,
   lineasSolicitud,
   lotesParaSolicitud,
@@ -198,6 +199,7 @@ interface CampoContextValue {
   /** Cambia el precio de un producto a partir de `desde`; lo anterior conserva su precio. */
   setPrecio: (productoId: string, precio: number, desde: string) => string | null;
   agregarProducto: (p: Omit<Producto, "id">) => string | null;
+  editarProducto: (id: string, datos: Pick<Producto, "familia" | "unidad">) => string | null;
   guardarAdicional: (a: Adicional) => void;
   eliminarAdicional: (id: string) => void;
   agregarRancho: (nombre: string, zona: string) => string | null;
@@ -754,6 +756,12 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     },
     [productos],
   );
+
+  const editarProducto = useCallback((id: string, datos: Pick<Producto, "familia" | "unidad">) => {
+    if (!productos.some((p) => p.id === id)) return "No se encontró el producto.";
+    setProductos((ps) => ps.map((p) => p.id === id ? editarClasificacionProducto(p, datos) : p));
+    return null;
+  }, [productos]);
 
   const guardarAdicional = useCallback((a: Adicional) => {
     setAdicionales((as) =>
@@ -1481,6 +1489,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       setDosis,
       setPrecio,
       agregarProducto,
+      editarProducto,
       guardarAdicional,
       eliminarAdicional,
       planearLote,
@@ -1545,6 +1554,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       setDosis,
       setPrecio,
       agregarProducto,
+      editarProducto,
       guardarAdicional,
       eliminarAdicional,
       planearLote,
