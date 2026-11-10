@@ -105,6 +105,7 @@ function Compras() {
             )}
           </TabsTrigger>
           <TabsTrigger value="entregar">Entregar esta semana · {semanaActual}</TabsTrigger>
+          <TabsTrigger value="siguiente">Entregar próxima semana · {semanaActual + 1}</TabsTrigger>
           <TabsTrigger value="comprar">Comprar para semana {semanaActual + 2}</TabsTrigger>
           <TabsTrigger value="extra">Extraordinarios autorizados</TabsTrigger>
         </TabsList>
@@ -116,6 +117,9 @@ function Compras() {
         </TabsContent>
         <TabsContent value="comprar">
           <ListaSemana semana={semanaActual + 2} modo="comprar" />
+        </TabsContent>
+        <TabsContent value="siguiente">
+          <ListaSemana semana={semanaActual + 1} modo="entregar" />
         </TabsContent>
         <TabsContent value="extra">
           <ExtrasCompras />
