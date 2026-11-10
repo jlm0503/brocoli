@@ -1,4 +1,4 @@
-import { CONCEPTOS_GASTO, formatoMXN, formatoNum, nombreConceptoGasto, type EstadoResultados, type FilaResultados } from "./calc";
+import { CONCEPTOS_GASTO, formatoMXN, formatoNum, nombreConceptoGasto, periodoResultados, type EstadoResultados, type FilaResultados } from "./calc";
 import type { CultivoCat, Rancho } from "./types";
 
 function descargar(blob: Blob, nombre: string) {
@@ -36,13 +36,13 @@ function celdas(f: Celdas): string[] {
   ];
 }
 
-const archivo = (desde: number, hasta: number, ext: string) => `resultados-semana-${desde}-a-${hasta}.${ext}`;
+const archivo = (t: EstadoResultados, ext: string) => `resultados-${t.fechaDesde !== undefined ? `${t.fechaDesde || "inicio"}-a-${t.fechaHasta || "hoy"}` : `semana-${t.desde}-a-${t.hasta}`}.${ext}`;
 
 /** Excel: CSV con el estado de resultados por rancho y cultivo. */
 export function exportarResultadosExcel(t: EstadoResultados, n: { ranchos: Rancho[]; cultivos: CultivoCat[] }) {
   const esc = (x: string) => (/[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x);
   const lineas = [
-    [`Estado de resultados · semanas ${t.desde} a ${t.hasta}`],
+    [`Estado de resultados · ${periodoResultados(t)}`],
     [],
     ["Rancho", "Cultivo", "ha", ...COLUMNAS],
     ...t.filas.map((f) => [nombre(f.ranchoId, n.ranchos), nombre(f.cultivo, n.cultivos), String(f.ha), ...celdas(f)]),
@@ -50,7 +50,7 @@ export function exportarResultadosExcel(t: EstadoResultados, n: { ranchos: Ranch
     ["Totales", "", String(t.totales.ha), ...celdas(t.totales)],
   ];
   const csv = "\uFEFF" + lineas.map((l) => l.map(esc).join(",")).join("\r\n");
-  descargar(new Blob([csv], { type: "text/csv;charset=utf-8" }), archivo(t.desde, t.hasta, "csv"));
+  descargar(new Blob([csv], { type: "text/csv;charset=utf-8" }), archivo(t, "csv"));
 }
 
 /** PDF con el estado de resultados por rancho y cultivo. */
@@ -60,7 +60,7 @@ export async function exportarResultadosPdf(t: EstadoResultados, n: { ranchos: R
   doc.setFontSize(16);
   doc.text("Ultra Farms de México · Estado de resultados", 14, 16);
   doc.setFontSize(10);
-  doc.text(`Semanas ${t.desde} a ${t.hasta}`, 14, 23);
+  doc.text(periodoResultados(t), 14, 23);
   autoTable(doc, {
     startY: 28,
     head: [["Rancho", "Cultivo", "ha", ...COLUMNAS]],
@@ -90,5 +90,5 @@ export async function exportarResultadosPdf(t: EstadoResultados, n: { ranchos: R
     y2,
   );
   doc.text(`Conceptos: ${CONCEPTOS_GASTO.map((c) => nombreConceptoGasto(c.id)).join(", ")}`, 14, y2 + 6);
-  descargar(doc.output("blob"), archivo(t.desde, t.hasta, "pdf"));
+  descargar(doc.output("blob"), archivo(t, "pdf"));
 }

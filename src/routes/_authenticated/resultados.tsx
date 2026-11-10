@@ -18,6 +18,9 @@ import {
   formatoNum,
   nombreCultivo,
   estadoResultados,
+  rangoFechasResultados,
+  periodoResultados,
+  semanaDeFecha,
   variacionPct,
   type FilaResultados,
 } from "@/lib/campo/calc";
@@ -82,8 +85,8 @@ function Resultados() {
   const { viajes } = useCosecha();
   const { gastos, repartos } = useGastos();
   const { costoLote, plantaLote } = useCostos();
-  const [desde, setDesde] = useState(semanaActual - 11);
-  const [hasta, setHasta] = useState(semanaActual);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const [ranchoId, setRanchoId] = useState("todos");
   const [cultivoId, setCultivoId] = useState("todos");
   const [ciclo, setCiclo] = useState("todos");
@@ -92,14 +95,14 @@ function Resultados() {
   const [a, setA] = useState("");
   const [b, setB] = useState("");
 
-  const semanas = Array.from({ length: Math.max(53, semanaActual + 14) }, (_, i) => i + 1);
+  const { desde, hasta } = rangoFechasResultados(fechaDesde, fechaHasta, [semanaActual, ...lotes.map((l) => l.semanaPlaneada), ...gastos.map((g) => g.semana), ...viajes.map((v) => semanaDeFecha(v.fecha))]);
   const lotesOpciones = lotes.filter((l) => !l.cancelado && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) && (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId));
   const idsOpciones = new Set(lotesOpciones.map((l) => l.tablaId));
   const opcionesTablas = tablas.filter((t) => idsOpciones.has(t.id)).map((t) => ({ id: t.id, nombre: `${ranchos.find((r) => r.id === t.ranchoId)?.nombre ?? t.ranchoId} · ${t.nombre}` })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true }));
 
   const t = useMemo(
     () =>
-      estadoResultados({
+      ({ ...estadoResultados({
         desde,
         hasta,
         lotes,
@@ -111,8 +114,8 @@ function Resultados() {
         plantaLote,
         pasa: (l) => perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) && (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId) && (!tablaIds.length || tablaIds.includes(l.tablaId)),
         pasaNoAsignado: (n) => ciclo === "todos" && !tablaIds.length && (ranchoId === "todos" || n.ranchoId === ranchoId) && (cultivoId === "todos" || n.cultivo === cultivoId),
-      }),
-    [desde, hasta, lotes, viajes, parametros, gastos, repartos, costoLote, plantaLote, ranchoId, cultivoId, ciclo, tablaIds],
+      }), fechaDesde, fechaHasta }),
+    [desde, hasta, fechaDesde, fechaHasta, lotes, viajes, parametros, gastos, repartos, costoLote, plantaLote, ranchoId, cultivoId, ciclo, tablaIds],
   );
 
   const filas = useMemo(() => agrupar(t.filas, agrupacion), [t.filas, agrupacion]);
@@ -133,7 +136,7 @@ function Resultados() {
   return (
     <AppShell
       path="/resultados"
-      eyebrow={`Semanas ${desde} a ${hasta}`}
+      eyebrow={periodoResultados(t)}
       title="Estado de resultados"
       description="Ingreso menos insumos, planta, gastos comunes y gasto no asignado. La utilidad real y su retorno solo los ve el Super Admin."
       actions={
@@ -156,34 +159,12 @@ function Resultados() {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Semana desde</Label>
-          <Select value={String(desde)} onValueChange={(v) => setDesde(Number(v))}>
-            <SelectTrigger aria-label="Semana desde">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {semanas.map((w) => (
-                <SelectItem key={w} value={String(w)}>
-                  Semana {w}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="resultados-desde">Fecha desde · opcional</Label>
+          <Input id="resultados-desde" aria-label="Fecha desde" type="date" value={fechaDesde} max={fechaHasta || undefined} onChange={(e) => setFechaDesde(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Semana hasta</Label>
-          <Select value={String(hasta)} onValueChange={(v) => setHasta(Number(v))}>
-            <SelectTrigger aria-label="Semana hasta">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {semanas.map((w) => (
-                <SelectItem key={w} value={String(w)}>
-                  Semana {w}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="resultados-hasta">Fecha hasta · opcional</Label>
+          <Input id="resultados-hasta" aria-label="Fecha hasta" type="date" value={fechaHasta} min={fechaDesde || undefined} onChange={(e) => setFechaHasta(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Rancho</Label>
@@ -233,7 +214,7 @@ function Resultados() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end"><Button variant="outline" onClick={() => { setCiclo("todos"); setRanchoId("todos"); setCultivoId("todos"); setTablaIds([]); setDesde(semanaActual - 11); setHasta(semanaActual); setA(""); setB(""); }}><RotateCcw className="size-4" />Restablecer filtros</Button></div>
+        <div className="flex items-end"><Button variant="outline" onClick={() => { setCiclo("todos"); setRanchoId("todos"); setCultivoId("todos"); setTablaIds([]); setFechaDesde(""); setFechaHasta(""); setA(""); setB(""); }}><RotateCcw className="size-4" />Restablecer filtros</Button></div>
       </section>
 
       <section className="mb-8 overflow-x-auto rounded-xl border border-border bg-card shadow-card">

@@ -2835,6 +2835,24 @@ export interface EstadoResultados {
   totales: Omit<FilaResultados, "clave" | "ranchoId" | "cultivo" | "retornoReal">;
   desde: number;
   hasta: number;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
+/** Fechas opcionales seleccionan semanas completas; vacío conserva todo el periodo registrado. */
+export function rangoFechasResultados(desde: string, hasta: string, semanas: number[]): { desde: number; hasta: number } {
+  return {
+    desde: desde ? semanaDeFecha(desde) : Math.min(1, ...semanas),
+    hasta: hasta ? semanaDeFecha(hasta) : Math.max(53, ...semanas),
+  };
+}
+
+export function periodoResultados(t: Pick<EstadoResultados, "desde" | "hasta" | "fechaDesde" | "fechaHasta">): string {
+  if (t.fechaDesde !== undefined || t.fechaHasta !== undefined) {
+    const mostrar = (f: string) => f.split("-").reverse().join("/");
+    return t.fechaDesde && t.fechaHasta ? `${mostrar(t.fechaDesde)} al ${mostrar(t.fechaHasta)}` : t.fechaDesde ? `Desde ${mostrar(t.fechaDesde)}` : t.fechaHasta ? `Hasta ${mostrar(t.fechaHasta)}` : "Todas las fechas";
+  }
+  return `Semanas ${t.desde} a ${t.hasta}`;
 }
 
 const filaVacia = (ranchoId: string, cultivo: string): FilaResultados => ({
