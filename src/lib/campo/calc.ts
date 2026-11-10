@@ -377,24 +377,22 @@ export function semanaCosechaLote(l: Lote): number {
   return Math.ceil(l.cicloDias / 7);
 }
 
-/** Semanas después de la semana de cosecha en que el lote se da por terminado y libera la tabla. */
+/** Referencia de duración de cosecha; nunca libera la tabla por calendario. */
 export const SEMANAS_CIERRE = 2;
 
-/** Marca como finalizados los lotes plantados cuya cosecha ya pasó hace SEMANAS_CIERRE semanas o más. */
-export function finalizarCosechados(lotes: Lote[], semanaActual: number): Lote[] {
+/** Solo una terminación explícita finaliza; el cierre del ciclo libera la superficie. */
+export function finalizarCosechados(lotes: Lote[], _semanaActual: number): Lote[] {
   return lotes.map((l) => {
-    const real = semanaRealLote(l);
-    if (l.finalizado || l.cancelado || real === null || pendientesLote(l) > 0 || (l.cosechaPendienteCaptura && !l.cosechaTerminada && !l.cerrado)) return l;
-    return semanaActual >= real + semanaCosechaLote(l) + SEMANAS_CIERRE
-      ? { ...l, finalizado: true }
-      : l;
+    if (l.cancelado) return l;
+    if (l.cosechaTerminada || l.cerrado) return l.finalizado ? l : { ...l, finalizado: true };
+    return l.finalizado ? { ...l, finalizado: false } : l;
   });
 }
 
-/** Lotes vigentes de la tabla (sin cancelados ni ciclos ya cosechados). */
+/** La superficie permanece ocupada hasta cerrar explícitamente el ciclo. */
 export function lotesDeTabla(lotes: Lote[], tablaId: string): Lote[] {
   return lotes
-    .filter((l) => l.tablaId === tablaId && !l.cancelado && !l.finalizado)
+    .filter((l) => l.tablaId === tablaId && !l.cancelado && !l.cerrado)
     .sort((a, b) => a.semanaPlaneada - b.semanaPlaneada || a.codigo.localeCompare(b.codigo));
 }
 
@@ -423,7 +421,7 @@ export function hectareasDisponibles(t: Tabla, lotes: Lote[]): number {
 
 /** En cosecha: desde la semana anterior a su cosecha estimada hasta que se finaliza. */
 export function loteEnCosecha(l: Lote, semanaActual: number): boolean {
-  if (l.cancelado || l.finalizado) return false;
+  if (l.cancelado || l.cerrado || l.cosechaTerminada) return false;
   const sr = semanaRecetaLote(l, semanaActual);
   return sr !== null && sr >= semanaCosechaLote(l) - 1;
 }
@@ -522,7 +520,7 @@ export function tablaDisponible(t: Pick<Tabla, "archivada">): boolean {
 
 /** Retirar no borra la tabla ni modifica lotes, consumos o históricos. */
 export function retirarTabla(tabla: Tabla, lotes: Pick<Lote, "tablaId" | "cancelado" | "finalizado" | "cerrado">[]): { tabla: Tabla } | { error: string } {
-  if (lotes.some((l) => l.tablaId === tabla.id && !l.cancelado && !l.finalizado && !l.cerrado))
+  if (lotes.some((l) => l.tablaId === tabla.id && !l.cancelado && !l.cerrado))
     return { error: "Esta tabla tiene una plantación vigente; termina su ciclo antes de retirarla." };
   return { tabla: { ...tabla, archivada: true } };
 }
