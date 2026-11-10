@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ImageIcon, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, ImageIcon, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
@@ -101,7 +101,7 @@ function Cosecha() {
 
 function Panel() {
   const { lotes, semanaActual, hoy, parametros } = useCampo();
-  const { roles } = useSesion();
+  const { roles, user } = useSesion();
   const { viajes } = useCosecha();
   const { pasaLote } = useFiltro();
   const atrasados = useViajesAtrasados();
@@ -110,6 +110,24 @@ function Panel() {
   const [semana, setSemana] = useState(semanaActual);
   const [terminar, setTerminar] = useState<Lote | null>(null);
   const { terminarCosecha } = useCampo();
+  const claveAvisos = user ? `campo-cosecha-avisos-${user.id}` : "";
+  const [avisosOcultos, setAvisosOcultos] = useState<{ clave: string; ids: string[] }>({ clave: "", ids: [] });
+  useEffect(() => {
+    if (!claveAvisos) return;
+    let ids: string[] = [];
+    try {
+      const guardados: unknown = JSON.parse(localStorage.getItem(claveAvisos) ?? "[]");
+      if (Array.isArray(guardados)) ids = guardados.filter((id): id is string => typeof id === "string");
+    } catch { /* Un almacenamiento dañado no oculta advertencias. */ }
+    setAvisosOcultos({ clave: claveAvisos, ids });
+  }, [claveAvisos]);
+  const ocultos = avisosOcultos.clave === claveAvisos ? avisosOcultos.ids : [];
+  const quitarAviso = (id: string) => {
+    if (!claveAvisos) return;
+    const ids = [...new Set([...ocultos, id])];
+    setAvisosOcultos({ clave: claveAvisos, ids });
+    try { localStorage.setItem(claveAvisos, JSON.stringify(ids)); } catch { /* Se conserva oculto durante esta sesión. */ }
+  };
 
   const visibles = useMemo(() => lotes.filter((l) => pasaLote(l)), [lotes, pasaLote]);
   const idsVisibles = useMemo(() => new Set(visibles.map((l) => l.id)), [visibles]);
@@ -161,17 +179,20 @@ function Panel() {
       {(atrasados.length > 0 || bajoMeta.length > 0) && (
         <section className="mb-8 space-y-2">
           {atrasados
-            .filter((v) => v.loteIds.some((id) => idsVisibles.has(id)))
+            .filter((v) => v.loteIds.some((id) => idsVisibles.has(id)) && !ocultos.includes(`viaje:${v.id}:${v.fecha}`))
             .map((v) => (
-              <p key={v.id} className="rounded-lg border border-destructive/40 bg-destructive-soft p-3 text-sm text-destructive">
-                El viaje <b>{v.folio}</b> salió el {fechaCorta(v.fecha)} y lleva {diasEntre(v.fecha, hoy)} días sin evaluación.
-              </p>
+              <div key={v.id} className="flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive-soft p-3 text-sm text-destructive">
+                <p>El viaje <b>{v.folio}</b> salió el {fechaCorta(v.fecha)} y lleva {diasEntre(v.fecha, hoy)} días sin evaluación.</p>
+                <Button size="icon" variant="ghost" className="size-7 shrink-0" aria-label={`Eliminar advertencia del viaje ${v.folio}`} title="Eliminar advertencia" onClick={() => quitarAviso(`viaje:${v.id}:${v.fecha}`)}><X /></Button>
+              </div>
             ))}
-          {bajoMeta.map((r) => (
-            <p key={r.loteId} className="rounded-lg border border-destructive/40 bg-destructive-soft p-3 text-sm text-destructive">
-              {nombreLote(lotes.find((l) => l.id === r.loteId))} cerró con <b className="num">{formatoNum(r.pagablesHa)} kg/ha</b>, abajo de
+          {bajoMeta.filter((r) => !ocultos.includes(`meta:${r.loteId}:${r.pagablesHa}:${r.meta}`)).map((r) => (
+            <div key={r.loteId} className="flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive-soft p-3 text-sm text-destructive">
+              <p>{nombreLote(lotes.find((l) => l.id === r.loteId))} cerró con <b className="num">{formatoNum(r.pagablesHa)} kg/ha</b>, abajo de
               la meta de {formatoNum(r.meta)}.
-            </p>
+              </p>
+              <Button size="icon" variant="ghost" className="size-7 shrink-0" aria-label={`Eliminar advertencia de ${nombreLote(lotes.find((l) => l.id === r.loteId))}`} title="Eliminar advertencia" onClick={() => quitarAviso(`meta:${r.loteId}:${r.pagablesHa}:${r.meta}`)}><X /></Button>
+            </div>
           ))}
         </section>
       )}
