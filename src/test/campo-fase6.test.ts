@@ -10,6 +10,7 @@ import {
   prorrateoRango,
   prorrateoSemana,
   repartoVigente,
+  semanasCapturaGastos,
   utilidadLote,
   validarGasto,
   validarReparto,
@@ -135,6 +136,16 @@ describe("Fase 6 · captura de gastos", () => {
 
   it("deja capturar un gasto nuevo", () => {
     expect(validarGasto(d, ctx)).toBeNull();
+  });
+
+  it("permite elegir semanas pasadas desde la primera, sin el límite de 14 semanas", () => {
+    const semanas = semanasCapturaGastos(46);
+    expect(semanas).toHaveLength(47);
+    expect(semanas).toContain(20);
+    expect(semanas).toContain(1);
+    expect(semanas).not.toContain(0);
+    expect(validarGasto({ ...d, semana: 20 }, ctx)).toBeNull();
+    expect(idGasto({ ...d, semana: 20 })).toBe("20|dolores|brocoli|nomina");
   });
 
   it("no deja duplicar semana, rancho, cultivo y concepto", () => {

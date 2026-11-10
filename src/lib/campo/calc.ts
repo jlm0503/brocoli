@@ -2536,6 +2536,11 @@ export interface DatosGasto {
   comprobante?: string | undefined;
 }
 
+/** Todas las semanas desde el inicio del calendario, incluida la próxima. */
+export function semanasCapturaGastos(semanaActual: number): number[] {
+  return Array.from({ length: Math.max(1, semanaActual + 1) }, (_, i) => Math.max(1, semanaActual + 1) - i);
+}
+
 /** Valida la captura de un gasto común de rancho. */
 export function validarGasto(
   d: DatosGasto,
