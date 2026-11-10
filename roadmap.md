@@ -61,7 +61,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
-- [ ] Agregar consulta de viajes actuales e históricos en Cosecha por ciclo, rancho, varias tablas y fechas, con totales para cotejar embarques.
+- [x] Agregar consulta de viajes actuales e históricos en Cosecha por ciclo, rancho, varias tablas y fechas, con totales para cotejar embarques; 7 pruebas pasando y Ríos 3 comprobada con 9 viajes, 194,870 kg recibidos y 158,167 pagables; selección múltiple y celular verificados.
 - [x] Agregar totales de superficie del rancho, planeadas, plantadas, en cosecha, disponibles y selección en cuadros y listados de Estatus y Planeación; sumas comprobadas con datos reales y 53 pruebas pasando, sin modificar plantaciones capturadas.
 - [x] Filtrar todas las alertas y reportes de Dirección por ciclo de plantación, mostrando inicialmente el segundo ciclo; 13 pruebas pasando y ciclos comprobados con cuenta de Jimena en computadora y celular.
 - [x] Mostrar en Alertas a Dirección extraordinarios, plantación incumplida, devoluciones y rendimiento bajo solo de ciclos cerrados; 31 pruebas pasando y vista comprobada con cuenta de Jimena.
