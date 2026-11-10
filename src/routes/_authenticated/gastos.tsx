@@ -22,6 +22,8 @@ import {
   CULTIVO_TOTAL,
   PLANTILLA_GASTOS_CSV,
   cultivosDelRancho,
+  fechaCorta,
+  fechaEnSemana,
   formatoMXN,
   formatoNum,
   idGasto,
@@ -30,6 +32,7 @@ import {
   nombreCultivo,
   prorrateoSemana,
   repartoVigente,
+  semanasCapturaGastos,
   type DatosGasto,
 } from "@/lib/campo/calc";
 import { useGastos } from "@/lib/campo/gastos";
@@ -86,7 +89,7 @@ function GastosRancho() {
   const reparto = repartos.find((r) => r.ranchoId === ranchoId);
   const cultivosRancho = useMemo(() => cultivosDelRancho(lotes, ranchoId), [lotes, ranchoId]);
   const vigente = repartoVigente(reparto, semana);
-  const semanas = Array.from({ length: 14 }, (_, i) => semanaActual + 1 - i);
+  const semanas = semanasCapturaGastos(semanaActual);
 
   const deSemana = gastos
     .filter((g) => g.semana === semana && g.ranchoId === ranchoId)
@@ -190,6 +193,7 @@ function GastosRancho() {
                 <SelectItem key={w} value={String(w)}>
                   Semana {w}
                   {w === semanaActual ? " (actual)" : ""}
+                  {` · ${fechaCorta(fechaEnSemana(w))}–${fechaCorta(fechaEnSemana(w, 6))}`}
                 </SelectItem>
               ))}
             </SelectContent>
