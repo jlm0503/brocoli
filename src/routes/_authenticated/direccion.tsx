@@ -8,7 +8,10 @@ import { MapaFotos } from "@/components/campo/Extraordinarios";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { fechaCorta, reporteMensualAlertas } from "@/lib/campo/calc";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CICLOS_PLANTACION, fechaCorta, registroEnCicloPlantacion, reporteMensualAlertas } from "@/lib/campo/calc";
+import { useCosecha } from "@/lib/campo/cosecha";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
 import { useCampo } from "@/lib/campo/store";
@@ -35,10 +38,15 @@ const TIPO: Record<AlertaDireccion["tipo"], string> = {
 
 function Direccion() {
   const { alertasDireccion: todas, extraordinarios } = useFase3();
-  const { tablas } = useCampo();
+  const { tablas, lotes } = useCampo();
+  const { ciclos } = useCosecha();
+  const [ciclo, setCiclo] = useState<string>("2026-2");
   const { pasaRancho, pasaTabla } = useFiltro();
   const alertasDireccion = todas.filter(
-    (a) => pasaRancho(a.ranchoId) && tablas.some((t) => a.tablaIds.includes(t.id) && pasaTabla(t)),
+    (a) => {
+      const extra = extraordinarios.find((e) => e.id === a.extraordinarioId);
+      return pasaRancho(a.ranchoId) && tablas.some((t) => a.tablaIds.includes(t.id) && pasaTabla(t)) && registroEnCicloPlantacion({ fecha: extra?.fecha ?? a.fecha, tablaIds: extra?.tablaIds ?? a.tablaIds, loteIds: extra?.reparto?.flatMap((r) => r.loteId ? [r.loteId] : []) }, ciclo, lotes, ciclos);
+    },
   );
   const abiertas = alertasDireccion.filter((a) => a.status === "abierta").sort((a, b) => b.fecha.localeCompare(a.fecha));
   const cerradas = alertasDireccion.filter((a) => a.status === "notificada").sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -51,7 +59,17 @@ function Direccion() {
       title="Alertas a Dirección"
       filtros
     >
-      <AlertasOperativas />
+      <div className="mb-6 max-w-md space-y-1">
+        <Label htmlFor="ciclo-direccion">Ciclo de plantación</Label>
+        <Select value={ciclo} onValueChange={setCiclo}>
+          <SelectTrigger id="ciclo-direccion" aria-label="Ciclo de plantación" className="h-auto min-h-9 w-full [&>span]:whitespace-normal [&>span]:text-left"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los ciclos</SelectItem>
+            {CICLOS_PLANTACION.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <AlertasOperativas ciclo={ciclo} />
       <section className="mb-10">
         <h2 className="mb-3 text-2xl font-semibold">
           Seguimiento de ubicación y mejora <span className="num text-base text-muted-foreground">({abiertas.length})</span>

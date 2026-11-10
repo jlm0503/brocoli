@@ -1,10 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { plantacionesIncumplidas, cierresBajoMeta } from "@/lib/campo/calc";
+import { plantacionesIncumplidas, cierresBajoMeta, registroEnCicloPlantacion } from "@/lib/campo/calc";
 import type { Lote, CicloCerrado } from "@/lib/campo/types";
 
 const lote = { id: "l", codigo: "1-A", tablaId: "t", ranchoId: "r", ha: 5, semanaPlaneada: 45, ingeniero: "Israel", avances: [], insumos: [], variedadId: "v", cultivo: "brocoli", cicloDias: 84 } satisfies Lote;
 const ciclo = { id: "c", fechaFinCosecha: "2026-11-09", ha: 5, kgPagables: 60000, meta: 16000 } as CicloCerrado;
 describe("Alertas a Dirección", () => {
+  it("un extraordinario o devolución del primer ciclo no pasa al segundo aunque se registre después", () => {
+    const primero = { ...lote, avances: [{ id: "a", fecha: "2026-06-15", semana: 25, ha: 5 }] };
+    const segundo = { ...lote, id: "l2", avances: [{ id: "b", fecha: "2026-07-01", semana: 27, ha: 5 }] };
+    const registro = { fecha: "2026-08-01", tablaIds: ["t"], loteIds: ["l"] };
+    expect(registroEnCicloPlantacion(registro, "2026-1", [primero, segundo], [])).toBe(true);
+    expect(registroEnCicloPlantacion(registro, "2026-2", [primero, segundo], [])).toBe(false);
+    expect(registroEnCicloPlantacion(registro, "todos", [primero, segundo], [])).toBe(true);
+  });
+  it("sin lote vinculado usa la plantación de la tabla en la fecha del pedido", () => {
+    const primero = { ...lote, avances: [{ id: "a", fecha: "2026-05-01", semana: 18, ha: 5 }] };
+    const segundo = { ...lote, id: "l2", avances: [{ id: "b", fecha: "2026-07-01", semana: 27, ha: 5 }] };
+    expect(registroEnCicloPlantacion({ fecha: "2026-06-10", tablaIds: ["t"] }, "2026-2", [primero, segundo], [])).toBe(false);
+    expect(registroEnCicloPlantacion({ fecha: "2026-07-10", tablaIds: ["t"] }, "2026-2", [primero, segundo], [])).toBe(true);
+  });
+  it("mantiene el ciclo de los lotes que solo existen en históricos", () => {
+    const historico = { ...ciclo, loteId: "cerrado", tablaId: "t", fechaPlantacion: "2026-06-15" };
+    const registro = { fecha: "2026-07-10", tablaIds: ["t"], loteIds: ["cerrado"] };
+    expect(registroEnCicloPlantacion(registro, "2026-1", [], [historico])).toBe(true);
+    expect(registroEnCicloPlantacion(registro, "2026-2", [], [historico])).toBe(false);
+  });
   it("no acusa incumplimiento antes de terminar la semana planeada", () => {
     expect(plantacionesIncumplidas([lote], 45)).toEqual([]);
     expect(plantacionesIncumplidas([lote], 46)[0]).toMatchObject({ faltantes: 5, registradas: 0 });

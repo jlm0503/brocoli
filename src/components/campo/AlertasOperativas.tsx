@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { fechaCorta, formatoNum, formatoMXN, plantacionesIncumplidas, cierresBajoMeta } from "@/lib/campo/calc";
+import { fechaCorta, formatoNum, formatoMXN, plantacionesIncumplidas, cierresBajoMeta, fechaPlantacionLote, perteneceCicloPlantacion, registroEnCicloPlantacion } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import { useCosecha } from "@/lib/campo/cosecha";
 import { useFase3 } from "@/lib/campo/fase3";
@@ -12,7 +12,7 @@ function Informe({ titulo, columnas, filas }: { titulo: string; columnas: string
   </section>;
 }
 
-export function AlertasOperativas() {
+export function AlertasOperativas({ ciclo = "todos" }: { ciclo?: string }) {
   const { lotes, semanaActual, ranchos, tablas, productos } = useCampo();
   const { ciclos } = useCosecha();
   const { extraordinarios, devoluciones } = useFase3();
@@ -21,10 +21,10 @@ export function AlertasOperativas() {
   const tabla = (id: string) => tablas.find((t) => t.id === id)?.nombre ?? "—";
   const pasaTabla = (id: string) => lotes.some((l) => l.tablaId === id && pasaLote(l)) || ciclos.some((c) => c.tablaId === id && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo));
   const estados = { por_autorizar: "Por autorizar", autorizada: "Autorizado", rechazada: "Rechazado", surtida: "Surtido" };
-  const extras = extraordinarios.filter((e) => pasaRancho(e.ranchoId) && e.tablaIds.some(pasaTabla)).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const incumplidas = plantacionesIncumplidas(lotes, semanaActual).filter((x) => pasaLote(x.lote)).sort((a, b) => b.lote.semanaPlaneada - a.lote.semanaPlaneada);
-  const devs = devoluciones.filter((d) => pasaRancho(d.ranchoId) && (d.loteId ? pasaLote(lotes.find((l) => l.id === d.loteId)) : pasaTabla(d.tablaId))).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const cierres = cierresBajoMeta(ciclos).filter((c) => pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo)).sort((a, b) => b.fechaFinCosecha.localeCompare(a.fechaFinCosecha));
+  const extras = extraordinarios.filter((e) => pasaRancho(e.ranchoId) && e.tablaIds.some(pasaTabla) && registroEnCicloPlantacion({ fecha: e.fecha, tablaIds: e.tablaIds, loteIds: e.reparto?.flatMap((r) => r.loteId ? [r.loteId] : []) }, ciclo, lotes, ciclos)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const incumplidas = plantacionesIncumplidas(lotes, semanaActual).filter((x) => pasaLote(x.lote) && perteneceCicloPlantacion(fechaPlantacionLote(x.lote), ciclo)).sort((a, b) => b.lote.semanaPlaneada - a.lote.semanaPlaneada);
+  const devs = devoluciones.filter((d) => pasaRancho(d.ranchoId) && (d.loteId ? pasaLote(lotes.find((l) => l.id === d.loteId)) || ciclos.some((c) => c.loteId === d.loteId && pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo)) : pasaTabla(d.tablaId)) && registroEnCicloPlantacion({ fecha: d.fecha, tablaIds: [d.tablaId], loteIds: d.loteId ? [d.loteId] : [] }, ciclo, lotes, ciclos)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const cierres = cierresBajoMeta(ciclos).filter((c) => pasaRancho(c.ranchoId) && pasaCultivo(c.cultivo) && perteneceCicloPlantacion(c.fechaPlantacion, ciclo)).sort((a, b) => b.fechaFinCosecha.localeCompare(a.fechaFinCosecha));
   return <>
     <div className="mb-5 flex flex-wrap gap-2"><Button variant="outline" asChild><Link to="/extraordinarios">Pedidos extraordinarios</Link></Button><Button variant="outline" asChild><Link to="/planeacion">Planeación y avance</Link></Button><Button variant="outline" asChild><Link to="/devoluciones">Devoluciones</Link></Button><Button variant="outline" asChild><Link to="/historicos">Cierres</Link></Button></div>
     <Informe titulo="Pedidos extraordinarios" columnas={["Fecha", "Folio", "Rancho · tablas", "Ingeniero", "Motivo", "Estatus"]} filas={extras.map((e) => ({ id: e.id, valores: [fechaCorta(e.fecha), e.folio, `${rancho(e.ranchoId)} · ${e.tablaIds.map(tabla).join(", ")}`, e.ingeniero, e.descripcion, estados[e.status]] }))} />
