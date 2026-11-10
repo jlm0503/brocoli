@@ -248,6 +248,11 @@ export function fechaLimite(semana: number): string {
 
 /* ───────────────────────── Catálogos ───────────────────────── */
 
+/** Corrige la clasificación del catálogo sin convertir cantidades ni modificar precios. */
+export function editarClasificacionProducto(producto: Producto, datos: Pick<Producto, "familia" | "unidad">): Producto {
+  return { ...producto, familia: datos.familia, unidad: datos.unidad };
+}
+
 /** Radio de validación: √(ha × 10,000 ÷ 3.1416) × 1.5, mínimo 100 m, o el que fije el administrador. */
 export function radioValidacion(t: Tabla): number {
   if (t.radio && t.radio > 0) return t.radio;
