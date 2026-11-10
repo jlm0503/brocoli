@@ -82,7 +82,7 @@ export function useFiltro() {
       if (!tablaDisponible(t)) return false;
       if (!pasaRancho(t.ranchoId)) return false;
       if (cultivos.length === 0) return true;
-      const vigentes = lotes.filter((l) => l.tablaId === t.id && !l.cancelado && !l.finalizado);
+      const vigentes = lotes.filter((l) => l.tablaId === t.id && !l.cancelado && !l.cerrado);
       if (vigentes.length === 0) return !!opciones?.libres;
       return vigentes.some((l) => cultivos.includes(l.cultivo));
     },
