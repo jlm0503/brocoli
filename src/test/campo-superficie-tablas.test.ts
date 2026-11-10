@@ -3,7 +3,7 @@ import { filasSuperficieTablas, totalesSuperficieTablas } from "@/lib/campo/calc
 import type { Lote, Tabla } from "@/lib/campo/types";
 
 const tabla: Tabla = { id: "t", ranchoId: "r", nombre: "1", hectareas: 20 };
-const base: Lote = { id: "p", tablaId: "t", ranchoId: "r", codigo: "p", ha: 4, semanaPlaneada: 46, cultivo: "brocoli", variedadId: "v", cicloDias: 84, avances: [], insumos: [] };
+const base: Lote = { id: "p", tablaId: "t", ranchoId: "r", codigo: "p", ingeniero: "Israel", ha: 4, semanaPlaneada: 46, cultivo: "brocoli", variedadId: "v", cicloDias: 84, avances: [], insumos: [] };
 const lotes: Lote[] = [base, { ...base, id: "plantado", ha: 6, semanaPlaneada: 44, avances: [{ id: "a", fecha: "2026-10-26", semana: 44, ha: 6 }] }, { ...base, id: "cosecha", ha: 8, semanaPlaneada: 27, avances: [{ id: "b", fecha: "2026-07-01", semana: 27, ha: 8 }] }];
 
 describe("Totales de superficie por filtros de estatus", () => {
