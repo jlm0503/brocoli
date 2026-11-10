@@ -291,11 +291,13 @@ export function Stat({
   value,
   hint,
   tone = "default",
+  compact = false,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   tone?: "default" | "primary" | "soil";
+  compact?: boolean;
 }) {
   const toneClass =
     tone === "primary"
@@ -304,11 +306,11 @@ export function Stat({
         ? "bg-soil-soft text-soil-foreground"
         : "bg-card text-card-foreground";
   return (
-    <div className={`rounded-xl border border-border p-5 shadow-card ${toneClass}`}>
-      <span className={`eyebrow ${tone === "primary" ? "!text-primary-foreground/70" : ""}`}>
+    <div className={`min-w-0 border border-border shadow-card ${compact ? "rounded-lg p-3" : "rounded-xl p-5"} ${toneClass}`}>
+      <span className={`${compact ? "block text-xs leading-snug" : "eyebrow"} ${tone === "primary" ? "!text-primary-foreground/70" : ""}`}>
         {label}
       </span>
-      <div className="num mt-2 text-3xl font-medium">{value}</div>
+      <div className={`num break-words font-medium ${compact ? "mt-1 text-xl" : "mt-2 text-3xl"}`}>{value}</div>
       {hint && (
         <div
           className={`mt-1 text-xs ${tone === "primary" ? "text-primary-foreground/70" : "text-muted-foreground"}`}

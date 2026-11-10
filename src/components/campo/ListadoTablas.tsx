@@ -19,13 +19,13 @@ export function useFilasTablas(tablas: Tabla[], estados: string[]) {
 
 export function TotalesTablas({ tablas, filas, estados }: { tablas: Tabla[]; filas: FilaTabla[]; estados: string[] }) {
   const t = totalesSuperficieTablas(tablas, filas, estados);
-  return <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Totales de hectáreas">
-    <Stat label="Total de hectáreas del rancho" value={`${formatoNum(t.total)} ha`} />
-    <Stat label="Total planeadas" value={`${formatoNum(t.planeadas)} ha`} tone="soil" />
-    <Stat label="Total plantadas" value={`${formatoNum(t.plantadas)} ha`} />
-    <Stat label="Total en cosecha" value={`${formatoNum(t.cosecha)} ha`} tone="soil" />
-    <Stat label="Total disponible" value={`${formatoNum(t.disponibles)} ha`} />
-    <Stat label="Total de la selección" value={`${formatoNum(t.seleccion)} ha`} tone="primary" />
+  return <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Totales de hectáreas">
+    <Stat compact label="Total de hectáreas del rancho" value={`${formatoNum(t.total)} ha`} />
+    <Stat compact label="Total planeadas" value={`${formatoNum(t.planeadas)} ha`} tone="soil" />
+    <Stat compact label="Total plantadas" value={`${formatoNum(t.plantadas)} ha`} />
+    <Stat compact label="Total en cosecha" value={`${formatoNum(t.cosecha)} ha`} tone="soil" />
+    <Stat compact label="Total disponible" value={`${formatoNum(t.disponibles)} ha`} />
+    <Stat compact label="Total de la selección" value={`${formatoNum(t.seleccion)} ha`} tone="primary" />
   </div>;
 }
 
