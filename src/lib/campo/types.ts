@@ -246,6 +246,7 @@ export interface PedidoPlaneacion {
   semanaPlantacion: number;
   ha: number;
   lineas: { productoId: string; cantidad: number }[];
+  cantidadesRecibidas?: Record<string, number>;
   fecha: string;
   ingeniero: string;
   urgente: boolean;
@@ -287,7 +288,7 @@ export interface AlertaInsumos {
   foto?: string | undefined;
 }
 
-export type EstatusRecepcion = "pendiente" | "comprado" | "recibido" | "cancelado";
+export type EstatusRecepcion = "pendiente" | "comprado" | "recibido" | "cancelado" | "parcial";
 
 export interface Recepcion {
   status: EstatusRecepcion;

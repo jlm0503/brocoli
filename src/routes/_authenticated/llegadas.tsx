@@ -42,7 +42,7 @@ const ESTATUS_INSUMO = {
   comprado: "Comprado",
   recibido: "Recibido",
   cancelado: "Cancelado",
-  parcial: "Mixto",
+  parcial: "Recibido parcialmente",
 } as const;
 
 function Llegadas() {
@@ -205,12 +205,12 @@ function Llegadas() {
                               key={`${p.id}-${x.productoId}`}
                               izquierda={prod?.nombre ?? "Producto"}
                               detalle={`${tablaById.get(p.tablaId)?.nombre ?? ""} · lote ${loteById.get(p.loteId)?.codigo ?? ""} · planta sem ${p.semanaPlantacion}`}
-                              cantidad={`${formatoNum(x.cantidad)} ${prod?.unidad ?? ""}`}
+                              cantidad={`${formatoNum(x.cantidad)} ${prod?.unidad ?? ""}${p.cantidadesRecibidas ? ` · recibido ${formatoNum(p.cantidadesRecibidas[x.productoId] ?? 0)}` : ""}`}
                               estatus={
                                 <Badge
-                                  variant={p.status === "entregado" ? "recibido" : "pendiente"}
+                                  variant={p.status === "entregado" ? "recibido" : p.cantidadesRecibidas ? "parcial" : "pendiente"}
                                 >
-                                  {p.status === "entregado" ? "Entregado" : "Pendiente"}
+                                  {p.status === "entregado" ? "Entregado" : p.cantidadesRecibidas ? "Recibido parcialmente" : "Pendiente"}
                                 </Badge>
                               }
                             />
@@ -234,7 +234,7 @@ function Llegadas() {
                             key={f.productoId}
                             izquierda={prod?.nombre ?? "Producto"}
                             detalle={tablasTxt}
-                            cantidad={`${formatoNum(f.cantidadPedido)} ${prod?.unidad ?? ""}`}
+                            cantidad={`${formatoNum(f.cantidadPedido)} ${prod?.unidad ?? ""}${f.keys.some(k => recepciones[k]?.cantidadRecibida !== undefined) ? ` · recibido ${formatoNum(f.keys.reduce((s, k) => s + (recepciones[k]?.cantidadRecibida ?? 0), 0))}` : ""}`}
                             estatus={<Badge variant={f.status}>{ESTATUS_INSUMO[f.status]}</Badge>}
                           />
                         );
