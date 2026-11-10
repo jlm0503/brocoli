@@ -151,7 +151,6 @@ function Planeacion() {
   const porPlantar = lotesRancho
     .filter((l) => lotePorPlantar(l, semanaActual))
     .reduce((s, l) => s + pendientesLote(l), 0);
-  const disponibles = delRancho.reduce((s, t) => s + hectareasDisponibles(t, lotes), 0);
   const pendientes = lotesRancho.filter((l) => esArrastrado(l, semanaActual));
 
   return (
@@ -192,19 +191,20 @@ function Planeacion() {
             </TabsList>
           </Tabs>
 
-          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <div className="mb-4 grid grid-cols-2 gap-2">
             <Stat
+              compact
               label="Plantado esta semana"
               value={`${formatoNum(plantadasSemana)} ha`}
               tone="primary"
             />
             <Stat
+              compact
               label="Por plantar esta semana"
               value={`${formatoNum(porPlantar)} ha`}
               hint="Incluye pendientes arrastrados"
               tone="soil"
             />
-            <Stat label="Disponible para planear" value={`${formatoNum(disponibles)} ha`} />
           </div>
 
           {pendientes.length > 0 && <Pendientes lotes={pendientes} />}

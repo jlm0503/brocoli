@@ -104,10 +104,8 @@ function Ranchos() {
   const costoTabla = (id: string) => costos.costoTabla(id, (l) => pasaCultivo(l.cultivo));
 
   const total = tablas.reduce((s, t) => s + costoTabla(t.id), 0);
-  const haActivas = tablas.reduce((s, t) => s + hectareasActivas(lotes, t.id, semanaActual), 0);
-  const ocupadas = tablas.filter((t) => estatusTabla(t, lotes, semanaActual) !== "libre").length;
 
-  // Cosecha: kilos de la semana actual y hectáreas que entran a cosecha las próximas dos semanas
+  // Cosecha: kilos actuales y superficie que entra esta semana y la próxima.
   const { viajes } = useCosecha();
   const tablaIds = new Set(tablas.map((t) => t.id));
   const loteVisible = (l: Lote) => tablaIds.has(l.tablaId) && pasaCultivo(l.cultivo);
@@ -118,8 +116,8 @@ function Ranchos() {
       return !!l && ids.has(l.tablaId) && pasaCultivo(l.cultivo);
     });
   const kgSemana = kgDe(tablaIds);
+  const actual = haPorCosecharSemana(lotes, semanaActual).filter((x) => loteVisible(x.lote));
   const proxima = haPorCosecharSemana(lotes, semanaActual + 1).filter((x) => loteVisible(x.lote));
-  const siguiente = haPorCosecharSemana(lotes, semanaActual + 2).filter((x) => loteVisible(x.lote));
   const sumaHa = (xs: { ha: number }[]) => xs.reduce((s, x) => s + x.ha, 0);
   const nombreTabla = (id: string) => todasTablas.find((t) => t.id === id)?.nombre ?? id;
 
@@ -136,15 +134,10 @@ function Ranchos() {
         <ControlesListado vista={vista} cambiarVista={setVista} estados={estados} cambiarEstados={setEstados} />
       </div>
       <TotalesTablas tablas={todasTablas.filter((t) => pasaRancho(t.ranchoId))} filas={filasBase} estados={estados} />
-      <div className="mb-10 grid gap-4 sm:grid-cols-3">
-        <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
-        <Stat label="Hectáreas activas" value={`${formatoNum(haActivas)} ha`} hint="Plantadas, de la siembra a la cosecha" />
-        <Stat label="Tablas ocupadas" value={`${ocupadas}/${tablas.length}`} hint="Planeadas o plantadas" tone="soil" />
-      </div>
-
-      <h2 className="mb-3 text-xl font-semibold">Cosecha</h2>
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-2 gap-2 xl:grid-cols-4" aria-label="Inversión y cosecha">
+        <Stat compact label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
         <Stat
+          compact
           label={`Kg cosechados · sem ${semanaActual}`}
           value={`${formatoNum(kgSemana.kgPagables)} kg`}
           hint={
@@ -158,19 +151,21 @@ function Ranchos() {
           tone="primary"
         />
         <Stat
-          label={`Ha a cosechar · sem ${semanaActual + 1}`}
-          value={`${formatoNum(sumaHa(proxima))} ha`}
-          hint={`${proxima.length} ${proxima.length === 1 ? "lote entra" : "lotes entran"} a cosecha la próxima semana`}
+          compact
+          label={`Ha a cosechar · sem ${semanaActual}`}
+          value={`${formatoNum(sumaHa(actual))} ha`}
+          hint="Semana actual"
         />
         <Stat
-          label={`Ha a cosechar · sem ${semanaActual + 2}`}
-          value={`${formatoNum(sumaHa(siguiente))} ha`}
-          hint={`${siguiente.length} ${siguiente.length === 1 ? "lote" : "lotes"} en dos semanas`}
+          compact
+          label={`Ha a cosechar · sem ${semanaActual + 1}`}
+          value={`${formatoNum(sumaHa(proxima))} ha`}
+          hint="Próxima semana"
           tone="soil"
         />
       </div>
       {proxima.length > 0 && (
-        <div className="mb-10 rounded-xl border border-border bg-card p-4 shadow-card">
+        <div className="mb-5 border-b border-border pb-3">
           <h3 className="mb-2 text-sm font-semibold">Lo que entra a cosecha la semana {semanaActual + 1}</h3>
           <ul className="divide-y divide-border text-sm">
             {proxima
@@ -192,7 +187,6 @@ function Ranchos() {
           </ul>
         </div>
       )}
-      {proxima.length === 0 && <div className="mb-10" />}
 
       <div className="mb-6 flex flex-wrap gap-2 text-xs">
         {(Object.keys(ESTATUS_TABLA_LABEL) as EstatusTabla[]).map((e) => (
