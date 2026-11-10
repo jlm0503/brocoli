@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
+import { ControlesListado, ListadoTablas, useFilasTablas } from "@/components/campo/ListadoTablas";
 import { CorregirFechasDialog } from "@/components/campo/CorregirFechasDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,15 +91,12 @@ const TILE: Record<EstatusTabla, string> = {
 function Ranchos() {
   const { tablas: todasTablas, lotes, semanaActual, variedades } = useCampo();
   const { ranchos, pasaTabla, pasaCultivo } = useFiltro();
-  const [filtroEstatus, setFiltroEstatus] = useState("todos");
-  const tablas = todasTablas.filter((t) => {
-    if (!pasaTabla(t)) return false;
-    const est = estatusTabla(t, lotes, semanaActual);
-    if (filtroEstatus === "todos") return true;
-    if (filtroEstatus === "planeado") return est === "planeada" || est === "parcial-planeada";
-    if (filtroEstatus === "plantado") return est === "plantada" || est === "plantada-parcial";
-    return est === filtroEstatus;
-  });
+  const [vista, setVista] = useState("cuadros");
+  const [estados, setEstados] = useState<string[]>([]);
+  const candidatas = todasTablas.filter((t) => pasaTabla(t));
+  const filas = useFilasTablas(candidatas, estados);
+  const idsVisibles = new Set(filas.map((f) => f.tabla.id));
+  const tablas = candidatas.filter((t) => idsVisibles.has(t.id));
   const nombreVariedad = (id: string) => nombreDe(variedades, id);
   const [abierta, setAbierta] = useState<Tabla | null>(null);
   const costos = useCostos();
@@ -134,19 +132,7 @@ function Ranchos() {
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild><Link to="/historicos">Ciclos de plantación</Link></Button>
-        <label htmlFor="filtro-estatus" className="text-sm font-medium">Estatus</label>
-        <Select value={filtroEstatus} onValueChange={setFiltroEstatus}>
-          <SelectTrigger id="filtro-estatus" aria-label="Filtrar por estatus" className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los estatus</SelectItem>
-            <SelectItem value="planeado">Planeado</SelectItem>
-            <SelectItem value="plantado">Plantado</SelectItem>
-            <SelectItem value="en-cosecha">En cosecha</SelectItem>
-            <SelectItem value="libre">Libre</SelectItem>
-          </SelectContent>
-        </Select>
+        <ControlesListado vista={vista} cambiarVista={setVista} estados={estados} cambiarEstados={setEstados} />
       </div>
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         <Stat label="Inversión acumulada" value={formatoMXN(total)} tone="primary" />
@@ -223,7 +209,7 @@ function Ranchos() {
       {ranchos.length > 0 && tablas.length === 0 && (
         <p className="py-8 text-center text-sm text-muted-foreground">No hay tablas con los filtros seleccionados.</p>
       )}
-      <div className="space-y-10">
+      {vista === "lista" ? <ListadoTablas filas={filas} abrir={setAbierta} costo={(f) => f.lote ? costos.costoLote(f.lote.id) : costoTabla(f.tabla.id)} /> : <div className="space-y-10">
         {ranchos.map((r) => {
           const ts = tablas.filter((t) => t.ranchoId === r.id);
           if (ts.length === 0) return null;
@@ -298,7 +284,7 @@ function Ranchos() {
             </section>
           );
         })}
-      </div>
+      </div>}
 
       <Sheet open={!!abierta} onOpenChange={(o) => !o && setAbierta(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">

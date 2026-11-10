@@ -60,6 +60,10 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [ ] El encargado de rancho aún no se limita a sus ranchos asignados (hoy ve todos los ranchos para capturar)
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
+## Vistas operativas
+- [x] Agregar listado y filtros múltiples por estatus en Estatus y costos y Planeación y avance, con rancho, cultivo, fechas y acceso al detalle.
+- [x] Agregar filtro de ciclos de plantación en Consumos por tabla para separar pasado y actual; comprobados ambos ciclos y los reportes en computadora y celular.
+
 ## Panel de Dirección
 - [x] Consultar ciclos de plantación enero–junio y julio–diciembre 2026 con plantaciones abiertas e históricos, sin cerrar ni modificar registros. Vista en Cierre e históricos, acceso desde Estatus; comprobados 24 registros en primer ciclo y 53 en segundo, límites de fechas y celular.
 - [x] Conciliar superficie sin cambiar capturas: 123.86 ha en ciclo, 13.8 ha con inicio de cosecha vencido sin cierre y 48.71 ha por plantar (antes mezcladas en 186.37 ha); verificado en la cuenta de Jimena.
