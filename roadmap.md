@@ -61,6 +61,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
+- [ ] Reemplazar paquetes: P.T Trejo para coliflor de Trejo; P.T Otros (brócoli y coliflor) para los demás ranchos; quitar selección de tablas/ranchos en Paquete y verificar cada plantación vigente contra su paquete.
 - [x] Cargar paquetes Norte de brócoli y coliflor fuera de Trejo desde 9 nov 2026; 28 productos por paquete, datos compartidos y precios faltantes en rojo con captura manual; alcance y cultivos por tabla comprobados, 7 pruebas pasando y dosis de Trejo intactas. Plantaciones anteriores conservan su copia.
 - [x] Agregar filtros combinados por ciclo, rancho, varias tablas y cultivo en Estado de resultados, conservando cálculos y permisos; 23 pruebas pasando, selección múltiple, totales, descarga Excel y celular comprobados con cuenta de Jimena.
 - [x] Agregar consulta de viajes actuales e históricos en Cosecha por ciclo, rancho, varias tablas y fechas, con totales para cotejar embarques; 7 pruebas pasando y Ríos 3 comprobada con 9 viajes, 194,870 kg recibidos y 158,167 pagables; selección múltiple y celular verificados.
