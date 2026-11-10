@@ -10,6 +10,9 @@ export type Role =
   | "encargado";
 
 export type Familia =
+  | "Insumos de preparación"
+  | "Fertilizantes"
+  | "Biomagenesis"
   | "Insumo"
   | "Suelo"
   | "Agroquímico"

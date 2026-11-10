@@ -502,7 +502,7 @@ function EditarProducto({ producto, onClose }: { producto: Producto; onClose: ()
           <div className="space-y-2">
             <Label htmlFor="ep-familia">Familia</Label>
             <Select value={familia} onValueChange={(v) => setFamilia(v as Familia)}>
-              <SelectTrigger id="ep-familia"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="ep-familia"><SelectValue>{familia}</SelectValue></SelectTrigger>
               <SelectContent>{FAMILIAS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -527,7 +527,7 @@ function NuevoProducto({ open, onClose }: { open: boolean; onClose: () => void }
   const { agregarProducto } = useCampo();
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
-  const [familia, setFamilia] = useState<Familia>("Fertilizante");
+  const [familia, setFamilia] = useState<Familia>("Fertilizantes");
   const [unidad, setUnidad] = useState<Unidad>("kg");
   const [precio, setPrecioV] = useState("");
 

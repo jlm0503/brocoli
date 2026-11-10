@@ -48,17 +48,11 @@ export const ANTICIPACION_SEMANAS = 2;
 export const DIAS_ALERTA_ROJA = 7;
 
 export const FAMILIAS: Familia[] = [
-  "Insumo",
-  "Suelo",
+  "Insumos de preparación",
+  "Fertilizantes",
   "Agroquímico",
-  "Herbicida",
-  "Riego",
-  "Fertilizante",
-  "Bioestimulante",
-  "Micronutriente",
-  "Fungicida",
   "Insecticida",
-  "Coadyuvante",
+  "Biomagenesis",
 ];
 
 export function nombreCultivo(cultivos: CultivoCat[], id: Cultivo): string {
