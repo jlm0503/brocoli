@@ -1,15 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileDown, FileText } from "lucide-react";
+import { FileDown, FileText, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
+import { PanelMulti } from "@/components/campo/PanelFiltros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CONCEPTOS_GASTO,
+  CICLOS_PLANTACION,
+  perteneceCicloPlantacion,
+  fechaPlantacionLote,
   formatoMXN,
   formatoNum,
   nombreCultivo,
@@ -74,7 +78,7 @@ function agrupar(filas: FilaResultados[], modo: Agrupar): FilaResultados[] {
 }
 
 function Resultados() {
-  const { ranchos, cultivos, lotes, parametros, semanaActual } = useCampo();
+  const { ranchos, tablas, cultivos, lotes, parametros, semanaActual } = useCampo();
   const { viajes } = useCosecha();
   const { gastos, repartos } = useGastos();
   const { costoLote, plantaLote } = useCostos();
@@ -82,11 +86,16 @@ function Resultados() {
   const [hasta, setHasta] = useState(semanaActual);
   const [ranchoId, setRanchoId] = useState("todos");
   const [cultivoId, setCultivoId] = useState("todos");
+  const [ciclo, setCiclo] = useState("todos");
+  const [tablaIds, setTablaIds] = useState<string[]>([]);
   const [agrupacion, setAgrupacion] = useState<Agrupar>("rancho-cultivo");
   const [a, setA] = useState("");
   const [b, setB] = useState("");
 
-  const semanas = Array.from({ length: 40 }, (_, i) => semanaActual - 25 + i);
+  const semanas = Array.from({ length: Math.max(53, semanaActual + 14) }, (_, i) => i + 1);
+  const lotesOpciones = lotes.filter((l) => !l.cancelado && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) && (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId));
+  const idsOpciones = new Set(lotesOpciones.map((l) => l.tablaId));
+  const opcionesTablas = tablas.filter((t) => idsOpciones.has(t.id)).map((t) => ({ id: t.id, nombre: `${ranchos.find((r) => r.id === t.ranchoId)?.nombre ?? t.ranchoId} · ${t.nombre}` })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true }));
 
   const t = useMemo(
     () =>
@@ -100,9 +109,9 @@ function Resultados() {
         repartos,
         costoLote,
         plantaLote,
-        pasa: (l) => (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId),
+        pasa: (l) => perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) && (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId) && (!tablaIds.length || tablaIds.includes(l.tablaId)),
       }),
-    [desde, hasta, lotes, viajes, parametros, gastos, repartos, costoLote, plantaLote, ranchoId, cultivoId],
+    [desde, hasta, lotes, viajes, parametros, gastos, repartos, costoLote, plantaLote, ranchoId, cultivoId, ciclo, tablaIds],
   );
 
   const filas = useMemo(() => agrupar(t.filas, agrupacion), [t.filas, agrupacion]);
@@ -137,7 +146,14 @@ function Resultados() {
         </>
       }
     >
-      <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="min-w-0 space-y-2">
+          <Label>Ciclo de plantación</Label>
+          <Select value={ciclo} onValueChange={(v) => { setCiclo(v); setTablaIds([]); setA(""); setB(""); }}>
+            <SelectTrigger aria-label="Ciclo de plantación"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="todos">Todos los ciclos</SelectItem>{CICLOS_PLANTACION.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
         <div className="space-y-2">
           <Label>Semana desde</Label>
           <Select value={String(desde)} onValueChange={(v) => setDesde(Number(v))}>
@@ -170,7 +186,7 @@ function Resultados() {
         </div>
         <div className="space-y-2">
           <Label>Rancho</Label>
-          <Select value={ranchoId} onValueChange={setRanchoId}>
+          <Select value={ranchoId} onValueChange={(v) => { setRanchoId(v); setTablaIds([]); setA(""); setB(""); }}>
             <SelectTrigger aria-label="Rancho">
               <SelectValue />
             </SelectTrigger>
@@ -186,7 +202,7 @@ function Resultados() {
         </div>
         <div className="space-y-2">
           <Label>Cultivo</Label>
-          <Select value={cultivoId} onValueChange={setCultivoId}>
+          <Select value={cultivoId} onValueChange={(v) => { setCultivoId(v); setTablaIds([]); setA(""); setB(""); }}>
             <SelectTrigger aria-label="Cultivo">
               <SelectValue />
             </SelectTrigger>
@@ -200,6 +216,7 @@ function Resultados() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2"><Label>Tablas</Label><div><PanelMulti nombre="Tablas" opciones={opcionesTablas} valor={tablaIds} cambiar={(v) => { setTablaIds(v); setA(""); setB(""); }} buscable /></div></div>
         <div className="space-y-2">
           <Label>Agrupar por</Label>
           <Select value={agrupacion} onValueChange={(v) => setAgrupacion(v as Agrupar)}>
@@ -215,6 +232,7 @@ function Resultados() {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex items-end"><Button variant="outline" onClick={() => { setCiclo("todos"); setRanchoId("todos"); setCultivoId("todos"); setTablaIds([]); setDesde(semanaActual - 11); setHasta(semanaActual); setA(""); setB(""); }}><RotateCcw className="size-4" />Restablecer filtros</Button></div>
       </section>
 
       <section className="mb-8 overflow-x-auto rounded-xl border border-border bg-card shadow-card">
