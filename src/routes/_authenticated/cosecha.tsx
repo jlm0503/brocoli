@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell, Stat } from "@/components/campo/AppShell";
 import { EvaluarDialog, SalidaForm, useNombreLote } from "@/components/campo/Cosecha";
+import { ViajesHistoricos } from "@/components/campo/ViajesHistoricos";
 import { VerEvidencia } from "@/components/campo/Evidencia";
 import {
   AlertDialog,
@@ -70,10 +71,10 @@ function Cosecha() {
       description="La salida se registra sin kilos; los kilos entran con la evaluación de la congeladora. Solo cuentan los viajes evaluados."
       filtros
     >
-      {puedeViajes || puedeEvaluar ? (
         <Tabs defaultValue="panel">
-          <TabsList className="mb-6 flex-wrap">
+          <TabsList className="mb-6 h-auto flex-wrap">
             <TabsTrigger value="panel">Panel</TabsTrigger>
+            <TabsTrigger value="historicos">Viajes e históricos</TabsTrigger>
             {puedeViajes && <TabsTrigger value="salidas">Salidas</TabsTrigger>}
             {puedeEvaluar && (
               <TabsTrigger value="evaluar">
@@ -84,6 +85,7 @@ function Cosecha() {
           <TabsContent value="panel">
             <Panel />
           </TabsContent>
+          <TabsContent value="historicos"><ViajesHistoricos /></TabsContent>
           <TabsContent value="salidas">
             <SalidaForm />
             <ListaViajes soloTransito={false} />
@@ -92,9 +94,6 @@ function Cosecha() {
             <ListaViajes soloTransito />
           </TabsContent>
         </Tabs>
-      ) : (
-        <Panel />
-      )}
     </AppShell>
   );
 }
