@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  CICLOS_PLANTACION,
   curvaAcumulada,
+  fechaPlantacionLote,
   formatoMXN,
   formatoNum,
   parametroVigente,
+  perteneceCicloPlantacion,
   plantadasLote,
   rendimientoLote,
   reporteCalidad,
@@ -44,6 +47,7 @@ export const Route = createFileRoute("/_authenticated/rendimiento")({
 type Grupo = "lote" | "tabla" | "rancho" | "ingeniero";
 
 function Rendimiento() {
+  const [ciclo, setCiclo] = useState("todos");
   return (
     <AppShell
       path="/rendimiento"
@@ -52,23 +56,35 @@ function Rendimiento() {
       description="Solo cuentan los viajes evaluados. El gasto directo es receta + extraordinarios − devoluciones + planta real."
       filtros
     >
+      <div className="mb-5 w-full max-w-md space-y-2">
+        <Label>Ciclo de plantación</Label>
+        <Select value={ciclo} onValueChange={setCiclo}>
+          <SelectTrigger aria-label="Ciclo de plantación" className="h-auto min-h-9 w-full [&>span]:whitespace-normal [&>span]:text-left">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los ciclos</SelectItem>
+            {CICLOS_PLANTACION.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <Tabs defaultValue="rendimiento">
         <TabsList className="mb-6">
           <TabsTrigger value="rendimiento">Rendimiento</TabsTrigger>
           <TabsTrigger value="calidad">Calidad</TabsTrigger>
         </TabsList>
         <TabsContent value="rendimiento">
-          <Resultados />
+          <Resultados ciclo={ciclo} />
         </TabsContent>
         <TabsContent value="calidad">
-          <Calidad />
+          <Calidad ciclo={ciclo} />
         </TabsContent>
       </Tabs>
     </AppShell>
   );
 }
 
-function Resultados() {
+function Resultados({ ciclo }: { ciclo: string }) {
   const { lotes, tablas, ranchos, parametros, hoy } = useCampo();
   const { roles } = useSesion();
   const { viajes } = useCosecha();
@@ -80,7 +96,7 @@ function Resultados() {
   const [grafica, setGrafica] = useState<string>("");
 
   const conViajes = useMemo(() => new Set(viajes.flatMap((v) => (v.evaluacion?.reparto ?? []).map((r) => r.loteId))), [viajes]);
-  const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && conViajes.has(l.id));
+  const ls = lotes.filter((l) => pasaLote(l) && !l.cancelado && conViajes.has(l.id) && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo));
   const rs = ls.map((l) => rendimientoLote(l, viajes, parametros, costoLote(l.id)));
 
   const filas = useMemo(() => {
@@ -227,7 +243,7 @@ function Resultados() {
   );
 }
 
-function Calidad() {
+function Calidad({ ciclo }: { ciclo: string }) {
   const { lotes, tablas, problemas } = useCampo();
   const { viajes } = useCosecha();
   const { pasaLote } = useFiltro();
@@ -238,12 +254,13 @@ function Calidad() {
   const [loteId, setLoteId] = useState("todos");
   const [ingeniero, setIngeniero] = useState("todos");
 
-  const visibles = lotes.filter((l) => pasaLote(l) && plantadasLote(l) > 0);
+  const visibles = lotes.filter((l) => pasaLote(l) && plantadasLote(l) > 0 && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo));
   const ingenieros = [...new Set(visibles.map((l) => l.ingeniero).filter(Boolean))].sort();
   const rep = reporteCalidad(viajes, lotes, (r, v) => {
     const l = lotes.find((x) => x.id === r.loteId);
     return (
       pasaLote(l) &&
+      !!l && perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) &&
       (!desde || v.fecha >= desde) &&
       (!hasta || v.fecha <= hasta) &&
       (tablaId === "todas" || r.tablaId === tablaId) &&
