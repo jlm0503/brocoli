@@ -3134,6 +3134,53 @@ export const CICLOS_PLANTACION = [
   { id: "2026-2", nombre: "Segundo ciclo · julio–diciembre 2026", desde: "2026-07-01", hasta: "2026-12-31" },
 ] as const;
 
+export interface RepartoConsultaViaje {
+  loteId: string; tablaId: string; ranchoId: string; cultivo: string; plantacion: string;
+  kgBrutos: number | null; kgPagables: number | null; precio: number | null;
+  descuento: number | null; neto: number | null;
+}
+export interface ConsultaViaje {
+  id: string; folio: string; fecha: string; hora: string; chofer: string; placas: string;
+  bins: number | null; calidad: number | null; foto: string; reporte: string;
+  historico: boolean; evaluado: boolean; reparto: RepartoConsultaViaje[];
+  kgTotal: number | null;
+}
+
+/** Una salida por ticket; históricos agrupados antes de filtrar y cierres del sistema no duplican viajes. */
+export function viajesConsulta(viajes: Viaje[], lotes: Lote[], ciclos: CicloCerrado[], choferes: { id: string; nombre: string }[] = []): ConsultaViaje[] {
+  const porId = new Map(lotes.map((l) => [l.id, l]));
+  const cerrados = new Map(ciclos.filter((c) => c.loteId).map((c) => [c.loteId, c]));
+  const actuales: ConsultaViaje[] = viajes.map((v) => {
+    const e = v.evaluacion;
+    const reparto = (e ? e.reparto.map((r) => r.loteId) : v.loteIds).flatMap((id) => {
+      const l = porId.get(id), c = cerrados.get(id), r = e?.reparto.find((r) => r.loteId === id);
+      if (!l && !c) return [];
+      const descuento = e && r ? e.descuento * r.pct / 100 : null;
+      return [{ loteId: id, tablaId: r?.tablaId ?? l?.tablaId ?? c?.tablaId ?? "", ranchoId: r?.ranchoId ?? l?.ranchoId ?? c?.ranchoId ?? "", cultivo: l?.cultivo ?? c?.cultivo ?? "", plantacion: c?.fechaPlantacion ?? (l ? fechaPlantacionLote(l) : ""), kgBrutos: r?.kgBrutos ?? null, kgPagables: r?.kgPagables ?? null, precio: r?.precio ?? null, descuento, neto: r && descuento !== null ? r.importe - descuento : null }];
+    });
+    return { id: v.id, folio: v.folio, fecha: v.fecha, hora: v.hora, chofer: choferes.find((c) => c.id === v.choferId)?.nombre ?? "—", placas: "", bins: v.bins ? Object.values(v.bins).reduce((s, n) => s + n, 0) : null, calidad: e?.calificacion ?? null, foto: v.foto, reporte: e?.reporte ?? "", historico: false, evaluado: !!e, reparto, kgTotal: e?.kgBrutos ?? null };
+  });
+  const historicos = new Map<string, ConsultaViaje>();
+  for (const c of ciclos.filter((c) => c.tipo === "historico" && !c.reabierto)) for (const [i, v] of (c.viajesHistoricos ?? []).entries()) {
+    const clave = v.folio.trim() ? `${v.fecha}:${v.folio.trim().toUpperCase()}` : `${c.id}:${i}`;
+    const fila = historicos.get(clave) ?? { id: `historico:${clave}`, folio: v.folio || "Sin folio", fecha: v.fecha, hora: "", chofer: v.chofer ?? "—", placas: v.placas ?? "", bins: null, calidad: v.calidad ?? null, foto: v.foto ?? "", reporte: "", historico: true, evaluado: true, reparto: [], kgTotal: 0 };
+    fila.reparto.push({ loteId: c.id, tablaId: c.tablaId, ranchoId: c.ranchoId, cultivo: c.cultivo, plantacion: c.fechaPlantacion, kgBrutos: v.kgBrutos, kgPagables: v.kgPagables, precio: v.precioKg ?? null, descuento: v.descuentoPlanta ?? null, neto: v.precioKg !== undefined && v.descuentoPlanta !== undefined ? v.kgPagables * v.precioKg - v.descuentoPlanta : null });
+    fila.kgTotal = (fila.kgTotal ?? 0) + v.kgBrutos;
+    historicos.set(clave, fila);
+  }
+  return [...actuales, ...historicos.values()].sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora));
+}
+
+export function filtrarViajesConsulta(filas: ConsultaViaje[], filtro: { ciclo: string; tablaIds: string[]; ranchoId: string; desde: string; hasta: string }, permitido: (r: RepartoConsultaViaje) => boolean = () => true): ConsultaViaje[] {
+  return filas.filter((v) => (!filtro.desde || v.fecha >= filtro.desde) && (!filtro.hasta || v.fecha <= filtro.hasta)).map((v) => ({ ...v, reparto: v.reparto.filter((r) => permitido(r) && perteneceCicloPlantacion(r.plantacion, filtro.ciclo) && (!filtro.ranchoId || r.ranchoId === filtro.ranchoId) && (!filtro.tablaIds.length || filtro.tablaIds.includes(r.tablaId))) })).filter((v) => v.reparto.length > 0);
+}
+
+export function totalesConsultaViajes(filas: ConsultaViaje[]) {
+  const rs = filas.flatMap((v) => v.reparto);
+  const sumar = (clave: "kgBrutos" | "kgPagables" | "descuento" | "neto") => rs.length && rs.some((r) => r[clave] === null) ? null : redondear(rs.reduce((s, r) => s + (r[clave] ?? 0), 0));
+  return { viajes: filas.length, kgBrutos: sumar("kgBrutos"), kgPagables: sumar("kgPagables"), descuento: sumar("descuento"), neto: sumar("neto") };
+}
+
 /** Cohorte por fecha de plantación, independiente de cuándo se cosecha o se cierra. */
 export function perteneceCicloPlantacion(fecha: string, cicloId: string): boolean {
   if (cicloId === "todos") return true;
