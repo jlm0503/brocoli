@@ -83,6 +83,7 @@ const SEMAFORO_LABEL: Record<Semaforo, string> = {
 };
 
 function Compras() {
+  const [vista, setVista] = useState<"rancho" | "producto">("rancho");
   const { semanaActual, pedidos } = useCampo();
   const { pasaLoteId } = useFiltro();
   const rojos = pedidos.filter((p) => pasaLoteId(p.loteId) && semaforoPedido(p, semanaActual) === "rojo").length;
@@ -94,6 +95,10 @@ function Compras() {
       description="Todo sale de la receta: el pedido de planeación nace al planear un lote; lo semanal se calcula con las hectáreas realmente plantadas."
       filtros
     >
+      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Agrupar compras">
+        <Button size="sm" variant={vista === "rancho" ? "default" : "outline"} onClick={() => setVista("rancho")}>Por rancho</Button>
+        <Button size="sm" variant={vista === "producto" ? "default" : "outline"} onClick={() => setVista("producto")}>Totales por producto</Button>
+      </div>
       <Tabs defaultValue="planeacion">
         <TabsList className="mb-6 h-auto flex-wrap">
           <TabsTrigger value="planeacion">
@@ -110,16 +115,16 @@ function Compras() {
           <TabsTrigger value="extra">Extraordinarios autorizados</TabsTrigger>
         </TabsList>
         <TabsContent value="planeacion">
-          <PedidosPlaneacion />
+          <PedidosPlaneacion totales={vista === "producto"} />
         </TabsContent>
         <TabsContent value="entregar">
-          <ListaSemana semana={semanaActual} modo="entregar" />
+          <ListaSemana semana={semanaActual} modo="entregar" totales={vista === "producto"} />
         </TabsContent>
         <TabsContent value="comprar">
-          <ListaSemana semana={semanaActual + 2} modo="comprar" />
+          <ListaSemana semana={semanaActual + 2} modo="comprar" totales={vista === "producto"} />
         </TabsContent>
         <TabsContent value="siguiente">
-          <ListaSemana semana={semanaActual + 1} modo="entregar" />
+          <ListaSemana semana={semanaActual + 1} modo="entregar" totales={vista === "producto"} />
         </TabsContent>
         <TabsContent value="extra">
           <ExtrasCompras />
@@ -131,7 +136,7 @@ function Compras() {
 
 /* ───────────── Pedidos de planeación ───────────── */
 
-function PedidosPlaneacion() {
+function PedidosPlaneacion({ totales }: { totales: boolean }) {
   const { ranchos, pedidos, productos, tablas, lotes, semanaActual, reabrirPedido } = useCampo();
   const [todos, setTodos] = useState(false);
   const [entregando, setEntregando] = useState<PedidoPlaneacion | null>(null);
@@ -167,7 +172,7 @@ function PedidosPlaneacion() {
         <Switch checked={todos} onCheckedChange={setTodos} /> Mostrar también entregados anteriores
       </label>
 
-      <div className="space-y-6">
+      {totales ? <TotalesProductos filas={grupos.flatMap(([k, ps]) => consolidarPlaneacion(ps, productos).map(c => ({ ...c, ranchoId: k.split("|")[1] ?? "" })))} /> : <div className="space-y-6">
         {grupos.map(([k, ps]) => {
           const limite = Number(k.split("|")[0]);
           const rancho = ranchos.find((r) => r.id === ps[0]!.ranchoId);
@@ -256,7 +261,7 @@ function PedidosPlaneacion() {
             No hay pedidos de planeación pendientes.
           </p>
         )}
-      </div>
+      </div>}
 
       <EntregarPedidoDialog pedido={entregando} onClose={() => setEntregando(null)} />
     </>
@@ -321,7 +326,7 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
 
 /* ───────────── Entregar / comprar ───────────── */
 
-function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "comprar" }) {
+function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entregar" | "comprar"; totales: boolean }) {
   const { ranchos, lotes: todosLotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
   const { pasaLote } = useFiltro();
   const lotes = useMemo(() => todosLotes.filter((l) => pasaLote(l)), [todosLotes, pasaLote]);
@@ -368,7 +373,7 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
         />
       </div>
 
-      <div className="space-y-8">
+      {totales ? <TotalesProductos filas={filas.filter(f => f.status !== "cancelado")} /> : <div className="space-y-8">
         {ranchos.map((r) => {
           const deRancho = filas
             .filter((f) => f.ranchoId === r.id)
@@ -486,7 +491,7 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
             No hay insumos programados para esta semana.
           </p>
         )}
-      </div>
+      </div>}
 
       <RecibirDialog fila={recibiendo} onClose={() => setRecibiendo(null)} />
     </>
@@ -591,4 +596,28 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
       </DialogContent>
     </Dialog>
   );
+}
+
+function TotalesProductos({ filas }: { filas: { productoId: string; ranchoId: string; cantidadPedido: number }[] }) {
+  const { productos, ranchos } = useCampo();
+  const [busqueda, setBusqueda] = useState("");
+  const agrupados = new Map<string, { total: number; ranchos: Map<string, number> }>();
+  for (const f of filas) {
+    const grupo = agrupados.get(f.productoId) ?? { total: 0, ranchos: new Map<string, number>() };
+    grupo.total += f.cantidadPedido;
+    grupo.ranchos.set(f.ranchoId, (grupo.ranchos.get(f.ranchoId) ?? 0) + f.cantidadPedido);
+    agrupados.set(f.productoId, grupo);
+  }
+  const visibles = productos.filter(p => agrupados.has(p.id) && p.nombre.toLocaleLowerCase().includes(busqueda.toLocaleLowerCase())).sort((a,b) => a.nombre.localeCompare(b.nombre));
+  return <section className="space-y-3">
+    <Input aria-label="Buscar producto para cotizar" placeholder="Buscar producto…" value={busqueda} onChange={e => setBusqueda(e.target.value)} className="max-w-sm" />
+    <div className="overflow-x-auto"><Table>
+      <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead className="text-right">Total a cotizar</TableHead><TableHead>Por rancho</TableHead></TableRow></TableHeader>
+      <TableBody>{visibles.map(p => {
+        const g = agrupados.get(p.id);
+        if (!g) return null;
+        return <TableRow key={p.id}><TableCell className="font-medium">{p.nombre}</TableCell><TableCell className="num whitespace-nowrap text-right font-semibold">{formatoNum(g.total)} {p.unidad}</TableCell><TableCell><ul className="space-y-1 text-xs text-muted-foreground">{[...g.ranchos].map(([id, cantidad]) => <li key={id}>{ranchos.find(r => r.id === id)?.nombre}: <span className="num">{formatoNum(cantidad)} {p.unidad}</span></li>)}</ul></TableCell></TableRow>;
+      })}</TableBody>
+    </Table></div>
+  </section>;
 }
