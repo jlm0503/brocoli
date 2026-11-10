@@ -271,7 +271,7 @@ export function recetaEfectiva(
   tablaId: string,
 ): DosisPorSemana {
   const out: DosisPorSemana = {};
-  for (const w of SEMANAS_RECETA) out[w] = { ...(receta.dosis[w] ?? {}) };
+  for (const w of new Set([...SEMANAS_RECETA, ...Object.keys(receta.dosis).map(Number)])) out[w] = { ...(receta.dosis[w] ?? {}) };
   for (const a of adicionales) {
     if (!a.tablaIds.includes(tablaId)) continue;
     for (const w of a.semanas) {
@@ -284,7 +284,7 @@ export function recetaEfectiva(
 
 export function recetaDe(recetas: Recetas, cultivo: Cultivo, tablaId?: string, ranchoId?: string, fecha?: string): Receta {
   const base = recetas[cultivo] ?? { dosis: {} };
-  const variante = base.variantes?.filter((p) => (p.ranchoIds ? p.ranchoIds.includes(ranchoId ?? "") : p.ranchoId === ranchoId) && (!p.tablaIds.length || p.tablaIds.includes(tablaId ?? "")) && (!fecha || p.desde <= fecha))
+  const variante = base.variantes?.filter((p) => Boolean(ranchoId) && (p.excluirRanchoIds ? !p.excluirRanchoIds.includes(ranchoId ?? "") : p.ranchoIds ? p.ranchoIds.includes(ranchoId ?? "") : p.ranchoId === ranchoId) && (!p.tablaIds.length || p.tablaIds.includes(tablaId ?? "")) && (!fecha || p.desde <= fecha))
     .sort((a, b) => b.desde.localeCompare(a.desde))[0];
   return variante ? { dosis: variante.dosis } : base;
 }
