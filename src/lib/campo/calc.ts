@@ -3118,7 +3118,7 @@ export function perteneceCicloPlantacion(fecha: string, cicloId: string): boolea
 
 /** Alertas ligadas a lotes conservan su cohorte; sin vínculo se busca la plantación de la tabla en esa fecha. */
 export function registroEnCicloPlantacion(
-  registro: { fecha: string; tablaIds: string[]; loteIds?: string[] },
+  registro: { fecha: string; tablaIds: string[]; loteIds?: string[] | undefined },
   cicloId: string,
   lotes: Lote[],
   ciclos: CicloCerrado[],
@@ -3129,7 +3129,7 @@ export function registroEnCicloPlantacion(
     ...ciclos.filter((c) => !c.reabierto).map((c) => ({ id: c.loteId, tablaId: c.tablaId, fecha: c.fechaPlantacion })),
   ];
   if (registro.loteIds?.length) {
-    return plantaciones.some((p) => registro.loteIds?.includes(p.id) && perteneceCicloPlantacion(p.fecha, cicloId));
+    return plantaciones.some((p) => p.id !== undefined && registro.loteIds?.includes(p.id) && perteneceCicloPlantacion(p.fecha, cicloId));
   }
   return registro.tablaIds.some((tablaId) => {
     const p = plantaciones.filter((p) => p.tablaId === tablaId && p.fecha <= registro.fecha)
