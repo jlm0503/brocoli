@@ -59,7 +59,9 @@ const VARIANTE: Record<EstatusSolicitud, "pendiente" | "comprado" | "recibido" |
 function Solicitudes() {
   const { solicitudes: todas, lotes, semanaActual } = useCampo();
   const { pasaLote, pasaLoteId } = useFiltro();
-  const solicitudes = todas.filter((s) => s.lineas.length === 0 || s.lineas.some((l) => pasaLoteId(l.loteId)));
+  const solicitudes = todas.filter(
+    (s) => s.status !== "cancelada" && (s.lineas.length === 0 || s.lineas.some((l) => pasaLoteId(l.loteId))),
+  );
   const [generando, setGenerando] = useState(false);
   const [recibiendo, setRecibiendo] = useState<SolicitudPlanta | null>(null);
   const lista = [...solicitudes].sort((a, b) => b.folio - a.folio);
