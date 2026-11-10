@@ -274,15 +274,17 @@ describe("Variedades y ciclo", () => {
     expect(lineas).toEqual([{ productoId: "cintilla", cantidad: 12.6 }]);
   });
 
-  it("dos semanas después de la cosecha el lote se finaliza y la tabla queda libre", () => {
+  it("dos semanas después de la cosecha la tabla sigue ocupada hasta cerrar el ciclo", () => {
     const t: Tabla = { id: "t1", ranchoId: "r", nombre: "Tabla 7", hectareas: 6.5 };
     const viejo = lote({ id: "v", ha: 6.5, semanaPlaneada: 25, avances: [av(25, 6.5)], fechaCosecha: "2026-09-15" });
     expect(semanaCosechaLote(viejo)).toBe(13);
     expect(finalizarCosechados([viejo], 39)[0]!.finalizado).toBeUndefined();
     const [fin] = finalizarCosechados([viejo], 40);
-    expect(fin!.finalizado).toBe(true);
-    expect(hectareasDisponibles(t, [fin!])).toBe(6.5);
-    expect(hectareasActivas([fin!], "t1", 40)).toBe(0);
+    expect(fin?.finalizado).not.toBe(true);
+    if (!fin) throw new Error("Falta el lote");
+    expect(hectareasDisponibles(t, [fin])).toBe(0);
+    expect(hectareasDisponibles(t, [{ ...fin, cerrado: true }])).toBe(6.5);
+    expect(hectareasActivas([fin], "t1", 40)).toBe(0);
   });
 
   it("la etapa de cosecha depende de la variedad", () => {

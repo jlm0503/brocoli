@@ -15,7 +15,7 @@ describe("Retirar tablas sin perder históricos", () => {
     expect(retirarTabla(tabla, [{ tablaId: "agrupada" }])).toHaveProperty("error");
   });
   it("conserva los registros de lotes anteriores al retirar", () => {
-    const lotes = [{ tablaId: "agrupada", cerrado: true }, { tablaId: "agrupada", finalizado: true }];
+    const lotes = [{ tablaId: "agrupada", cerrado: true }, { tablaId: "agrupada", finalizado: true, cerrado: true }];
     const originales = structuredClone(lotes);
     expect(retirarTabla(tabla, lotes)).toHaveProperty("tabla.archivada", true);
     expect(lotes).toEqual(originales);
