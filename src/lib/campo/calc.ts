@@ -3119,3 +3119,25 @@ export function perteneceCicloPlantacion(fecha: string, cicloId: string): boolea
 export function costoAplicacionesPrevias(l: Pick<Lote, "aplicacionesPrevias">): number {
   return redondear((l.aplicacionesPrevias ?? []).reduce((s, a) => s + a.costo, 0));
 }
+
+/** Incumplimiento al terminar la semana planeada; reconstruye el área original tras arrastres. */
+export function plantacionesIncumplidas(lotes: Lote[], semanaActual: number) {
+  return lotes.filter((l) => !l.cancelado && !l.origenId && l.semanaPlaneada < semanaActual).flatMap((lote) => {
+    const ids = new Set([lote.id]);
+    let cambio = true;
+    while (cambio) {
+      cambio = false;
+      for (const l of lotes) if (l.origenId && ids.has(l.origenId) && !ids.has(l.id)) { ids.add(l.id); cambio = true; }
+    }
+    const familia = lotes.filter((l) => ids.has(l.id) && !l.cancelado);
+    const planeadas = redondear(familia.reduce((s, l) => s + l.ha, 0));
+    const registradas = redondear(familia.reduce((s, l) => s + l.avances.filter((a) => a.semana <= lote.semanaPlaneada).reduce((n, a) => n + a.ha, 0), 0));
+    const faltantes = redondear(Math.max(0, planeadas - registradas));
+    return faltantes > 0 ? [{ lote, planeadas, registradas, faltantes }] : [];
+  });
+}
+
+/** Solo resultados congelados y completos; cosecha terminada no equivale a ciclo cerrado. */
+export function cierresBajoMeta(ciclos: CicloCerrado[]) {
+  return ciclos.filter((c) => !c.reabierto && !!c.fechaFinCosecha && !c.importacion?.pendiente && c.meta > 0 && c.ha > 0 && c.kgPagables / c.ha < c.meta);
+}

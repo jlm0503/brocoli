@@ -61,6 +61,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
+- [x] Mostrar en Alertas a Dirección extraordinarios, plantación incumplida, devoluciones y rendimiento bajo solo de ciclos cerrados; 31 pruebas pasando y vista comprobada con cuenta de Jimena.
 - [x] Agregar listado y filtros múltiples por estatus en Estatus y costos y Planeación y avance, con rancho, cultivo, fechas y acceso al detalle.
 - [x] Agregar filtro de ciclos de plantación en Consumos por tabla para separar pasado y actual; comprobados ambos ciclos y los reportes en computadora y celular.
 
