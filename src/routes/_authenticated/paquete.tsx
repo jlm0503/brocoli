@@ -73,12 +73,13 @@ const ETAPA_CORTA: Record<string, string> = {
 };
 
 function Paquete() {
-  const { productos, recetas, variedades, cultivos, ranchos, tablas, lotes, setDosis, parametro, hoy } = useCampo();
-  const [cultivo, setCultivo] = useState<Cultivo>("brocoli");
-  const [paqueteId, setPaqueteId] = useState("base");
+  const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
+  const [programa, setPrograma] = useState("trejo-coliflor");
+  const cultivo: Cultivo = programa === "otros-brocoli" ? "brocoli" : "coliflor";
+  const paqueteId = programa;
   const base = recetaDe(recetas, cultivo);
   const paquete = base.variantes?.find((p) => p.id === paqueteId);
-  const receta = paquete ? { dosis: paquete.dosis } : base;
+  const receta = paquete ? { dosis: paquete.dosis } : { dosis: {} };
   const variedad = variedades.find((v) => v.cultivo === cultivo);
   const cinta = cintaPlaneacion(productos, parametro("rollosCintaHa", hoy, variedad?.id));
   const precioHoy = (p: (typeof productos)[number]) => precioVigente(p, hoy);
@@ -107,35 +108,20 @@ function Paquete() {
   return (
     <AppShell
       path="/paquete"
-      eyebrow="Administrador · receta base"
+      eyebrow="Administrador · paquetes"
       title="Paquete tecnológico"
-      description="Cantidad por hectárea en cada semana de receta. La semana -2 es el paquete de planeación que se pide al planear un lote. Cada lote usa la receta hasta la semana de cosecha de su variedad. Al plantarse, guarda una copia: si cambias algo aquí, solo aplica a lotes nuevos."
+      description="Dosis por hectárea · vigencias y costos"
     >
-      <Tabs value={cultivo} onValueChange={(v) => { setCultivo(v as Cultivo); setPaqueteId("base"); }} className="mb-4">
-        <TabsList>
-          {cultivos.map((c) => (
-            <TabsTrigger key={c.id} value={c.id}>
-              {c.nombre}
-            </TabsTrigger>
-          ))}
+      <Tabs value={programa} onValueChange={setPrograma} className="mb-4">
+        <TabsList className="h-auto flex-wrap">
+          <TabsTrigger value="trejo-coliflor">Trejo · Coliflor</TabsTrigger>
+          <TabsTrigger value="otros-brocoli">Otros · Brócoli</TabsTrigger>
+          <TabsTrigger value="otros-coliflor">Otros · Coliflor</TabsTrigger>
         </TabsList>
       </Tabs>
-      {base.variantes?.length ? <div className="mb-5 max-w-xl space-y-2">
-        <Label>Programación</Label>
-        <Select value={paqueteId} onValueChange={setPaqueteId}>
-          <SelectTrigger aria-label="Programación"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="base">Base anterior</SelectItem>
-            {base.variantes.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div> : null}
       {paquete && <section className="mb-5 space-y-2 text-sm">
         <p className="font-medium">{nombreCultivo(cultivos, cultivo)} · vigente desde {paquete.desde.split("-").reverse().join("/")}</p>
-        <p>Ranchos: {(paquete.ranchoIds ?? [paquete.ranchoId]).map((id) => ranchos.find((r) => r.id === id)?.nombre ?? id).join(", ")}</p>
-        <details><summary className="cursor-pointer text-primary">Tablas y cultivos</summary><ul className="mt-2 grid gap-1 sm:grid-cols-2">{tablas.filter((t) => (paquete.ranchoIds ?? [paquete.ranchoId]).includes(t.ranchoId) && (!paquete.tablaIds.length || paquete.tablaIds.includes(t.id))).map((t) => {
-          const cultivosTabla = [...new Set(lotes.filter((l) => l.tablaId === t.id && !l.cancelado && !l.cerrado).map((l) => nombreCultivo(cultivos, l.cultivo)))];
-          return <li key={t.id}>{ranchos.find((r) => r.id === t.ranchoId)?.nombre} · {t.nombre} · {cultivosTabla.join(" / ") || "Sin plantación"}</li>;
-        })}</ul></details>
+        <p>{programa === "trejo-coliflor" ? "Todas las coliflores de Trejo" : "Todos los ranchos excepto Trejo"}</p>
       </section>}
       <p className="mb-6 text-sm text-muted-foreground">
         Variedades:{" "}
@@ -194,8 +180,8 @@ function Paquete() {
             </tr>
           </thead>
           <tbody>
-            {FAMILIAS.map((fam) => {
-              const items = productos.filter((p) => p.familia === fam);
+            {[...FAMILIAS, "Familia por actualizar"].map((fam) => {
+              const items = productos.filter((p) => fam === "Familia por actualizar" ? !FAMILIAS.includes(p.familia) : p.familia === fam);
               if (items.length === 0) return null;
               return (
                 <Fragment key={fam}>
@@ -237,7 +223,8 @@ function Paquete() {
                               step="0.1"
                               value={v === 0 ? "" : v}
                               placeholder="·"
-                              onChange={(e) => setDosis(cultivo, p.id, w, Number(e.target.value), paquete?.id)}
+                              disabled={!paquete}
+                              onChange={(e) => setDosis(cultivo, p.id, w, Number(e.target.value), paqueteId)}
                               className={`num w-full min-w-11 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none ${v > 0 ? (w < 0 ? "bg-soil-soft text-soil-foreground" : "bg-primary-soft text-accent-foreground") : "bg-transparent hover:bg-muted"}`}
                               aria-label={`${p.nombre} semana ${w}`}
                             />
@@ -270,7 +257,6 @@ function Paquete() {
         su costo se carga al 100% al lote. Las semanas sin productos se quedan vacías.
       </p>
 
-      <Adicionales />
     </AppShell>
   );
 }

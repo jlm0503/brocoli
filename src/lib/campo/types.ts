@@ -118,6 +118,8 @@ export interface PaqueteTabla {
   ranchoId: string;
   /** Alcance por ranchos; tablaIds vacío significa todo el rancho. */
   ranchoIds?: string[];
+  /** Todos los ranchos salvo estos, incluidos los que se agreguen después. */
+  excluirRanchoIds?: string[];
   tablaIds: string[];
   desde: string;
   dosis: DosisPorSemana;
