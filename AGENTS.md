@@ -29,4 +29,5 @@
 - Calendar rollover never finalizes lots without explicit harvest termination or cycle closure; availability uses non-cancelled, non-closed lots regardless of legacy `finalizado`. Why: estimated harvest dates and harvest termination must not release acreage before explicit cycle closure.
 - Planting-period views classify by planting date through pure calc helpers and combine open lots with frozen snapshots, excluding snapshot-linked lots. Why: semester cohorts include unfinished harvests without closing records or double-counting them.
 - Harvest warning dismissals are view-only browser preferences scoped to the signed-in user and warning identity; changed yield warnings reappear. Why: removing a warning must never delete operational records or hide it for another user.
-- Operational list views share ListadoTablas and classify each open lot using estatusTabla with that lot's area; date and cost values reuse existing helpers. Why: multiple plantings on one table remain distinct without changing stored data or crop math.
+- Operational lists share ListadoTablas and existing date/cost/status helpers. Why: keep lots distinct without changing stored data.
+- Direction reports use AlertasOperativas and pure calc helpers for missed planting and closed-cycle yield. Why: alerts never mutate records.

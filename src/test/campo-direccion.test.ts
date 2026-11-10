@@ -12,7 +12,7 @@ describe("Alertas a Dirección", () => {
   it("compara el avance a tiempo y no oculta el incumplimiento con captura tardía", () => {
     const l = { ...lote, avances: [{ id: "a", fecha: "2026-11-03", semana: 45, ha: 3 }, { id: "b", fecha: "2026-11-09", semana: 46, ha: 2 }] };
     expect(plantacionesIncumplidas([l], 46)[0]).toMatchObject({ registradas: 3, faltantes: 2 });
-    expect(plantacionesIncumplidas([{ ...l, avances: [{ ...l.avances[0], ha: 5 }] }], 46)).toEqual([]);
+    expect(plantacionesIncumplidas([{ ...l, avances: [{ id: "a", fecha: "2026-11-03", semana: 45, ha: 5 }] }], 46)).toEqual([]);
   });
   it("reconstruye los arrastres sin duplicar avisos", () => {
     const raiz = { ...lote, ha: 3, avances: [{ id: "a", fecha: "2026-11-03", semana: 45, ha: 3 }] };
