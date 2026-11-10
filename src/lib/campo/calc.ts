@@ -1427,7 +1427,7 @@ export function pedidosQueLleganEnSemana(
   pedidos: PedidoPlaneacion[],
   semana: number,
 ): PedidoPlaneacion[] {
-  return pedidos.filter((p) => p.status !== "cancelado" && semanaEntregaIdeal(p) === semana);
+  return pedidos.filter((p) => p.status !== "cancelado" && (semanaEntregaIdeal(p) === semana || (p.status === "pendiente" && semanaEntregaIdeal(p) < semana)));
 }
 
 /** Planta que el vivero entrega en la semana: renglones de solicitudes vigentes, con su folio y estatus. */
