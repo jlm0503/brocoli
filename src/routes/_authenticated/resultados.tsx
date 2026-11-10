@@ -110,6 +110,7 @@ function Resultados() {
         costoLote,
         plantaLote,
         pasa: (l) => perteneceCicloPlantacion(fechaPlantacionLote(l), ciclo) && (ranchoId === "todos" || l.ranchoId === ranchoId) && (cultivoId === "todos" || l.cultivo === cultivoId) && (!tablaIds.length || tablaIds.includes(l.tablaId)),
+        pasaNoAsignado: (n) => ciclo === "todos" && !tablaIds.length && (ranchoId === "todos" || n.ranchoId === ranchoId) && (cultivoId === "todos" || n.cultivo === cultivoId),
       }),
     [desde, hasta, lotes, viajes, parametros, gastos, repartos, costoLote, plantaLote, ranchoId, cultivoId, ciclo, tablaIds],
   );

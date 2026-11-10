@@ -2870,6 +2870,7 @@ export function estadoResultados(ctx: {
   costoLote: (loteId: string) => number;
   plantaLote: (loteId: string) => number;
   pasa?: ((l: Lote) => boolean) | undefined;
+  pasaNoAsignado?: ((n: { ranchoId: string; cultivo: string }) => boolean) | undefined;
 }): EstadoResultados {
   const p = prorrateoRango(ctx);
   const grupos = new Map<string, FilaResultados>();
@@ -2896,6 +2897,7 @@ export function estadoResultados(ctx: {
     f.utilidadDirecta = redondear(f.utilidadDirecta + (r.ingreso - r.gasto));
   }
   for (const n of p.noAsignado) {
+    if (ctx.pasaNoAsignado && !ctx.pasaNoAsignado(n)) continue;
     const f = fila(n.ranchoId, n.cultivo);
     f.noAsignado = redondear(f.noAsignado + n.monto);
   }
