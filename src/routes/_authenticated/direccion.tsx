@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
+import { AlertasOperativas } from "@/components/campo/AlertasOperativas";
 import { MapaFotos } from "@/components/campo/Extraordinarios";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,9 @@ export const Route = createFileRoute("/_authenticated/direccion")({
   head: () => ({
     meta: [
       { title: "Alertas a Dirección · Brócoli" },
-      { name: "description", content: "Fotos fuera de las tablas y reportes de mejora no entregados, con reporte mensual por ingeniero." },
+      { name: "description", content: "Pedidos extraordinarios, plantaciones incumplidas, devoluciones y ciclos cerrados por debajo de la meta." },
       { property: "og:title", content: "Alertas a Dirección · Brócoli" },
-      { property: "og:description", content: "Incumplimientos de los ingenieros y su seguimiento." },
+      { property: "og:description", content: "Extraordinarios, avance de plantación, devoluciones y rendimientos finales por ingeniero y rancho." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -48,12 +49,12 @@ function Direccion() {
       path="/direccion"
       eyebrow="Dirección · incumplimientos"
       title="Alertas a Dirección"
-      description="Llegan solas cuando una foto queda fuera de las tablas o cuando un ingeniero no reporta la mejora 3 días después de lo esperado. Ciérralas al hablar con el ingeniero."
       filtros
     >
+      <AlertasOperativas />
       <section className="mb-10">
         <h2 className="mb-3 text-2xl font-semibold">
-          Abiertas <span className="num text-base text-muted-foreground">({abiertas.length})</span>
+          Seguimiento de ubicación y mejora <span className="num text-base text-muted-foreground">({abiertas.length})</span>
         </h2>
         {abiertas.length === 0 ? (
           <p className="text-sm text-muted-foreground">No hay alertas abiertas.</p>
