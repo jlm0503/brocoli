@@ -694,8 +694,11 @@ export function esPlaneacionTardia(semana: number, semanaActual: number): boolea
 
 /** Insumos de planeación del lote cuyo pedido ya se entregó. */
 export function insumosEntregados(l: Lote, pedidos: PedidoPlaneacion[]): InsumoAsignado[] {
-  const entregados = new Set(pedidos.filter((p) => p.status === "entregado").map((p) => p.id));
-  return l.insumos.filter((i) => entregados.has(i.pedidoId) && i.cantidad > 0);
+  return l.insumos.flatMap((i) => {
+    const p = pedidos.find((p) => p.id === i.pedidoId);
+    const cantidad = p?.cantidadesRecibidas?.[i.productoId] ?? (p?.status === "entregado" ? i.cantidad : 0);
+    return cantidad > 0 ? [{ ...i, cantidad }] : [];
+  });
 }
 
 /** Lotes pendientes del rancho con insumos de planeación ya entregados (para planeación tardía). */
@@ -899,6 +902,25 @@ export function estatusLinea(
   semanaActual: number,
 ): EstatusRecepcion {
   return recepciones[l.key]?.status ?? (l.semana < semanaActual ? "recibido" : "pendiente");
+}
+
+/** Distribuye el total real sin perderlo por redondeo; compara contra la cantidad pedida. */
+export function repartirRecepcion(lineas: { key: string; cantidad: number }[], cantidadTotal: number, cantidadPedida: number): Record<string, Recepcion> {
+  if (!Number.isFinite(cantidadTotal) || cantidadTotal < 0) throw new Error("Cantidad inválida");
+  const total = lineas.reduce((s, l) => s + l.cantidad, 0);
+  if (total <= 0) return {};
+  const status = cantidadTotal >= cantidadPedida ? "recibido" : "parcial";
+  let asignado = 0;
+  return Object.fromEntries(lineas.map((l, i) => {
+    const cantidadRecibida = i === lineas.length - 1 ? redondear(cantidadTotal - asignado, 6) : redondear(cantidadTotal * l.cantidad / total, 6);
+    asignado += cantidadRecibida;
+    return [l.key, { status, cantidadRecibida }];
+  }));
+}
+
+export function recibirPreparacion(p: PedidoPlaneacion, cantidades: Record<string, number>): PedidoPlaneacion {
+  for (const l of p.lineas) if (!Number.isFinite(cantidades[l.productoId]) || (cantidades[l.productoId] ?? -1) < 0) throw new Error("Cantidad inválida");
+  return { ...p, cantidadesRecibidas: cantidades, status: p.lineas.every(l => (cantidades[l.productoId] ?? 0) >= l.cantidad) ? "entregado" : "pendiente" };
 }
 
 export function cantidadRecibida(l: LineaDemanda, recepciones: Record<string, Recepcion>): number {

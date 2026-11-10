@@ -72,7 +72,7 @@ const STATUS_LABEL = {
   comprado: "Comprado",
   recibido: "Recibido en rancho",
   cancelado: "Cancelado",
-  parcial: "Mixto",
+  parcial: "Recibido parcialmente",
 } as const;
 
 const SEMAFORO_LABEL: Record<Semaforo, string> = {
@@ -218,6 +218,7 @@ function PedidosPlaneacion() {
                           <div className="flex flex-wrap items-center gap-2 font-medium">
                             {t?.nombre} · Lote {l?.codigo}
                             <Badge variant={sem}>{SEMAFORO_LABEL[sem]}</Badge>
+                            {p.status === "pendiente" && p.cantidadesRecibidas && <Badge variant="parcial">Recibido parcialmente</Badge>}
                             {p.urgente && <Badge variant="urgente">Urgente</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -263,11 +264,13 @@ function PedidosPlaneacion() {
 }
 
 function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | null; onClose: () => void }) {
-  const { tablas, lotes, entregarPedido } = useCampo();
+  const { tablas, lotes, productos, entregarPedido } = useCampo();
+  const [cantidades, setCantidades] = useState<Record<string, string>>({});
   const [foto, setFoto] = useState<string | undefined>();
   const t = pedido ? tablas.find((x) => x.id === pedido.tablaId) : undefined;
   const l = pedido ? lotes.find((x) => x.id === pedido.loteId) : undefined;
   const cerrar = () => {
+    setCantidades({});
     setFoto(undefined);
     onClose();
   };
@@ -280,6 +283,15 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
             {t?.nombre} · Lote {l?.codigo}. El costo se carga al lote al confirmar.
           </DialogDescription>
         </DialogHeader>
+        <div className="space-y-3">
+          {pedido?.lineas.map(x => {
+            const prod = productos.find(p => p.id === x.productoId);
+            return <div key={x.productoId} className="space-y-1">
+              <Label htmlFor={`cantidad-${x.productoId}`}>{prod?.nombre} · {prod?.unidad} · pedido {formatoNum(x.cantidad)}</Label>
+              <Input id={`cantidad-${x.productoId}`} type="number" min="0" step="any" inputMode="decimal" value={cantidades[x.productoId] ?? String(pedido.cantidadesRecibidas?.[x.productoId] ?? x.cantidad)} onChange={e => setCantidades(v => ({ ...v, [x.productoId]: e.target.value }))} />
+            </div>;
+          })}
+        </div>
         <FotoInput foto={foto} setFoto={setFoto} />
         <DialogFooter>
           <Button variant="ghost" onClick={cerrar}>
@@ -292,8 +304,10 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
                 toast.error("Agrega la foto de evidencia de la entrega");
                 return;
               }
-              entregarPedido(pedido.id, foto);
-              toast.success(`Pedido del lote ${l?.codigo} entregado`);
+              const reales = Object.fromEntries(pedido.lineas.map(x => [x.productoId, Number(cantidades[x.productoId] ?? pedido.cantidadesRecibidas?.[x.productoId] ?? x.cantidad)]));
+              if (Object.values(reales).some(n => !Number.isFinite(n) || n < 0)) { toast.error("Cantidad inválida"); return; }
+              entregarPedido(pedido.id, foto, reales);
+              toast.success(pedido.lineas.every(x => (reales[x.productoId] ?? 0) >= x.cantidad) ? "Pedido recibido" : "Pedido recibido parcialmente");
               cerrar();
             }}
           >
@@ -417,6 +431,7 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
                           </TableCell>
                           <TableCell className="num text-right whitespace-nowrap">
                             {formatoNum(f.cantidadPedido)} {p.unidad}
+                            {f.keys.some(k => recepciones[k]?.cantidadRecibida !== undefined) && <div className="text-xs text-muted-foreground">Recibido: {formatoNum(f.keys.reduce((s, k) => s + (recepciones[k]?.cantidadRecibida ?? 0), 0))} {p.unidad}</div>}
                             {f.cantidadPedido !== f.cantidad && (
                               <div className="text-xs text-muted-foreground">
                                 exacto {formatoNum(f.cantidad)}
@@ -479,12 +494,13 @@ function ListaSemana({ semana, modo }: { semana: number; modo: "entregar" | "com
 }
 
 function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: () => void }) {
-  const { ranchos, productos, recibir, tablas, lotes } = useCampo();
+  const { ranchos, productos, recibir, tablas, lotes, recepciones } = useCampo();
   const [cantidad, setCantidad] = useState<string | null>(null);
   const [foto, setFoto] = useState<string | undefined>();
   const p = fila ? productos.find((x) => x.id === fila.productoId) : undefined;
   const rancho = fila ? ranchos.find((r) => r.id === fila.ranchoId) : undefined;
-  const valor = cantidad ?? (fila ? String(fila.cantidadPedido) : "");
+  const previo = fila?.keys.reduce((s, k) => s + (recepciones[k]?.cantidadRecibida ?? 0), 0) ?? 0;
+  const valor = cantidad ?? (fila ? String(previo || fila.cantidadPedido) : "");
 
   const cerrar = () => {
     setCantidad(null);
@@ -495,7 +511,7 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
   const confirmar = () => {
     if (!fila || !p) return;
     const n = Number(valor);
-    if (!(n >= 0)) {
+    if (!Number.isFinite(n) || !(n >= 0) || valor.trim() === "") {
       toast.error("Cantidad inválida");
       return;
     }
@@ -505,9 +521,9 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
     }
     recibir(
       fila.lineas.map((l) => ({ key: l.key, cantidad: l.cantidad })),
-      { cantidadTotal: n, foto },
+      { cantidadTotal: n, cantidadPedida: fila.cantidadPedido, foto },
     );
-    toast.success(`${p.nombre} recibido en ${rancho?.nombre}`);
+    toast.success(`${p.nombre} ${n < fila.cantidadPedido ? "recibido parcialmente" : "recibido"} en ${rancho?.nombre}`);
     cerrar();
   };
 
@@ -523,10 +539,12 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cant-recibida">Cantidad recibida ({p?.unidad})</Label>
+            <Label htmlFor="cant-recibida">Total recibido acumulado ({p?.unidad})</Label>
             <Input
               id="cant-recibida"
               type="number"
+              min="0"
+              step="any"
               inputMode="decimal"
               value={valor}
               onChange={(e) => setCantidad(e.target.value)}
@@ -538,6 +556,7 @@ function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: (
                 {formatoNum(Number(valor) - fila.cantidadPedido)}.
               </p>
             )}
+            {fila && <Badge variant={Number(valor) < fila.cantidadPedido ? "parcial" : "recibido"}>{Number(valor) < fila.cantidadPedido ? "Recibido parcialmente" : "Recibido completo"}</Badge>}
           </div>
 
           <div className="space-y-2">

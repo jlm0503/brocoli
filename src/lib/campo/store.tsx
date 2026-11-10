@@ -19,6 +19,8 @@ import {
   cintaPlaneacion,
   codigoDisponible,
   editarClasificacionProducto,
+  repartirRecepcion,
+  recibirPreparacion,
   costoPorPlanta,
   lineasSolicitud,
   lotesParaSolicitud,
@@ -225,11 +227,11 @@ interface CampoContextValue {
     cambios: { avances: Record<string, string>; fechaCosecha?: string | undefined },
   ) => string | null;
   registrarAvance: (tablaId: string, ha: number) => string | null;
-  entregarPedido: (pedidoId: string, foto: string) => void;
+  entregarPedido: (pedidoId: string, foto: string, cantidades?: Record<string, number>) => void;
   reabrirPedido: (pedidoId: string) => void;
   recibir: (
     keys: { key: string; cantidad: number }[],
-    datos: { cantidadTotal: number; foto?: string },
+    datos: { cantidadTotal: number; cantidadPedida?: number; foto?: string },
   ) => void;
   marcar: (keys: string[], status: "pendiente" | "comprado" | "cancelado") => void;
   resolverAlerta: (alertaId: string, r: ResolucionAlerta) => string | null;
@@ -1181,10 +1183,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   );
 
   const entregarPedido = useCallback(
-    (pedidoId: string, foto: string) => {
+    (pedidoId: string, foto: string, cantidades?: Record<string, number>) => {
       setPedidos((ps) =>
         ps.map((p) =>
-          p.id === pedidoId ? { ...p, status: "entregado", foto, fechaEntrega: hoy } : p,
+          p.id === pedidoId ? { ...recibirPreparacion(p, cantidades ?? Object.fromEntries(p.lineas.map(l => [l.productoId, l.cantidad]))), foto, fechaEntrega: hoy } : p,
         ),
       );
     },
@@ -1195,7 +1197,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setPedidos((ps) =>
       ps.map((p) =>
         p.id === pedidoId
-          ? { ...p, status: "pendiente", foto: undefined, fechaEntrega: undefined }
+          ? { ...p, status: "pendiente", cantidadesRecibidas: undefined, foto: undefined, fechaEntrega: undefined }
           : p,
       ),
     );
@@ -1203,13 +1205,13 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
   const recibir = useCallback<CampoContextValue["recibir"]>(
     (lineas, datos) => {
-      const total = lineas.reduce((s, l) => s + l.cantidad, 0) || 1;
+      const repartidas = repartirRecepcion(lineas, datos.cantidadTotal, datos.cantidadPedida ?? lineas.reduce((s, l) => s + l.cantidad, 0));
       setRecepciones((prev) => {
         const next = { ...prev };
         for (const l of lineas) {
           next[l.key] = {
-            status: "recibido",
-            cantidadRecibida: redondear((datos.cantidadTotal * l.cantidad) / total),
+            ...repartidas[l.key],
+            status: repartidas[l.key]?.status ?? "pendiente",
             foto: datos.foto,
             fecha: hoy,
           };
