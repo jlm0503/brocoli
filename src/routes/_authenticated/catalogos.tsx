@@ -217,7 +217,7 @@ function Catalogos() {
         <TabsContent value="tablas">
           <div className="mb-4 flex flex-wrap justify-between gap-2">
             <Button variant="outline" onClick={() => setVerRetiradas((v) => !v)} aria-pressed={verRetiradas}>
-              <Archive /> {verRetiradas ? "Ver disponibles" : "Ver retiradas"}
+               <Archive /> {verRetiradas ? "Ver activas" : "Ver desactivadas"}
             </Button>
             <Button onClick={() => setNuevaTabla(true)} disabled={ranchos.length === 0}>
               <Plus /> Nueva tabla
@@ -270,18 +270,18 @@ function Catalogos() {
                         <div className="text-xs text-muted-foreground">{t.radio ? "manual" : "automático"}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={t.archivada ? "gris" : est}>{t.archivada ? "Retirada" : ESTATUS_TABLA_LABEL[est]}</Badge>
+                        <Badge variant={t.archivada ? "gris" : est}>{t.archivada ? "Desactivada" : ESTATUS_TABLA_LABEL[est]}</Badge>
                       </TableCell>
                       <TableCell className="pr-5 text-right">
                         <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-8"
-                          aria-label={`${t.archivada ? "Reactivar" : "Retirar"} ${t.nombre}`}
-                          title={t.archivada ? "Reactivar tabla" : "Retirar sin borrar históricos"}
+                          size="sm"
+                          variant="outline"
+                          aria-label={`${t.archivada ? "Activar" : "Desactivar"} ${t.nombre}`}
+                          title={t.archivada ? "Activar tabla" : "Desactivar sin borrar históricos"}
                           onClick={() => t.archivada ? reactivarTabla(t.id) : setRetirando(t)}
                         >
                           {t.archivada ? <RotateCcw /> : <Archive />}
+                          {t.archivada ? "Activar" : "Desactivar"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -341,7 +341,7 @@ function Catalogos() {
       <Dialog open={!!retirando} onOpenChange={(o) => !o && setRetirando(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Retirar tabla {retirando?.nombre}</DialogTitle>
+            <DialogTitle>Desactivar tabla {retirando?.nombre}</DialogTitle>
             <DialogDescription>Dejará de estar disponible para nuevas plantaciones. Sus históricos, consumos, gastos y viajes se conservan.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -350,9 +350,9 @@ function Catalogos() {
               if (!retirando) return;
               const error = eliminarTabla(retirando.id);
               if (error) return void toast.error(error);
-              toast.success("Tabla retirada; históricos conservados.");
+              toast.success("Tabla desactivada; históricos conservados.");
               setRetirando(null);
-            }}><Archive /> Retirar tabla</Button>
+            }}><Archive /> Desactivar tabla</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
