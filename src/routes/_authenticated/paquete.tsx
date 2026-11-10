@@ -89,6 +89,8 @@ function Paquete() {
   const SEMANAS = useMemo(() => [...new Set([...semanasReceta(cultivo, variedades), ...Object.keys(receta.dosis).map(Number)])].sort((a, b) => a - b), [cultivo, variedades, receta]);
   const vacia = Object.values(receta.dosis).every((sem) => Object.values(sem).every((d) => !(d > 0)));
   const productosPaquete = productos.filter((p) => Object.values(receta.dosis).some((sem) => (sem[p.id] ?? 0) > 0));
+  const categoriaVisual = (p: (typeof productos)[number]) =>
+    p.familia === "Fertilizante" ? "Fertilizantes" : p.familia;
   const sinPrecio = productosPaquete.filter(
     (p) => precioHoy(p) <= 0 && SEMANAS.some((w) => dosis(w, p.id) > 0),
   );
@@ -181,15 +183,18 @@ function Paquete() {
             </tr>
           </thead>
           <tbody>
-            {["Cinta de riego", ...FAMILIAS, "Familia por actualizar"].map((fam) => {
-              const items = productosPaquete.filter((p) => fam === "Cinta de riego" ? p.id === cinta?.productoId : p.id !== cinta?.productoId && (fam === "Familia por actualizar" ? !FAMILIAS.includes(p.familia) : p.familia === fam));
+            {[...FAMILIAS, "Familia por actualizar"].map((fam) => {
+              const items = productosPaquete
+                .filter((p) => fam === "Familia por actualizar" ? !FAMILIAS.includes(categoriaVisual(p)) : categoriaVisual(p) === fam)
+                .sort((a, b) => a.id === cinta?.productoId ? -1 : b.id === cinta?.productoId ? 1 : a.nombre.localeCompare(b.nombre, "es-MX"));
               if (items.length === 0) return null;
               return (
                 <Fragment key={fam}>
-                  <tr>
-                    <td colSpan={2 + SEMANAS.length} className="sticky left-0 bg-card px-4 pt-4 pb-1">
-                      <span className="eyebrow">{fam}</span>
-                    </td>
+                  <tr className="border-y border-border bg-secondary">
+                    <th colSpan={2} scope="rowgroup" className="sticky left-0 z-10 bg-secondary px-4 py-3 text-left text-sm font-semibold text-foreground">
+                      {fam} <span className="ml-2 text-xs font-normal text-muted-foreground">({items.length})</span>
+                    </th>
+                    <td colSpan={SEMANAS.length} className="bg-secondary" />
                   </tr>
                   {items.map((p) => (
                     <tr key={p.id} className="border-b border-border/60 last:border-0">
