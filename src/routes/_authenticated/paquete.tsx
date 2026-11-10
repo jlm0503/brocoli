@@ -180,8 +180,8 @@ function Paquete() {
             </tr>
           </thead>
           <tbody>
-            {FAMILIAS.map((fam) => {
-              const items = productos.filter((p) => p.familia === fam);
+            {[...FAMILIAS, "Familia por actualizar"].map((fam) => {
+              const items = productos.filter((p) => fam === "Familia por actualizar" ? !FAMILIAS.includes(p.familia) : p.familia === fam);
               if (items.length === 0) return null;
               return (
                 <Fragment key={fam}>
