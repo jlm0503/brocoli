@@ -3116,6 +3116,28 @@ export function perteneceCicloPlantacion(fecha: string, cicloId: string): boolea
   return !!ciclo && fecha >= ciclo.desde && fecha <= ciclo.hasta;
 }
 
+/** Alertas ligadas a lotes conservan su cohorte; sin vínculo se busca la plantación de la tabla en esa fecha. */
+export function registroEnCicloPlantacion(
+  registro: { fecha: string; tablaIds: string[]; loteIds?: string[] },
+  cicloId: string,
+  lotes: Lote[],
+  ciclos: CicloCerrado[],
+): boolean {
+  if (cicloId === "todos") return true;
+  const plantaciones = [
+    ...lotes.filter((l) => !l.cancelado).map((l) => ({ id: l.id, tablaId: l.tablaId, fecha: fechaPlantacionLote(l) })),
+    ...ciclos.filter((c) => !c.reabierto).map((c) => ({ id: c.loteId, tablaId: c.tablaId, fecha: c.fechaPlantacion })),
+  ];
+  if (registro.loteIds?.length) {
+    return plantaciones.some((p) => registro.loteIds?.includes(p.id) && perteneceCicloPlantacion(p.fecha, cicloId));
+  }
+  return registro.tablaIds.some((tablaId) => {
+    const p = plantaciones.filter((p) => p.tablaId === tablaId && p.fecha <= registro.fecha)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+    return !!p && perteneceCicloPlantacion(p.fecha, cicloId);
+  });
+}
+
 export function costoAplicacionesPrevias(l: Pick<Lote, "aplicacionesPrevias">): number {
   return redondear((l.aplicacionesPrevias ?? []).reduce((s, a) => s + a.costo, 0));
 }
