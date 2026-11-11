@@ -68,6 +68,7 @@ export const ROLES: Record<
 };
 
 export type NavPath =
+  | "/aplicaciones"
   | "/panel"
   | "/planeacion"
   | "/compras"
@@ -92,6 +93,7 @@ export type NavPath =
   | "/resultados";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
+  { to: "/aplicaciones", label: "Aplicaciones en rancho", roles: ["admin", "ingeniero", "administrador"] },
   { to: "/panel", label: "Panel de Dirección", roles: ["admin", "direccion"] },
   { to: "/ranchos", label: "Estatus y costos", roles: ["admin", "administrador"] },
   { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero"] },

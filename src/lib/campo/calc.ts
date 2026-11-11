@@ -1,4 +1,5 @@
 import type { CicloCerrado, ViajeHistorico, EstatusLiquidacion, EvaluacionViaje, Liquidacion, ProblemaEvaluado, RepartoKg, Viaje } from "./types";
+import type { AplicacionCampo, ContinuacionAplicacion, FuenteAplicacion } from "./aplicaciones-types";
 import type { AlertaDireccion, ConceptoGasto, Devolucion, EstadoUbicacion, Extraordinario, FotoGps, GastoRancho, LineaExtra, RepartoCultivo, RepartoExtra } from "./types";
 import type {
   Adicional,
@@ -3276,4 +3277,45 @@ export function plantacionesIncumplidas(lotes: Lote[], semanaActual: number) {
 /** Solo resultados congelados y completos; cosecha terminada no equivale a ciclo cerrado. */
 export function cierresBajoMeta(ciclos: CicloCerrado[]) {
   return ciclos.filter((c) => !c.reabierto && !!c.fechaFinCosecha && !c.importacion?.pendiente && c.meta > 0 && c.ha > 0 && c.kgPagables / c.ha < c.meta);
+}
+
+/** Solo entregas confirmadas: nunca inferir recepciones por el paso del calendario. */
+export function fuentesAplicacion(lotes: Lote[], lineas: LineaDemanda[], recepciones: Record<string, Recepcion>, pedidos: PedidoPlaneacion[], extras: Extraordinario[], tablas: Tabla[]): FuenteAplicacion[] {
+  const fuentes: FuenteAplicacion[] = lineas.map(l => {
+    const r = recepciones[l.key];
+    const lote = lotes.find(x => x.id === l.loteId);
+    return { ...l, tipo: "Receta" as const, esperado: l.cantidad, recibido: r && (r.status === "recibido" || r.status === "parcial") ? (r.cantidadRecibida ?? l.cantidad) : 0, ha: lote ? (plantadasLote(lote) || lote.ha) : 0 };
+  });
+  for (const lote of lotes) for (const insumo of lote.insumos) {
+    const p = pedidos.find(x => x.id === insumo.pedidoId && x.status !== "cancelado");
+    if (!p) continue;
+    const pedido = p.lineas.find(x => x.productoId === insumo.productoId)?.cantidad ?? 0;
+    const recibido = p.cantidadesRecibidas?.[insumo.productoId] ?? (p.status === "entregado" ? pedido : 0);
+    fuentes.push({ key: `prep|${p.id}|${lote.id}|${insumo.productoId}`, loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: insumo.productoId, semana: p.semanaPlantacion, tipo: "Preparación", esperado: insumo.cantidad, recibido: pedido > 0 ? redondear(recibido * insumo.cantidad / pedido, 6) : 0, ha: lote.ha });
+  }
+  for (const e of extras.filter(x => x.status === "surtida")) for (const reparto of e.reparto ?? []) {
+    const lote = lotes.find(l => l.id === reparto.loteId);
+    const tabla = tablas.find(t => t.id === reparto.tablaId);
+    if (!lote || !tabla) continue;
+    for (const l of e.lineas) fuentes.push({ key: `extra|${e.id}|${lote.id}|${l.productoId}`, loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: l.productoId, semana: semanaDeFecha(e.surtido?.fecha ?? e.fecha), tipo: "Extraordinario", esperado: redondear(l.porHa * reparto.ha), recibido: redondear(l.porHa * reparto.ha), ha: reparto.ha });
+  }
+  return fuentes;
+}
+
+export function saldoAplicacion(f: FuenteAplicacion, aplicaciones: AplicacionCampo[], devoluciones: Devolucion[], continuaciones: ContinuacionAplicacion[], semanaActual: number) {
+  const avances = aplicaciones.filter(a => a.fuenteKey === f.key);
+  const aplicado = redondear(avances.reduce((s, a) => s + a.cantidad, 0), 6);
+  const haAplicadas = redondear(avances.reduce((s, a) => s + a.ha, 0), 6);
+  const devuelto = redondear(devoluciones.filter(d => d.fuenteKey === f.key || (!d.fuenteKey && d.loteId === f.loteId && d.productoId === f.productoId && d.semanaOrigen === f.semana && f.tipo === "Receta")).reduce((s, d) => s + d.cantidad, 0), 6);
+  const saldo = redondear(Math.max(0, f.recibido - aplicado - devuelto), 6);
+  const autorizada = continuaciones.some(c => c.id === f.key && c.semanaHasta >= semanaActual);
+  return { aplicado, haAplicadas, devuelto, saldo, dosis: f.ha > 0 ? f.esperado / f.ha : 0, pendienteDevolver: saldo > 0 && f.semana < semanaActual && !autorizada, puedeAplicar: f.semana <= semanaActual && (f.semana === semanaActual || autorizada), avances };
+}
+
+export function validarAplicacion(f: FuenteAplicacion, saldo: ReturnType<typeof saldoAplicacion>, d: { cantidad: number; ha: number; fecha: string }, hoy: string): string | null {
+  if (!saldo.puedeAplicar) return "Elige continuar aplicando para usar el sobrante de una semana cerrada.";
+  if (!Number.isFinite(d.cantidad) || d.cantidad <= 0 || d.cantidad > saldo.saldo) return "La cantidad debe ser mayor a cero y no superar lo disponible.";
+  if (!Number.isFinite(d.ha) || d.ha <= 0 || redondear(d.ha + saldo.haAplicadas, 6) > f.ha) return "El avance no puede superar las hectáreas de esta aplicación.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha) || d.fecha > hoy || semanaDeFecha(d.fecha) < f.semana) return "Elige una fecha válida, no futura ni anterior a la semana de aplicación.";
+  return null;
 }

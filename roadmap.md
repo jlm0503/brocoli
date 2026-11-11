@@ -93,3 +93,8 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Verificar importación en datos y captura manual con cuenta de Jimena: guardar/recargar kilos y nómina, retirar solo los datos de prueba; revisar consumos y celular.
 
 Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).
+
+## Aplicaciones en rancho
+- [x] Vista para Ingeniero, Administrador y Super Admin con dosis y avance por tabla.
+- [x] Sobrantes al cierre semanal: devolver con evidencia o continuar sin duplicar entregas.
+- [x] Pruebas de cantidades y permisos; consulta con entregas reales y rechazo de devolución excesiva; avance y continuidad ensayados en simulador sin modificar capturas reales.

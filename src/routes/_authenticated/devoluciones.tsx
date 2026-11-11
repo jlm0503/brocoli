@@ -109,7 +109,7 @@ function Devoluciones() {
       path="/devoluciones"
       eyebrow={`Almacén general · semana ${semanaActual}`}
       title="Devoluciones de no consumido"
-      description="La aplicación se registra en otra app. Aquí se captura lo que se retira sin usar: producto, cantidad y foto. Lo retirado sale del costo del lote."
+      description="Producto, cantidad y foto de lo retirado sin usar. Lo retirado sale del costo del lote."
       filtros
     >
       <section className="mb-10 rounded-xl border border-border bg-card p-5 shadow-card">

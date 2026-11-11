@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { AplicacionCampo, ContinuacionAplicacion, FuenteAplicacion } from "./aplicaciones-types";
 import type { Json } from "@/integrations/supabase/types";
 
 import {
@@ -27,6 +28,10 @@ import {
   validarDevolucion,
   validarExtraordinario,
   validarUbicacionFotos,
+  fuentesAplicacion,
+  lineasSemana,
+  saldoAplicacion,
+  validarAplicacion,
 } from "./calc";
 import { tiene, type NavPath } from "./roles";
 import { useSesion } from "./sesion";
@@ -47,10 +52,17 @@ import type {
  * Datos de la Fase 3 (extraordinarios, alertas a Dirección, devoluciones y ranchos por ingeniero).
  * Se guardan elemento por elemento en `registros`; en la simulación de semanas solo cambian aquí.
  */
-type Col3 = "extraordinarios" | "alertas_direccion" | "devoluciones" | "asignaciones";
-const COLS: Col3[] = ["extraordinarios", "alertas_direccion", "devoluciones", "asignaciones"];
+type Col3 = "extraordinarios" | "alertas_direccion" | "devoluciones" | "asignaciones" | "aplicaciones_campo" | "continuaciones_aplicacion";
+const COLS: Col3[] = ["extraordinarios", "alertas_direccion", "devoluciones", "asignaciones", "aplicaciones_campo", "continuaciones_aplicacion"];
 
 interface Fase3Value {
+  aplicaciones: AplicacionCampo[];
+  continuaciones: ContinuacionAplicacion[];
+  fuentes: FuenteAplicacion[];
+  aplicacionesListas: boolean;
+  registrarAplicacion: (key: string, d: { cantidad: number; ha: number; fecha: string }) => string | null;
+  continuarAplicacion: (key: string) => string | null;
+  devolverSobrante: (key: string, cantidad: number, foto: string) => string | null;
   extraordinarios: Extraordinario[];
   alertasDireccion: AlertaDireccion[];
   devoluciones: Devolucion[];
@@ -96,7 +108,7 @@ const Fase3Context: Context<Fase3Value | null> = g[KEY] ?? (g[KEY] = createConte
 
 export function Fase3Provider({ children }: { children: ReactNode }) {
   const { user, role, roles, nombre } = useSesion();
-  const { hoy, tablas, lotes, productos, semanasAdelantadas, ready } = useCampo();
+  const { hoy, tablas, lotes, productos, semanasAdelantadas, ready, semanaActual, recetas, adicionales, recepciones, pedidos } = useCampo();
   const simulando = semanasAdelantadas > 0;
   const simRef = useRef(simulando);
   simRef.current = simulando;
@@ -104,6 +116,9 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
   const [alertasDireccion, setAlertas] = useState<AlertaDireccion[]>([]);
   const [devoluciones, setDevs] = useState<Devolucion[]>([]);
   const [asignaciones, setAsigs] = useState<Asignacion[]>([]);
+  const [aplicaciones, setAplicaciones] = useState<AplicacionCampo[]>([]);
+  const [continuaciones, setContinuaciones] = useState<ContinuacionAplicacion[]>([]);
+  const [aplicacionesListas, setAplicacionesListas] = useState(false);
 
   const setters = useMemo(
     () =>
@@ -112,11 +127,14 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
         alertas_direccion: setAlertas,
         devoluciones: setDevs,
         asignaciones: setAsigs,
+        aplicaciones_campo: setAplicaciones,
+        continuaciones_aplicacion: setContinuaciones,
       }) as unknown as Record<Col3, (f: (xs: { id: string }[]) => { id: string }[]) => void>,
     [],
   );
 
   const cargar = useCallback(async () => {
+    setAplicacionesListas(false);
     const { data, error } = await supabase.from("registros").select("coleccion, id, data").in("coleccion", COLS);
     if (error) return;
     const de = <T,>(c: Col3) => data.filter((f) => f.coleccion === c).map((f) => f.data as unknown as T);
@@ -124,6 +142,9 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     setAlertas(de<AlertaDireccion>("alertas_direccion"));
     setDevs(de<Devolucion>("devoluciones"));
     setAsigs(de<Asignacion>("asignaciones"));
+    setAplicaciones(de<AplicacionCampo>("aplicaciones_campo"));
+    setContinuaciones(de<ContinuacionAplicacion>("continuaciones_aplicacion"));
+    setAplicacionesListas(true);
   }, []);
 
   // Carga inicial y al volver de la simulación ("Hoy").
@@ -380,8 +401,45 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     return a && a.ranchoIds.length > 0 ? a.ranchoIds : null;
   }, [roles, asignaciones, user]);
 
+  const fuentes = useMemo(() => fuentesAplicacion(lotes, lineasSemana(lotes, recetas, adicionales, Array.from({ length: semanaActual }, (_, i) => i + 1)), recepciones, pedidos, extraordinarios, tablas), [lotes, recetas, adicionales, semanaActual, recepciones, pedidos, extraordinarios, tablas]);
+  const fuentePermitida = (key: string) => {
+    if (!aplicacionesListas || !tiene(roles, "admin", "ingeniero", "administrador")) return undefined;
+    const f = fuentes.find(x => x.key === key);
+    const l = lotes.find(x => x.id === f?.loteId);
+    return f && l && !l.cerrado && !l.cancelado && (!ranchosVisibles || ranchosVisibles.includes(f.ranchoId)) ? f : undefined;
+  };
+  const registrarAplicacion: Fase3Value["registrarAplicacion"] = (key, d) => {
+    const f = fuentePermitida(key);
+    if (!f) return "No puedes registrar esta aplicación.";
+    const saldo = saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual);
+    const error = validarAplicacion(f, saldo, d, hoy);
+    if (error) return error;
+    const p = productos.find(x => x.id === f.productoId);
+    if (!p) return "Producto no encontrado.";
+    poner("aplicaciones_campo", { id: `ap-${crypto.randomUUID()}`, fuenteKey: key, loteId: f.loteId, tablaId: f.tablaId, ranchoId: f.ranchoId, productoId: f.productoId, semanaOrigen: f.semana, ...d, dosis: saldo.dosis, unidad: p.unidad, por: nombre } satisfies AplicacionCampo);
+    return null;
+  };
+  const continuarAplicacion: Fase3Value["continuarAplicacion"] = key => {
+    const f = fuentePermitida(key);
+    if (!f || f.semana >= semanaActual || saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual).saldo <= 0) return "No hay sobrante para continuar.";
+    poner("continuaciones_aplicacion", { id: key, semanaHasta: semanaActual, fecha: hoy, por: nombre } satisfies ContinuacionAplicacion);
+    return null;
+  };
+  const devolverSobrante: Fase3Value["devolverSobrante"] = (key, cantidad, foto) => {
+    const f = fuentePermitida(key);
+    if (!f) return "No puedes devolver este producto.";
+    const saldo = saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual);
+    if (!Number.isFinite(cantidad) || cantidad <= 0 || cantidad > saldo.saldo) return "No puedes devolver más de lo disponible.";
+    if (!foto) return "Agrega la foto de lo devuelto.";
+    const p = productos.find(x => x.id === f.productoId);
+    if (!p) return "Producto no encontrado.";
+    poner("devoluciones", { id: `dev-${crypto.randomUUID()}`, fuenteKey: key, semana: semanaActual, semanaOrigen: f.semana, fecha: hoy, ranchoId: f.ranchoId, tablaId: f.tablaId, loteId: f.loteId, productoId: f.productoId, cantidad, precio: precioVigente(p, hoy), foto, por: nombre } satisfies Devolucion);
+    return null;
+  };
+
   const value = useMemo<Fase3Value>(
     () => ({
+      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, continuarAplicacion, devolverSobrante,
       extraordinarios,
       alertasDireccion,
       devoluciones,
@@ -399,6 +457,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       guardarAsignacion,
     }),
     [
+      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, continuarAplicacion, devolverSobrante,
       extraordinarios,
       alertasDireccion,
       devoluciones,
