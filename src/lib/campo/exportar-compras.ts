@@ -1,4 +1,3 @@
-import { formatoNum } from "./calc";
 import type { Producto, Rancho } from "./types";
 
 export interface FilaCompraExport {
@@ -100,6 +99,3 @@ export function exportarCompras(
   const slug = titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   descargar(new Blob([csv], { type: "text/csv;charset=utf-8" }), `compras-${slug}.csv`);
 }
-
-/** Etiqueta legible de cantidades para vistas previas. */
-export const cantidadLegible = formatoNum;
