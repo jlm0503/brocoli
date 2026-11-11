@@ -3,10 +3,16 @@ import { fuentesAplicacion, saldoAplicacion, validarAplicacion } from "../lib/ca
 import { puedeVer } from "../lib/campo/roles";
 import type { FuenteAplicacion, AplicacionCampo } from "../lib/campo/aplicaciones-types";
 import type { LineaDemanda } from "../lib/campo/types";
+import type { Devolucion } from "../lib/campo/types";
 
 const f: FuenteAplicacion = { key: "l|p|46", loteId:"l", tablaId:"t", ranchoId:"r", productoId:"p", semana:46, tipo:"Receta", esperado:20, recibido:25, ha:4 };
 const a: AplicacionCampo = { id:"a", fuenteKey:f.key, loteId:"l", tablaId:"t", ranchoId:"r", productoId:"p", semanaOrigen:46, fecha:"2026-11-10", ha:2, cantidad:10, dosis:5, unidad:"kg", por:"Ingeniero" };
 describe("Aplicaciones en rancho", () => {
+  it("devuelve el sobrante de la entrega exacta sin afectar otro producto", () => {
+    const d: Devolucion = { id:"d", fuenteKey:f.key, semana:47, semanaOrigen:46, fecha:"2026-11-16", ranchoId:"r", tablaId:"t", loteId:"l", productoId:"p", cantidad:15, precio:10, foto:"evidencia", por:"Ingeniero" };
+    expect(saldoAplicacion(f,[a],[d],[],47).saldo).toBe(0);
+    expect(saldoAplicacion({...f,key:"otra"},[],[d],[],47).saldo).toBe(25);
+  });
   it("dosis por tabla y saldo usan recibido real, no lo pedido", () => {
     const s = saldoAplicacion(f,[a],[],[],46);
     expect(s.dosis).toBe(5); expect(s.saldo).toBe(15); expect(s.haAplicadas).toBe(2);
