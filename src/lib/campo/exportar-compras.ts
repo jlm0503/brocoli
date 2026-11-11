@@ -19,20 +19,21 @@ function descargar(blob: Blob, nombre: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-const esc = (x: string) => (/[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x);
-const num = (n: number) => String(Math.round(n * 100) / 100);
+const num = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * Excel (CSV que abre directo en Excel) de compras:
- * matriz de productos en filas y ranchos en columnas con total general,
- * más el detalle por rancho.
+ * Excel real (.xlsx) de compras:
+ * hoja 1 "Totales por rancho": productos en filas, ranchos en columnas, total general;
+ * hoja 2 "Detalle por rancho": cada producto con cantidad, unidad y estatus.
  */
-export function exportarCompras(
+export async function exportarCompras(
   titulo: string,
   filas: FilaCompraExport[],
   productos: Producto[],
   ranchos: Rancho[],
 ) {
+  const XLSX = await import("xlsx");
+
   const productoById = new Map(productos.map((p) => [p.id, p]));
   const ranchoById = new Map(ranchos.map((r) => [r.id, r]));
   const ranchoIds = [...new Set(filas.map((f) => f.ranchoId))].sort((a, b) =>
@@ -50,7 +51,8 @@ export function exportarCompras(
     celda.set(k, (celda.get(k) ?? 0) + f.cantidad);
   }
 
-  const lineas: string[][] = [
+  type Celda = string | number;
+  const totales: Celda[][] = [
     [titulo],
     [],
     ["Totales por producto y rancho"],
@@ -71,6 +73,10 @@ export function exportarCompras(
       ...ranchoIds.map((rid) => num(filas.filter((f) => f.ranchoId === rid).reduce((s, f) => s + f.cantidad, 0))),
       num(filas.reduce((s, f) => s + f.cantidad, 0)),
     ],
+  ];
+
+  const detalle: Celda[][] = [
+    [titulo],
     [],
     ["Detalle por rancho"],
     ["Rancho", "Familia", "Producto", "Cantidad", "Unidad", "Estatus"],
@@ -95,7 +101,24 @@ export function exportarCompras(
       }),
   ];
 
-  const csv = "\uFEFF" + lineas.map((l) => l.map(esc).join(",")).join("\r\n");
+  const wb = XLSX.utils.book_new();
+  const wsTotales = XLSX.utils.aoa_to_sheet(totales);
+  wsTotales["!cols"] = [
+    { wch: 22 },
+    { wch: 34 },
+    { wch: 10 },
+    ...ranchoIds.map(() => ({ wch: 12 })),
+    { wch: 12 },
+  ];
+  const wsDetalle = XLSX.utils.aoa_to_sheet(detalle);
+  wsDetalle["!cols"] = [{ wch: 22 }, { wch: 22 }, { wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, wsTotales, "Totales por rancho");
+  XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle por rancho");
+
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const slug = titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  descargar(new Blob([csv], { type: "text/csv;charset=utf-8" }), `compras-${slug}.csv`);
+  descargar(
+    new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `compras-${slug}.xlsx`,
+  );
 }
