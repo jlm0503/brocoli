@@ -397,6 +397,30 @@ function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entrega
         />
       </div>
 
+      <div className="mb-4 flex justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            exportarCompras(
+              modo === "entregar" ? `Entregar semana ${semana}` : `Comprar para semana ${semana}`,
+              filas
+                .filter((f) => f.status !== "cancelado")
+                .map((f) => ({
+                  productoId: f.productoId,
+                  ranchoId: f.ranchoId,
+                  cantidad: f.cantidadPedido,
+                  estatus: STATUS_LABEL[f.status],
+                })),
+              productos,
+              ranchos,
+            )
+          }
+        >
+          <Download /> Descargar Excel
+        </Button>
+      </div>
+
       {totales ? <TotalesProductos filas={filas.filter(f => f.status !== "cancelado")} /> : <div className="space-y-8">
         {ranchos.map((r) => {
           const deRancho = filas
