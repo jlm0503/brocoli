@@ -1,4 +1,5 @@
 # Architecture rules
+- Engineers register unevaluated harvest departures through the shared harvest provider; a database trigger reserves trip changes and deletion for admins. Why: departure access must not permit historical or financial changes.
 - Field application advances reference explicit confirmed delivery sources; weekly leftover decisions use the shared Fase3 provider and never create receipts or replace the source. Why: partial receipts, returns and carryovers remain traceable without duplicate costs.
 - Recipe variants support dated ranch inclusions or exclusions, with an empty table list meaning every table; display program tabs without table assignment controls, and retain old lot snapshots unless an authorized forward-only backfill replaces them. Why: new ranches inherit the proper crop program without changing captured history.
 - Preparation backfills create idempotent pending pedidos linked through lote.insumos; arrivals retain overdue pending orders until received, and weekly receipt backfills use the existing demand keys. Why: future and overdue supplies remain actionable without duplicate charges or fabricated receipts.
