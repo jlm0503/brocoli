@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
+import { Check, Download, ImageIcon, RotateCcw, ShoppingCart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -44,6 +44,7 @@ import {
 } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
+import { exportarCompras } from "@/lib/campo/exportar-compras";
 import type { PedidoPlaneacion, Semaforo } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/compras")({
