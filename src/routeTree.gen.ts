@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
+import { Route as AuthenticatedAplicacionesRouteImport } from './routes/_authenticated/aplicaciones'
 import { Route as AuthenticatedCatalogosRouteImport } from './routes/_authenticated/catalogos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedConsumoRouteImport } from './routes/_authenticated/consumo'
@@ -60,6 +61,12 @@ const AuthenticatedAlertasRoute = AuthenticatedAlertasRouteImport.update({
   path: '/alertas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAplicacionesRoute =
+  AuthenticatedAplicacionesRouteImport.update({
+    id: '/aplicaciones',
+    path: '/aplicaciones',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCatalogosRoute = AuthenticatedCatalogosRouteImport.update({
   id: '/catalogos',
   path: '/catalogos',
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/alertas': typeof AuthenticatedAlertasRoute
+  '/aplicaciones': typeof AuthenticatedAplicacionesRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/consumo': typeof AuthenticatedConsumoRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/alertas': typeof AuthenticatedAlertasRoute
+  '/aplicaciones': typeof AuthenticatedAplicacionesRoute
   '/catalogos': typeof AuthenticatedCatalogosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/consumo': typeof AuthenticatedConsumoRoute
@@ -233,6 +242,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
+  '/_authenticated/aplicaciones': typeof AuthenticatedAplicacionesRoute
   '/_authenticated/catalogos': typeof AuthenticatedCatalogosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/consumo': typeof AuthenticatedConsumoRoute
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/alertas'
+    | '/aplicaciones'
     | '/catalogos'
     | '/compras'
     | '/consumo'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/alertas'
+    | '/aplicaciones'
     | '/catalogos'
     | '/compras'
     | '/consumo'
@@ -317,6 +329,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/alertas'
+    | '/_authenticated/aplicaciones'
     | '/_authenticated/catalogos'
     | '/_authenticated/compras'
     | '/_authenticated/consumo'
@@ -382,6 +395,13 @@ declare module '@tanstack/react-router' {
       path: '/alertas'
       fullPath: '/alertas'
       preLoaderRoute: typeof AuthenticatedAlertasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/aplicaciones': {
+      id: '/_authenticated/aplicaciones'
+      path: '/aplicaciones'
+      fullPath: '/aplicaciones'
+      preLoaderRoute: typeof AuthenticatedAplicacionesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/catalogos': {
@@ -536,6 +556,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
+  AuthenticatedAplicacionesRoute: typeof AuthenticatedAplicacionesRoute
   AuthenticatedCatalogosRoute: typeof AuthenticatedCatalogosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedConsumoRoute: typeof AuthenticatedConsumoRoute
@@ -561,6 +582,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
+  AuthenticatedAplicacionesRoute: AuthenticatedAplicacionesRoute,
   AuthenticatedCatalogosRoute: AuthenticatedCatalogosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedConsumoRoute: AuthenticatedConsumoRoute,
