@@ -471,6 +471,8 @@ export interface AlertaDireccion {
 /** Lo no consumido que el Almacén general retira de una tabla en la semana. */
 export interface Devolucion {
   id: string;
+  /** Entrega exacta de la que sale este sobrante. */
+  fuenteKey?: string;
   semana: number;
   fecha: string;
   ranchoId: string;
