@@ -351,7 +351,7 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
                       Evaluar
                     </Button>
                   )}
-                  {v.status === "transito" && !soloTransito && (
+                  {v.status === "transito" && !soloTransito && conImportes && (
                     <Button size="icon" variant="ghost" aria-label="Eliminar viaje" onClick={() => eliminarViaje(v.id)}>
                       <Trash2 />
                     </Button>

@@ -173,7 +173,7 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
 
   const eliminarViaje = useCallback(
     (id: string) => {
-      if (!puedeViajes) return;
+      if (!superAdmin) return;
       setViajes((xs) => xs.filter((x) => x.id !== id));
       if (simRef.current) return;
       void supabase
@@ -185,7 +185,7 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
           if (error) toast.error("No se pudo eliminar el viaje.");
         });
     },
-    [puedeViajes],
+    [superAdmin],
   );
 
   const guardarPago = useCallback(

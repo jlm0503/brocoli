@@ -64,6 +64,13 @@
       "when": 1794361149455,
       "tag": "0008_permisos_aplicaciones_campo",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794379191218,
+      "tag": "0009_ingeniero_salidas_cosecha",
+      "breakpoints": true
     }
   ]
 }

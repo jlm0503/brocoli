@@ -37,7 +37,7 @@ export const ROLES: Record<
   ingeniero: {
     nombre: "Ingeniero de campo",
     persona: "Israel",
-    descripcion: "Planea lotes, registra lo plantado, pide extraordinarios y reporta mejoras.",
+    descripcion: "Planea lotes, registra plantaciones y salidas de cosecha, consulta viajes y reporta mejoras.",
     home: "/planeacion",
   },
   compras: {
@@ -135,10 +135,10 @@ export function puedeCorregirFechas(role: Role | null): boolean {
 
 /**
  * Permisos de captura de cosecha (Fase 4), configurables por puesto.
- * Por ahora solo el Super Admin captura viajes y evaluaciones.
+ * Ingeniero y Super Admin registran salidas; solo el Super Admin evalúa.
  */
 export const PERMISOS_COSECHA: Record<"viajes" | "evaluaciones", Role[]> = {
-  viajes: ["admin"],
+  viajes: ["admin", "ingeniero"],
   evaluaciones: ["admin"],
 };
 
