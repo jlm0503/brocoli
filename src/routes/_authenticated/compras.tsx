@@ -169,9 +169,32 @@ function PedidosPlaneacion({ totales }: { totales: boolean }) {
         <Stat label="En tiempo" value={conteo("amarillo")} />
         <Stat label="Entregados" value={conteo("verde")} tone="primary" />
       </div>
-      <label className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-        <Switch checked={todos} onCheckedChange={setTodos} /> Mostrar también entregados anteriores
-      </label>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Switch checked={todos} onCheckedChange={setTodos} /> Mostrar también entregados anteriores
+        </label>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            exportarCompras(
+              `Pedidos de planeación · semana ${semanaActual}`,
+              grupos.flatMap(([k, ps]) =>
+                consolidarPlaneacion(ps, productos).map((c) => ({
+                  productoId: c.productoId,
+                  ranchoId: k.split("|")[1] ?? "",
+                  cantidad: c.cantidadPedido,
+                  estatus: "Pendiente",
+                })),
+              ),
+              productos,
+              ranchos,
+            )
+          }
+        >
+          <Download /> Descargar Excel
+        </Button>
+      </div>
 
       {totales ? <TotalesProductos filas={grupos.flatMap(([k, ps]) => consolidarPlaneacion(ps, productos).map(c => ({ ...c, ranchoId: k.split("|")[1] ?? "" })))} /> : <div className="space-y-6">
         {grupos.map(([k, ps]) => {
