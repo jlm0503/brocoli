@@ -95,6 +95,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 Notas Fase 4: sin alerta de merma; la única alerta de rendimiento es cuando un lote cierra con menos kg/ha que la meta (16,000).
 
 ## Aplicaciones en rancho
+- [x] Compactar aplicaciones como lista con dosis, total por tabla, hectáreas, aplicado y disponible, conservando agrupación y avances; filas reducidas de 234 a 114 px, verificado por producto y sin desbordes en celular y computadora.
 - [x] Agrupar por tabla o producto y mostrar barras de avance por tabla y aplicación, conservando las capturas; desglose de Fosfonitrato y actualización del avance verificados.
 - [x] Vista para Ingeniero, Administrador y Super Admin con dosis y avance por tabla.
 - [x] Sobrantes al cierre semanal: devolver con evidencia o continuar sin duplicar entregas.

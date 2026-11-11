@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, Plus, Undo2, ArrowRight } from "lucide-react";
+import { Loader2, Plus, Undo2, ArrowRight, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/campo/AppShell";
 import { FotoInput } from "@/components/campo/Evidencia";
@@ -79,7 +79,7 @@ function Contenido() {
     toast.success(dialogo.tipo === "avance" ? "Avance registrado." : "Devolución registrada."); setDialogo(null);
   };
   if (!aplicacionesListas) return <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" />Cargando aplicaciones…</p>;
-  return <div className="space-y-5">
+  return <div className="space-y-3">
     <Tabs value={vista} onValueChange={setVista}><TabsList><TabsTrigger value="semana">Aplicaciones</TabsTrigger><TabsTrigger value="sobrantes">Sobrantes al cierre</TabsTrigger></TabsList></Tabs>
     <div className="flex flex-wrap items-center gap-3"><Label>Agrupar por</Label><Tabs value={agrupar} onValueChange={setAgrupar}><TabsList aria-label="Agrupar aplicaciones"><TabsTrigger value="tabla">Por tabla</TabsTrigger><TabsTrigger value="producto">Por producto</TabsTrigger></TabsList></Tabs></div>
     <div className="grid gap-3 sm:grid-cols-3">
@@ -87,29 +87,34 @@ function Contenido() {
       <div className="space-y-1"><Label>Tabla</Label><Select value={tablaId} onValueChange={setTablaId}><SelectTrigger aria-label="Tabla"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas las tablas</SelectItem>{opciones.map(t => <SelectItem value={t.id} key={t.id}>{ranchos.find(r => r.id === t.ranchoId)?.nombre} · {t.nombre}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-1"><Label htmlFor="buscar-aplicaciones">Producto</Label><Input id="buscar-aplicaciones" placeholder="Buscar producto" value={buscar} onChange={e => setBuscar(e.target.value)} /></div>
     </div>
-    <div className="flex flex-wrap gap-x-6 gap-y-2 border-y border-border py-3 text-sm"><span><strong>{filas.length}</strong> aplicaciones</span><span><strong>{filas.filter(x => x.s.aplicado > 0).length}</strong> con avance</span><span className="text-destructive"><strong>{filas.filter(x => x.s.pendienteDevolver).length}</strong> sobrantes por resolver</span></div>
+    <div className="flex flex-wrap gap-x-4 gap-y-1 border-y border-border py-2 text-xs"><span><strong>{filas.length}</strong> aplicaciones</span><span><strong>{filas.filter(x => x.s.aplicado > 0).length}</strong> con avance</span><span className="text-destructive"><strong>{filas.filter(x => x.s.pendienteDevolver).length}</strong> sobrantes por resolver</span></div>
     {!filas.length && <p className="py-6 text-muted-foreground">No hay aplicaciones con esta selección.</p>}
-    <div className="space-y-7">{grupos.map(grupo => <section key={grupo.id} aria-label={grupo.titulo} className="space-y-3">
-      <header className="sticky top-0 z-10 border-b border-border bg-background py-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-xl font-semibold break-words">{grupo.titulo}</h2><span className="text-sm font-mono">{formatoNum(grupo.avance)}% aplicado</span></div>
-        <Progress value={grupo.avance} aria-label={`Avance de ${grupo.titulo}`} className="mt-2 h-2" />
-        <p className="mt-2 text-xs text-muted-foreground">{grupo.items.length} aplicaciones{agrupar === "producto" ? ` · Total programado: ${formatoNum(grupo.total)} ${grupo.unidad ?? ""}` : " · Avance de las aplicaciones seleccionadas"}</p>
+    <div className="space-y-4">{grupos.map(grupo => <section key={grupo.id} aria-label={grupo.titulo}>
+      <header className="sticky top-0 z-10 border-b border-border bg-secondary px-2 py-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-1"><h2 className="text-sm font-semibold break-words tracking-normal">{grupo.titulo}</h2><span className="text-xs font-mono">{formatoNum(grupo.avance)}% aplicado</span></div>
+        <Progress value={grupo.avance} aria-label={`Avance de ${grupo.titulo}`} className="mt-1 h-1" />
+        <p className="mt-1 text-xs text-muted-foreground">{grupo.items.length} aplicaciones{agrupar === "producto" ? ` · Total programado: ${formatoNum(grupo.total)} ${grupo.unidad ?? ""}` : ""}</p>
       </header>
       {grupo.items.map(({f,s}) => {
       const p = productos.find(p => p.id === f.productoId);
       const l = lotes.find(l => l.id === f.loteId);
       const estado = s.pendienteDevolver ? "Pendiente de devolver" : s.saldo === 0 && s.aplicado > 0 ? "Aplicado" : s.aplicado > 0 ? "Aplicado parcialmente" : f.recibido > 0 ? "Por aplicar" : "Sin recibir";
-      return <article key={f.key} className="rounded-lg border border-border bg-card p-3 sm:p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words font-semibold">{agrupar === "producto" ? `${ranchos.find(r => r.id === f.ranchoId)?.nombre} · Tabla ${tablas.find(t => t.id === f.tablaId)?.nombre} · ${l?.codigo}` : (p?.nombre ?? f.productoId)}</h3><p className="text-sm text-muted-foreground">{agrupar === "tabla" ? `Lote ${l?.codigo} · ` : ""}{f.tipo} · Sem {f.semana}</p></div><span className={`text-xs font-medium ${s.pendienteDevolver ? "text-destructive" : "text-primary"}`}>{estado}</span></div>
-        <dl className="my-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-6">{[
-          ["Dosis", `${formatoNum(s.dosis)} ${p?.unidad}/ha`], ["Programado", `${formatoNum(f.esperado)} ${p?.unidad}`], ["Recibido", `${formatoNum(f.recibido)} ${p?.unidad}`], ["Aplicado", `${formatoNum(s.aplicado)} ${p?.unidad}`], ["Disponible", `${formatoNum(s.saldo)} ${p?.unidad}`], ["Avance", `${formatoNum(s.haAplicadas)} / ${formatoNum(f.ha)} ha`],
-        ].map(([label,value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="font-mono text-sm">{value}</dd></div>)}</dl>
-        <Progress value={f.ha > 0 ? Math.min(100, s.haAplicadas / f.ha * 100) : 0} aria-label={`Avance de ${p?.nombre ?? f.productoId} en ${l?.codigo}`} className="mb-3 h-2" />
-        {s.devuelto > 0 && <p className="mb-2 text-xs text-muted-foreground">Devuelto: {formatoNum(s.devuelto)} {p?.unidad}</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" disabled={!s.puedeAplicar || s.saldo <= 0 || s.haAplicadas >= f.ha} onClick={() => abrir(f.key,"avance")}><Plus />Registrar avance</Button>
-          {f.semana < semanaActual && s.saldo > 0 && <><Button size="sm" variant="outline" onClick={() => abrir(f.key,"devolver")}><Undo2 />Devolver</Button>{s.pendienteDevolver && <Button size="sm" variant="outline" onClick={() => { const error = continuarAplicacion(f.key); if(error) toast.error(error); else toast.success("Disponible para continuar esta semana."); }}><ArrowRight />Continuar aplicando</Button>}</>}
-          {!!s.avances.length && <Button size="sm" variant="ghost" onClick={() => setHistorial(historial === f.key ? null : f.key)}>Ver avances</Button>}
+      return <article key={f.key} className="border-b border-border px-2 py-2">
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words font-sans text-sm font-semibold tracking-normal">{agrupar === "producto" ? `${ranchos.find(r => r.id === f.ranchoId)?.nombre} · Tabla ${tablas.find(t => t.id === f.tablaId)?.nombre} · ${l?.codigo}` : (p?.nombre ?? f.productoId)}</h3><p className="text-xs text-muted-foreground">{agrupar === "tabla" ? `Lote ${l?.codigo} · ` : ""}{f.tipo} · Sem {f.semana}</p></div>
+          <div className="flex shrink-0 gap-1">
+            <Button size="icon" className="size-7" title="Registrar avance" aria-label="Registrar avance" disabled={!s.puedeAplicar || s.saldo <= 0 || s.haAplicadas >= f.ha} onClick={() => abrir(f.key,"avance")}><Plus className="size-3.5" /></Button>
+            {f.semana < semanaActual && s.saldo > 0 && <><Button size="icon" className="size-7" variant="outline" title="Devolver sobrante" aria-label="Devolver sobrante" onClick={() => abrir(f.key,"devolver")}><Undo2 className="size-3.5" /></Button>{s.pendienteDevolver && <Button size="icon" className="size-7" variant="outline" title="Continuar aplicando" aria-label="Continuar aplicando" onClick={() => { const error = continuarAplicacion(f.key); if(error) toast.error(error); else toast.success("Disponible para continuar esta semana."); }}><ArrowRight className="size-3.5" /></Button>}</>}
+            {!!s.avances.length && <Button size="icon" className="size-7" variant="ghost" title="Ver avances" aria-label="Ver avances" aria-expanded={historial === f.key} onClick={() => setHistorial(historial === f.key ? null : f.key)}><ListChecks className="size-3.5" /></Button>}
+          </div>
+        </div>
+        <dl className="mt-1.5 grid grid-cols-3 gap-x-2 gap-y-1 sm:grid-cols-6">{[
+          ["Dosis", `${formatoNum(s.dosis)} ${p?.unidad ?? ""}/ha`], ["Total tabla", `${formatoNum(f.esperado)} ${p?.unidad ?? ""}`], ["Ha tabla", `${formatoNum(f.ha)} ha`], ["Recibido", `${formatoNum(f.recibido)} ${p?.unidad ?? ""}`], ["Aplicado", `${formatoNum(s.aplicado)} ${p?.unidad ?? ""}`], ["Disponible", `${formatoNum(s.saldo)} ${p?.unidad ?? ""}`],
+        ].map(([label,value]) => <div className="min-w-0" key={label}><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="break-words font-mono text-xs leading-4">{value}</dd></div>)}</dl>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+          <Progress value={f.ha > 0 ? Math.min(100, s.haAplicadas / f.ha * 100) : 0} aria-label={`Avance de ${p?.nombre ?? f.productoId} en ${l?.codigo}`} className="h-1 w-16 shrink-0" />
+          <span className="font-mono">{formatoNum(s.haAplicadas)} / {formatoNum(f.ha)} ha</span>
+          <span className={s.pendienteDevolver ? "text-destructive" : "text-primary"}>{estado}</span>
+          {s.devuelto > 0 && <span className="text-muted-foreground">Devuelto: {formatoNum(s.devuelto)} {p?.unidad}</span>}
         </div>
         {historial === f.key && <ul className="mt-3 space-y-1 border-t border-border pt-2 text-xs">{s.avances.map(a => <li key={a.id}>{a.fecha} · {a.por} · {formatoNum(a.ha)} ha · {formatoNum(a.cantidad)} {a.unidad}</li>)}</ul>}
       </article>;
