@@ -93,6 +93,14 @@ export type Database = {
         Args: { _coleccion: string; _user_id: string }
         Returns: boolean
       }
+      rancho_permitido: {
+        Args: { _rancho: string; _user_id: string }
+        Returns: boolean
+      }
+      registro_en_ranchos: {
+        Args: { _coleccion: string; _data: Json; _id: string; _user_id: string }
+        Returns: boolean
+      }
       tiene_alguno: {
         Args: { _roles: string[]; _user_id: string }
         Returns: boolean

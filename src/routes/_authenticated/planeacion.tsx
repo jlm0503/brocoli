@@ -79,7 +79,8 @@ import {
   validarApartado,
   validarPlantacionPrevia,
 } from "@/lib/campo/calc";
-import { puedeCorregirFechas } from "@/lib/campo/roles";
+import { puedeCapturar, puedeCorregirFechas } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
 import { useRanchosVisibles } from "@/lib/campo/fase3";
@@ -125,6 +126,8 @@ function listaInsumos(items: { productoId: string; cantidad: number }[], product
 }
 
 function Planeacion() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/planeacion");
   const { tablas, lotes, semanaActual } = useCampo();
   const { ranchos, pasaTabla, pasaCultivo } = useFiltro();
   const [ranchoElegido, setRancho] = useState("");
@@ -161,7 +164,7 @@ function Planeacion() {
       description={`Planea la tabla completa o por lotes en distintas semanas, idealmente con ${ANTICIPACION_SEMANAS} semanas de anticipación. Lo que no se plante en su semana pasa a un lote pendiente.`}
       filtros
       actions={
-        tablas.length > 0 && (
+        captura && tablas.length > 0 && (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setSolicitando(true)}>
               <FileText /> Generar solicitud de planta
@@ -257,6 +260,8 @@ function Planeacion() {
 }
 
 function Pendientes({ lotes }: { lotes: Lote[] }) {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/planeacion");
   const { tablas, productos, pedidos, cancelarLote } = useCampo();
   return (
     <section className="mb-8 rounded-xl border border-soil/40 bg-soil-soft/50 p-5">
@@ -275,7 +280,7 @@ function Pendientes({ lotes }: { lotes: Lote[] }) {
                   {t?.nombre} · Lote {l.codigo} ·{" "}
                   <span className="num">{formatoNum(pendientesLote(l))} ha</span>
                 </span>
-                {l.avances.length === 0 && (
+                {captura && l.avances.length === 0 && (
                   <Button
                     size="sm"
                     variant="ghost"
@@ -500,6 +505,8 @@ function estadoLote(l: Lote, semanaActual: number): string {
 }
 
 function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }) {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/planeacion");
   const {
     semanaActual,
     lotes,
@@ -591,7 +598,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                       <CalendarClock className="size-3.5" /> Sem {l.semanaPlaneada} ·{" "}
                       <span className="num">{formatoNum(l.ha)} ha</span>
                     </span>
-                    {l.avances.length === 0 ? (
+                    {captura && l.avances.length === 0 ? (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -655,7 +662,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
                                 : ""}
                           </Badge>
                         );
-                      if (!puedenPedir.has(l.id)) return null;
+                      if (!captura || !puedenPedir.has(l.id)) return null;
                       return (
                         <Button
                           size="sm"
@@ -689,7 +696,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
       )}
 
       <div className="mt-auto space-y-2 pt-4">
-        {porPlantar > 0 && (
+        {captura && porPlantar > 0 && (
           <div className="flex gap-2">
             <Input
               type="number"
@@ -708,7 +715,7 @@ function TablaCard({ tabla, onPlanear }: { tabla: Tabla; onPlanear: () => void }
             </Button>
           </div>
         )}
-        {disponibles > 0 ? (
+        {captura && disponibles > 0 ? (
           <Button
             onClick={onPlanear}
             variant={deTabla.length === 0 ? "default" : "outline"}

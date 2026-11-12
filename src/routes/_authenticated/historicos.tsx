@@ -91,6 +91,8 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 // ───────────────────────────── Por cerrar ─────────────────────────────
 
 function PorCerrar() {
+  const { roles } = useSesion();
+  const captura = roles.includes("admin");
   const { lotes, parametros, hoy, semanaActual, marcarCerrado } = useCampo();
   const { viajes, liquidaciones, ciclos, guardarCiclo } = useCosecha();
   const { extraordinarios, alertasDireccion } = useFase3();
@@ -182,7 +184,7 @@ function PorCerrar() {
                   </span>
                 )}
               </p>
-              <div className="flex flex-wrap gap-2">
+              {captura && <div className="flex flex-wrap gap-2">
                 <Button size="sm" disabled={!listo} onClick={() => cerrar(l, false)}>
                   Cerrar ciclo
                 </Button>
@@ -191,7 +193,7 @@ function PorCerrar() {
                     Forzar cierre
                   </Button>
                 )}
-              </div>
+              </div>}
             </CardContent>
           </Card>
         );
@@ -226,6 +228,8 @@ function PorCerrar() {
 type Grupo = "ciclo" | "rancho" | "tabla" | "ingeniero" | "mes" | "anio";
 
 function Consulta() {
+  const { roles } = useSesion();
+  const puedeEditar = roles.includes("admin");
   const [completar, setCompletar] = useState<CicloCerrado | null>(null);
   const { tablas, ranchos, hoy, marcarCerrado } = useCampo();
   const { ciclos, guardarCiclo } = useCosecha();
@@ -391,7 +395,7 @@ function Consulta() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setCaptura(true)}>Registrar ciclo histórico</Button>
+        {puedeEditar && <Button onClick={() => setCaptura(true)}>Registrar ciclo histórico</Button>}
         <Button variant="outline" onClick={excel} disabled={cs.length === 0}>Excel</Button>
         <Button variant="outline" onClick={() => void pdf()} disabled={cs.length === 0}>PDF</Button>
       </div>
@@ -457,8 +461,8 @@ function Consulta() {
                   <td className="p-2 text-right">{formatoMXN(t.utilidad)}</td>
                   {grupo === "ciclo" && (
                     <td className="p-2">
-                      {c.importacion && <Button size="sm" variant="outline" onClick={() => setCompletar(c)}>{c.importacion.pendiente ? "Completar" : "Ver detalle"}</Button>}
-                      {c.tipo === "sistema" && (
+                      {puedeEditar && c.importacion && <Button size="sm" variant="outline" onClick={() => setCompletar(c)}>{c.importacion.pendiente ? "Completar" : "Ver detalle"}</Button>}
+                      {puedeEditar && c.tipo === "sistema" && (
                         <Button size="sm" variant="ghost" onClick={() => { setReabrir(c); setMotivo(""); }}>Reabrir</Button>
                       )}
                     </td>

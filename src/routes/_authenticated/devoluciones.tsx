@@ -19,6 +19,8 @@ import {
   repartirDevolucion,
 } from "@/lib/campo/calc";
 import { useFase3 } from "@/lib/campo/fase3";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
 
@@ -37,6 +39,8 @@ export const Route = createFileRoute("/_authenticated/devoluciones")({
 });
 
 function Devoluciones() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/devoluciones");
   const { tablas, productos, semanaActual, lotes, recetas, adicionales, recepciones } = useCampo();
   const { ranchos, pasaTabla } = useFiltro();
   const { devoluciones: todasDev, registrarDevolucionSemana, eliminarDevolucion, extraordinarios } = useFase3();
@@ -112,7 +116,7 @@ function Devoluciones() {
       description="Producto, cantidad y foto de lo retirado sin usar. Lo retirado sale del costo del lote."
       filtros
     >
-      <section className="mb-10 rounded-xl border border-border bg-card p-5 shadow-card">
+      {captura && <section className="mb-10 rounded-xl border border-border bg-card p-5 shadow-card">
         <h2 className="mb-4 text-2xl font-semibold">Registrar lo retirado</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
@@ -203,7 +207,7 @@ function Devoluciones() {
           <FotoInput key={clave} foto={foto} setFoto={setFoto} texto="Foto de lo retirado" />
           <Button onClick={guardar}>Guardar devolución</Button>
         </div>
-      </section>
+      </section>}
 
       <section className="mb-10">
         <h2 className="mb-3 text-2xl font-semibold">Retirado esta semana</h2>
@@ -225,9 +229,9 @@ function Devoluciones() {
                   <VerEvidencia foto={d.foto} title="Ver foto">
                     <ImageIcon className="size-4" />
                   </VerEvidencia>
-                  <Button size="icon" variant="ghost" aria-label="Eliminar devolución" onClick={() => eliminarDevolucion(d.id)}>
+                  {captura && <Button size="icon" variant="ghost" aria-label="Eliminar devolución" onClick={() => eliminarDevolucion(d.id)}>
                     <Trash2 />
-                  </Button>
+                  </Button>}
                 </span>
               </li>
             ))}

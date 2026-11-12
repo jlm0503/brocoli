@@ -57,11 +57,11 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Comprobante (foto o PDF) y comentario por gasto; captura solo para Super Admin y Encargado de rancho
 - [x] Estado de resultados con utilidad directa y real, por rancho/cultivo, con comparativo, Excel y PDF (solo Super Admin)
 - [x] Caso de prueba de la Fase 6 en pruebas automáticas (60/40 y lote cerrado)
-- [ ] El encargado de rancho aún no se limita a sus ranchos asignados (hoy ve todos los ranchos para capturar)
+- [x] Ingeniero y encargado limitados a sus ranchos asignados; sin asignación no ven datos de ranchos.
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
-- [ ] Reorganizar permisos según la tabla del 11 nov: presentar correspondencia de pantallas y colecciones antes de migrar; después aplicar consulta/captura, restricciones por acción, ranchos asignados y pruebas por puesto. Pendiente de aprobación de la correspondencia.
+- [x] Reorganizar permisos según la tabla del 11 nov: correspondencia presentada y aprobada, menú y consulta/captura, recepciones en Llegadas, salidas de Encargado, restricciones por acción y ranchos en la nube; 252 pruebas pasando. Ingeniería y administración comprobados con datos reales; demás puestos cubiertos por pruebas de matriz, sin cuentas existentes para comprobación de pantalla.
 - [x] Habilitar salidas e históricos para Ingeniero; 22 pruebas pasando, permiso de guardado confirmado y ambas pestañas consultadas con su cuenta. Evaluaciones, cambios y eliminación de viajes reservados al Super Admin; sin viajes ficticios guardados.
 - [x] Entregar Excel semanas 46/47 con surtido por rancho, totales Trejo/Otros, listas completas de paquetes y plantaciones futuras; 1,268 fórmulas con valores y cantidades conciliados. Registrar 525 líneas semanales pendientes y 4 pedidos de preparación semanas 46–49 vinculados a lotes sin recepciones ficticias; Compras y Llegadas verificados, 56 pruebas pasando, semana 48 mantiene flujo normal.
 - [x] Reemplazar paquetes con dosis verificadas contra los dos Excel: Trejo para todas sus coliflores (11 plantaciones, 8 plantadas); Otros brócoli (19) y Otros coliflor (8), excluyendo Trejo. Conservar 5 lotes de brócoli Trejo, históricos, catálogo y capturas; quitar selección por tablas/ranchos y comprobar demanda por ha.

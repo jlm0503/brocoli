@@ -42,6 +42,8 @@ import {
   semanaEntregaLimite,
   type Consolidado,
 } from "@/lib/campo/calc";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
 import { exportarCompras } from "@/lib/campo/exportar-compras";
@@ -138,6 +140,8 @@ function Compras() {
 /* ───────────── Pedidos de planeación ───────────── */
 
 function PedidosPlaneacion({ totales }: { totales: boolean }) {
+  const { roles } = useSesion();
+  const recibe = roles.includes("admin");
   const { ranchos, pedidos, productos, tablas, lotes, semanaActual, reabrirPedido } = useCampo();
   const [todos, setTodos] = useState(false);
   const [entregando, setEntregando] = useState<PedidoPlaneacion | null>(null);
@@ -256,7 +260,7 @@ function PedidosPlaneacion({ totales }: { totales: boolean }) {
                             {p.motivo && ` · ${p.motivo}`}
                           </p>
                         </div>
-                        {p.status === "pendiente" ? (
+                        {recibe && p.status === "pendiente" ? (
                           <Button size="sm" variant="soft" onClick={() => setEntregando(p)}>
                             <Check /> Entregado
                           </Button>
@@ -267,9 +271,9 @@ function PedidosPlaneacion({ totales }: { totales: boolean }) {
                                 <ImageIcon className="size-4 text-primary" />
                               </VerEvidencia>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => reabrirPedido(p.id)}>
+                            {recibe && <Button size="sm" variant="ghost" onClick={() => reabrirPedido(p.id)}>
                               <RotateCcw /> Reabrir
-                            </Button>
+                            </Button>}
                           </div>
                         ) : null}
                       </li>
@@ -292,7 +296,7 @@ function PedidosPlaneacion({ totales }: { totales: boolean }) {
   );
 }
 
-function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | null; onClose: () => void }) {
+export function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | null; onClose: () => void }) {
   const { tablas, lotes, productos, entregarPedido } = useCampo();
   const [cantidades, setCantidades] = useState<Record<string, string>>({});
   const [foto, setFoto] = useState<string | undefined>();
@@ -351,6 +355,9 @@ function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlaneacion | 
 /* ───────────── Entregar / comprar ───────────── */
 
 function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entregar" | "comprar"; totales: boolean }) {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/compras");
+  const recibe = roles.includes("admin");
   const { ranchos, lotes: todosLotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
   const { pasaLote } = useFiltro();
   const lotes = useMemo(() => todosLotes.filter((l) => pasaLote(l)), [todosLotes, pasaLote]);
@@ -497,17 +504,17 @@ function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entrega
                           <TableCell className="pr-5 text-right">
                             {abierto ? (
                               <div className="flex justify-end gap-1">
-                                {modo === "comprar" && f.status === "pendiente" && (
+                                {captura && modo === "comprar" && f.status === "pendiente" && (
                                   <Button size="sm" variant="soft" onClick={() => marcar(f.keys, "comprado")}>
                                     <ShoppingCart /> Comprado
                                   </Button>
                                 )}
-                                {(modo === "entregar" || f.status !== "pendiente") && (
+                                {recibe && (modo === "entregar" || f.status !== "pendiente") && (
                                   <Button size="sm" variant="soft" onClick={() => setRecibiendo(f)}>
                                     <Check /> Recibido
                                   </Button>
                                 )}
-                                <Button
+                                {captura && <Button
                                   size="sm"
                                   variant="ghost"
                                   aria-label="Cancelar"
@@ -517,10 +524,10 @@ function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entrega
                                   }}
                                 >
                                   <X />
-                                </Button>
+                                </Button>}
                               </div>
                             ) : (
-                              <Button size="sm" variant="ghost" onClick={() => marcar(f.keys, "pendiente")}>
+                              captura && <Button size="sm" variant="ghost" onClick={() => marcar(f.keys, "pendiente")}>
                                 <RotateCcw /> Reabrir
                               </Button>
                             )}
@@ -546,7 +553,7 @@ function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entrega
   );
 }
 
-function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: () => void }) {
+export function RecibirDialog({ fila, onClose }: { fila: Consolidado | null; onClose: () => void }) {
   const { ranchos, productos, recibir, tablas, lotes, recepciones } = useCampo();
   const [cantidad, setCantidad] = useState<string | null>(null);
   const [foto, setFoto] = useState<string | undefined>();

@@ -73,7 +73,7 @@ import {
   type Coleccion,
   type Mapa,
 } from "./sync";
-import { puedeCorregirFechas } from "./roles";
+import { OPERACIONES_CAMPO, puedeOperacionCampo, puedeCorregirFechas } from "./roles";
 import type {
   Adicional,
   AlertaInsumos,
@@ -283,15 +283,15 @@ async function leerTodo(): Promise<Fila[]> {
 async function escribir(coleccion: Coleccion, antes: Mapa, ahora: Mapa, userId: string) {
   const { guardar, borrar } = diferencias(antes, ahora);
   if (guardar.length > 0) {
-    const { error } = await supabase.from("registros").upsert(
-      guardar.map(([id, data]) => ({
-        coleccion,
-        id,
-        data: JSON.parse(JSON.stringify(data)) as Json,
-        updated_by: userId,
-      })),
-    );
-    if (error) throw error;
+    // Explicit UPDATE avoids running INSERT guards for receipts of existing orders.
+    for (const [id, data] of guardar) {
+      const fila = { coleccion, id, data: JSON.parse(JSON.stringify(data)) as Json, updated_by: userId };
+      const resultado = id in antes
+        ? await supabase.from("registros").update(fila).eq("coleccion", coleccion).eq("id", id).select("id")
+        : await supabase.from("registros").insert(fila).select("id");
+      if (resultado.error) throw resultado.error;
+      if (!resultado.data?.length) throw new Error("Tu puesto no puede guardar este registro.");
+    }
   }
   if (borrar.length > 0) {
     const { error } = await supabase
@@ -383,7 +383,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
     // Cierre de las semanas que pasaron: lo hace solo quien llegue primero.
     let lotesAlDia = datos.lotes;
-    if (semanaGuardada < semanaReal) {
+    if (semanaGuardada < semanaReal && roles.includes("admin")) {
       const { data: ok } = await supabase
         .from("registros")
         .update({ data: { semana: semanaReal } })
@@ -397,7 +397,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         lotesAlDia = ponerAlDia(datos.lotes, semanaGuardada, semanaReal, () => nuevoId("lt"));
       }
     } else {
-      lotesAlDia = ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt"));
+      lotesAlDia = roles.includes("admin") ? ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt")) : datos.lotes;
     }
 
     remotos.current = {};
@@ -444,7 +444,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setParametros(datos.parametros);
     setSolicitudes(datos.solicitudes);
     setCargado(true);
-  }, []);
+  }, [roles]);
 
   useEffect(() => {
     if (!lista) return;
@@ -855,7 +855,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         plantasPorHa: parametroVigente(parametros, "plantasPorHa", p.fechaPlantacion, variedad.id),
       });
       setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
-      if (pedido) setPedidos((ps) => [...ps, pedido]);
+      if (pedido) setPedidos((ps) => [...ps, roles.includes("admin") ? pedido : { ...pedido, status: "pendiente", foto: undefined, fechaEntrega: undefined, cantidadesRecibidas: undefined }]);
       return null;
     },
     [
@@ -869,6 +869,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       ingeniero,
       productos,
       parametros,
+      roles,
     ],
   );
 
@@ -1225,7 +1226,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const marcar = useCallback((keys: string[], status: "pendiente" | "comprado" | "cancelado") => {
     setRecepciones((prev) => {
       const next = { ...prev };
-      for (const k of keys) next[k] = { status };
+      for (const k of keys) next[k] = { ...prev[k], status };
       return next;
     });
   }, []);
@@ -1588,6 +1589,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
 export function useCampo() {
   const ctx = useContext(CampoContext);
+  const { roles } = useSesion();
   if (!ctx) throw new Error("useCampo debe usarse dentro de CampoProvider");
-  return ctx;
+  // Also guard calls made from dialogs or shared components, not just visible buttons.
+  return new Proxy(ctx, {
+    get(target, prop, receiver) {
+      const valor = Reflect.get(target, prop, receiver);
+      if (typeof prop !== "string" || !OPERACIONES_CAMPO[prop] || typeof valor !== "function") return valor;
+      if (puedeOperacionCampo(roles, prop)) return valor;
+      return () => {
+        const error = "Tu puesto solo consulta esta operación.";
+        toast.error(error);
+        return prop === "planearLote" || prop === "generarSolicitud" ? { error } : error;
+      };
+    },
+  });
 }

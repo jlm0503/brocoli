@@ -16,6 +16,12 @@ import {
   pedidosQueLleganEnSemana,
   plantaQueLlegaEnSemana,
 } from "@/lib/campo/calc";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
+import { EntregarPedidoDialog, RecibirDialog } from "./compras";
+import { RecibirPlantaDialog } from "@/components/campo/SolicitudPlanta";
+import type { PedidoPlaneacion, SolicitudPlanta } from "@/lib/campo/types";
+import type { Consolidado } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
 
@@ -46,6 +52,11 @@ const ESTATUS_INSUMO = {
 } as const;
 
 function Llegadas() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/llegadas");
+  const [recibiendo, setRecibiendo] = useState<Consolidado | null>(null);
+  const [preparacion, setPreparacion] = useState<PedidoPlaneacion | null>(null);
+  const [plantaRecibiendo, setPlantaRecibiendo] = useState<SolicitudPlanta | null>(null);
   const {
     semanaActual,
     lotes: todosLotes,
@@ -176,6 +187,7 @@ function Llegadas() {
                           detalle={`${l.variedad} · ${l.vivero} · ${folioSolicitud(l.folio)} · entrega ${fechaCorta(l.fechaEntrega)}`}
                           cantidad={`${formatoNum(l.plantas)} plantas`}
                           estatus={
+                            <>
                             <Badge
                               variant={
                                 l.status === "recibida"
@@ -187,6 +199,8 @@ function Llegadas() {
                             >
                               {ESTATUS_SOLICITUD_LABEL[l.status]}
                             </Badge>
+                            {captura && l.status !== "recibida" && <Button size="sm" onClick={() => setPlantaRecibiendo(solicitudes.find(s => s.lineas.some(x => x.loteId === l.loteId) && s.status !== "cancelada") ?? null)}>Recibir planta</Button>}
+                            </>
                           }
                         />
                       ))}
@@ -207,11 +221,14 @@ function Llegadas() {
                               detalle={`${tablaById.get(p.tablaId)?.nombre ?? ""} · lote ${loteById.get(p.loteId)?.codigo ?? ""} · planta sem ${p.semanaPlantacion}`}
                               cantidad={`${formatoNum(x.cantidad)} ${prod?.unidad ?? ""}${p.cantidadesRecibidas ? ` · recibido ${formatoNum(p.cantidadesRecibidas[x.productoId] ?? 0)}` : ""}`}
                               estatus={
+                                <>
                                 <Badge
                                   variant={p.status === "entregado" ? "recibido" : p.cantidadesRecibidas ? "parcial" : "pendiente"}
                                 >
                                   {p.status === "entregado" ? "Entregado" : p.cantidadesRecibidas ? "Recibido parcialmente" : "Pendiente"}
                                 </Badge>
+                                {captura && p.status !== "entregado" && <Button size="sm" onClick={() => setPreparacion(p)}>Recibir preparación</Button>}
+                                </>
                               }
                             />
                           );
@@ -235,7 +252,7 @@ function Llegadas() {
                             izquierda={prod?.nombre ?? "Producto"}
                             detalle={tablasTxt}
                             cantidad={`${formatoNum(f.cantidadPedido)} ${prod?.unidad ?? ""}${f.keys.some(k => recepciones[k]?.cantidadRecibida !== undefined) ? ` · recibido ${formatoNum(f.keys.reduce((s, k) => s + (recepciones[k]?.cantidadRecibida ?? 0), 0))}` : ""}`}
-                            estatus={<Badge variant={f.status}>{ESTATUS_INSUMO[f.status]}</Badge>}
+                            estatus={<><Badge variant={f.status}>{ESTATUS_INSUMO[f.status]}</Badge>{captura && f.status !== "recibido" && f.status !== "cancelado" && <Button size="sm" onClick={() => setRecibiendo(f)}>Recibir insumo</Button>}</>}
                           />
                         );
                       })}
@@ -247,6 +264,9 @@ function Llegadas() {
           })}
         </div>
       )}
+      <EntregarPedidoDialog pedido={preparacion} onClose={() => setPreparacion(null)} />
+      <RecibirDialog fila={recibiendo} onClose={() => setRecibiendo(null)} />
+      {plantaRecibiendo && <RecibirPlantaDialog key={plantaRecibiendo.id} solicitud={plantaRecibiendo} onClose={() => setPlantaRecibiendo(null)} />}
     </AppShell>
   );
 }

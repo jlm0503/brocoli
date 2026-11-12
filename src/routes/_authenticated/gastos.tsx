@@ -239,7 +239,7 @@ function GastosRancho() {
       </section>
 
       <div className="mb-6">
-        <Button disabled={!puedeCapturar || !ranchoId} onClick={() => abrir({ cultivo: CULTIVO_TOTAL, modo: "total", concepto: "nomina" })}>
+        <Button disabled={!puedeCapturar || !ranchoId} onClick={() => puedeCapturar && abrir({ cultivo: CULTIVO_TOTAL, modo: "total", concepto: "nomina" })}>
           <Plus /> Agregar gasto de rancho
         </Button>
       </div>
@@ -269,7 +269,7 @@ function GastosRancho() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={capturarCsv}>
+              <Button disabled={!puedeCapturar} onClick={capturarCsv}>
                 <FileUp /> Capturar {csv.filas.length} gasto(s)
               </Button>
             </>
@@ -311,7 +311,8 @@ function GastosRancho() {
                       <td key={c.id} className="px-1 py-1 text-right">
                         <button
                           type="button"
-                          onClick={() => abrir({ cultivo: f.cultivo, modo: f.modo, concepto: c.id }, gasto)}
+                          disabled={!puedeCapturar}
+                          onClick={() => puedeCapturar && abrir({ cultivo: f.cultivo, modo: f.modo, concepto: c.id }, gasto)}
                           className={`w-full rounded-md px-2 py-1 text-right num transition-colors hover:bg-primary/10 ${
                             gasto ? "font-medium text-foreground" : "text-muted-foreground/60"
                           }`}
@@ -364,7 +365,7 @@ function GastosRancho() {
             <input type="checkbox" checked={soloSemana} onChange={(e) => setSoloSemana(e.target.checked)} />
             Solo para la semana {semana}
           </label>
-          <Button onClick={guardarPct}>Guardar reparto</Button>
+          <Button disabled={!puedeCapturar} onClick={guardarPct}>Guardar reparto</Button>
         </div>
       </section>
 
@@ -393,6 +394,7 @@ function GastosRancho() {
                   <Button
                     size="icon"
                     variant="ghost"
+                    disabled={!puedeCapturar}
                     aria-label="Editar gasto"
                     onClick={() =>
                       abrir(
@@ -403,7 +405,8 @@ function GastosRancho() {
                   >
                     <Pencil />
                   </Button>
-                  <Button size="icon" variant="ghost" aria-label="Eliminar gasto" onClick={() => eliminarGasto(g.id)}>
+                  <Button size="icon" variant="ghost" disabled={!puedeCapturar}
+                    aria-label="Eliminar gasto" onClick={() => eliminarGasto(g.id)}>
                     <Trash2 />
                   </Button>
                 </span>

@@ -25,7 +25,7 @@ export const ROLES: Record<
   administrador: {
     nombre: "Administrador",
     persona: "",
-    descripcion: "Catálogos, receta, adicionales, ubicación de tablas y reportes.",
+    descripcion: "Captura catálogos, aplicaciones y gastos; consulta operaciones, costos y resultados.",
     home: "/catalogos",
   },
   autorizador: {
@@ -37,7 +37,7 @@ export const ROLES: Record<
   ingeniero: {
     nombre: "Ingeniero de campo",
     persona: "Israel",
-    descripcion: "Planea lotes, registra plantaciones y salidas de cosecha, consulta viajes y reporta mejoras.",
+    descripcion: "Planea, solicita planta y extraordinarios, registra aplicaciones y salidas; consulta solo sus ranchos asignados.",
     home: "/planeacion",
   },
   compras: {
@@ -50,7 +50,7 @@ export const ROLES: Record<
   almacen: {
     nombre: "Almacén general",
     persona: "Oscar",
-    descripcion: "Reubicaciones, recolecciones y devoluciones semanales de lo no consumido.",
+    descripcion: "Confirma llegadas y registra devoluciones; consulta compras, gastos, consumos e históricos.",
     home: "/devoluciones",
   },
   direccion: {
@@ -62,7 +62,7 @@ export const ROLES: Record<
   encargado: {
     nombre: "Encargado de rancho",
     persona: "",
-    descripcion: "Captura los gastos comunes del rancho cada semana: nómina, diésel, gasolina y más.",
+    descripcion: "Registra avances de aplicaciones, llegadas, salidas y gastos de sus ranchos asignados; consulta planeación e históricos.",
     home: "/gastos",
   },
 };
@@ -93,26 +93,26 @@ export type NavPath =
   | "/resultados";
 
 export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
-  { to: "/aplicaciones", label: "Aplicaciones en rancho", roles: ["admin", "ingeniero", "administrador"] },
+  { to: "/aplicaciones", label: "Aplicaciones en rancho", roles: ["admin", "ingeniero", "encargado", "administrador"] },
   { to: "/panel", label: "Panel de Dirección", roles: ["admin", "direccion"] },
-  { to: "/ranchos", label: "Estatus y costos", roles: ["admin", "administrador"] },
-  { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero"] },
-  { to: "/solicitudes", label: "Solicitudes de planta", roles: ["admin", "ingeniero"] },
-  { to: "/llegadas", label: "Lo que llega al rancho", roles: ["admin", "ingeniero"] },
-  { to: "/extraordinarios", label: "Extraordinarios", roles: ["admin", "autorizador", "ingeniero"] },
-  { to: "/cosecha", label: "Cosecha", roles: ["admin", "ingeniero"] },
-  { to: "/liquidacion", label: "Liquidación semanal", roles: ["admin"] },
+  { to: "/ranchos", label: "Estatus y costos", roles: ["admin", "ingeniero", "administrador"] },
+  { to: "/planeacion", label: "Planeación y avance", roles: ["admin", "ingeniero", "encargado", "administrador"] },
+  { to: "/solicitudes", label: "Solicitudes de planta", roles: ["admin", "ingeniero", "encargado", "administrador"] },
+  { to: "/llegadas", label: "Lo que llega al rancho", roles: ["admin", "ingeniero", "encargado", "compras", "almacen", "administrador"] },
+  { to: "/extraordinarios", label: "Extraordinarios", roles: ["admin", "autorizador", "ingeniero", "administrador"] },
+  { to: "/cosecha", label: "Cosecha", roles: ["admin", "ingeniero", "encargado", "administrador"] },
+  { to: "/liquidacion", label: "Liquidación semanal", roles: ["admin", "administrador"] },
   { to: "/rendimiento", label: "Rendimiento y calidad", roles: ["admin", "ingeniero"] },
-  { to: "/historicos", label: "Cierre e históricos", roles: ["admin"] },
-  { to: "/consumo", label: "Consumo por tabla", roles: ["admin"] },
-  { to: "/gastos", label: "Gastos de rancho", roles: ["admin", "encargado"] },
-  { to: "/resultados", label: "Estado de resultados", roles: ["admin"] },
-  { to: "/compras", label: "Compras y entregas", roles: ["admin", "compras"] },
-  { to: "/devoluciones", label: "Devoluciones", roles: ["admin", "almacen"] },
+  { to: "/historicos", label: "Cierre e históricos", roles: ["admin", "ingeniero", "encargado", "almacen", "administrador"] },
+  { to: "/consumo", label: "Consumo por tabla", roles: ["admin", "ingeniero", "encargado", "almacen", "administrador"] },
+  { to: "/gastos", label: "Gastos de rancho", roles: ["admin", "encargado", "almacen", "administrador"] },
+  { to: "/resultados", label: "Estado de resultados", roles: ["admin", "administrador"] },
+  { to: "/compras", label: "Compras y entregas", roles: ["admin", "compras", "almacen", "administrador"] },
+  { to: "/devoluciones", label: "Devoluciones", roles: ["admin", "almacen", "administrador"] },
   { to: "/alertas", label: "Alertas y reportes", roles: ["admin", "administrador", "almacen"] },
   { to: "/direccion", label: "Alertas a Dirección", roles: ["admin", "direccion"] },
-  { to: "/cuenta-planta", label: "Cuenta de planta", roles: ["admin"] },
-  { to: "/paquete", label: "Paquete tecnológico", roles: ["admin", "administrador"] },
+  { to: "/cuenta-planta", label: "Cuenta de planta", roles: ["admin", "ingeniero", "administrador"] },
+  { to: "/paquete", label: "Paquete tecnológico", roles: ["admin", "ingeniero", "encargado", "compras", "almacen", "administrador"] },
   { to: "/catalogos", label: "Catálogos", roles: ["admin", "administrador"] },
   { to: "/parametros", label: "Parámetros", roles: ["admin"] },
   { to: "/usuarios", label: "Usuarios y puestos", roles: ["admin"] },
@@ -128,6 +128,50 @@ export function tiene(roles: Role[], ...cuales: Role[]): boolean {
   return roles.some((r) => cuales.includes(r));
 }
 
+const CAPTURA: Partial<Record<NavPath, Role[]>> = {
+  "/aplicaciones": ["ingeniero", "encargado", "administrador"],
+  "/planeacion": ["ingeniero"], "/solicitudes": ["ingeniero"],
+  "/llegadas": ["almacen", "encargado"], "/extraordinarios": ["ingeniero", "autorizador"],
+  "/cosecha": ["ingeniero", "encargado"], "/compras": ["compras"],
+  "/devoluciones": ["almacen"], "/gastos": ["encargado", "administrador"],
+  "/catalogos": ["administrador"],
+};
+
+/** Consulta nunca concede captura; varios puestos suman permisos. */
+export function puedeCapturar(roles: Role[], path: NavPath): boolean {
+  return puedeVer(roles, path) && (roles.includes("admin") || tiene(roles, ...(CAPTURA[path] ?? [])));
+}
+
+export function puedeResolverSobrantes(roles: Role[]): boolean {
+  return tiene(roles, "admin", "ingeniero", "administrador");
+}
+
+/** null = todos; [] = ninguno, incluso mientras se cargan las asignaciones. */
+export function alcanceRanchos(roles: Role[], asignados: string[]): string[] | null {
+  if (!roles.length) return [];
+  return roles.some(r => r !== "ingeniero" && r !== "encargado") ? null : asignados;
+}
+
+export const OPERACIONES_CAMPO: Record<string, NavPath> = {
+  guardarParametro: "/parametros", eliminarParametro: "/parametros",
+  agregarSimple: "/catalogos", renombrarSimple: "/catalogos", eliminarSimple: "/catalogos",
+  agregarVariedad: "/catalogos", editarDiasVariedad: "/catalogos", eliminarVariedad: "/catalogos",
+  setPrecio: "/catalogos", agregarProducto: "/catalogos", editarProducto: "/catalogos",
+  agregarRancho: "/catalogos", eliminarRancho: "/catalogos", agregarTabla: "/catalogos",
+  eliminarTabla: "/catalogos", reactivarTabla: "/catalogos",
+  setDosis: "/paquete", guardarAdicional: "/paquete", eliminarAdicional: "/paquete",
+  planearLote: "/planeacion", registrarPlantacion: "/planeacion", cancelarLote: "/planeacion", registrarAvance: "/planeacion",
+  generarSolicitud: "/solicitudes", marcarSolicitudEnviada: "/solicitudes", cancelarSolicitud: "/solicitudes",
+  recibirPlanta: "/llegadas", entregarPedido: "/llegadas", reabrirPedido: "/llegadas", recibir: "/llegadas",
+  marcar: "/compras", resolverAlerta: "/alertas", terminarCosecha: "/historicos", marcarCerrado: "/historicos",
+  corregirFechas: "/parametros",
+};
+
+export function puedeOperacionCampo(roles: Role[], operacion: string): boolean {
+  const path = OPERACIONES_CAMPO[operacion];
+  return !!path && puedeCapturar(roles, path);
+}
+
 /** Solo el Super Admin corrige fechas de plantación y cosecha ya registradas. */
 export function puedeCorregirFechas(role: Role | null): boolean {
   return role === "admin";
@@ -138,7 +182,7 @@ export function puedeCorregirFechas(role: Role | null): boolean {
  * Ingeniero y Super Admin registran salidas; solo el Super Admin evalúa.
  */
 export const PERMISOS_COSECHA: Record<"viajes" | "evaluaciones", Role[]> = {
-  viajes: ["admin", "ingeniero"],
+  viajes: ["admin", "ingeniero", "encargado"],
   evaluaciones: ["admin"],
 };
 

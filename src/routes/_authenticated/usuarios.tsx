@@ -98,9 +98,9 @@ function Usuarios() {
             );
           })}
         </div>
-        {p.puestos.includes("ingeniero") && (
+        {(p.puestos.includes("ingeniero") || p.puestos.includes("encargado")) && (
           <div className="rounded-md bg-muted/60 p-3">
-            <div className="eyebrow mb-2">Ranchos que ve (sin marcar ninguno ve todos)</div>
+            <div className="eyebrow mb-2">Ranchos asignados (sin marcar ninguno no ve ningún rancho)</div>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {ranchos.map((r) => (
                 <label key={r.id} className="flex items-center gap-2 text-sm">
