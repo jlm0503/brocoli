@@ -71,6 +71,13 @@
       "when": 1794379191218,
       "tag": "0009_ingeniero_salidas_cosecha",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794448625589,
+      "tag": "0010_permisos_por_puesto_y_rancho",
+      "breakpoints": true
     }
   ]
 }
