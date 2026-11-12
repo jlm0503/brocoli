@@ -183,14 +183,19 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     <T extends { id: string }>(col: Col3, item: T) => {
       setters[col]((xs) => (xs.some((x) => x.id === item.id) ? xs.map((x) => (x.id === item.id ? item : x)) : [...xs, item]));
       if (simRef.current || !user) return;
-      void supabase
-        .from("registros")
-        .upsert({ coleccion: col, id: item.id, data: JSON.parse(JSON.stringify(item)) as Json, updated_by: user.id })
+      const existe = col === "extraordinarios" ? extraordinarios.some(x => x.id === item.id)
+        : col === "alertas_direccion" ? alertasDireccion.some(x => x.id === item.id)
+        : col === "continuaciones_aplicacion" ? continuaciones.some(x => x.id === item.id)
+        : col === "asignaciones" ? asignaciones.some(x => x.id === item.id)
+        : col === "devoluciones" ? devoluciones.some(x => x.id === item.id) : aplicaciones.some(x => x.id === item.id);
+      const fila = { coleccion: col, id: item.id, data: JSON.parse(JSON.stringify(item)) as Json, updated_by: user.id };
+      const escritura = existe ? supabase.from("registros").update(fila).eq("coleccion", col).eq("id", item.id) : supabase.from("registros").insert(fila);
+      void escritura
         .then(({ error }) => {
           if (error) toast.error("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.");
         });
     },
-    [setters, user],
+    [setters, user, extraordinarios, alertasDireccion, continuaciones, asignaciones, devoluciones, aplicaciones],
   );
 
   const quitar = useCallback(

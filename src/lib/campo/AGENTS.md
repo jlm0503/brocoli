@@ -1,4 +1,5 @@
 # Architecture rules
+- Capture permissions and provider-operation guards live in roles.ts; shared collections use explicit updates for existing rows and database triggers enforce per-action and assigned-ranch scope. Why: an upsert invokes insert guards even when receiving an existing order.
 - Engineers and ranch managers insert unevaluated harvest departures through the shared harvest provider; a database trigger reserves trip changes and deletion for admins. Why: departure access must not permit historical or financial changes.
 - Field application advances reference explicit confirmed delivery sources; weekly leftover decisions use the shared Fase3 provider and never create receipts or replace the source. Why: partial receipts, returns and carryovers remain traceable without duplicate costs.
 - Recipe variants support dated ranch inclusions or exclusions, with an empty table list meaning every table; display program tabs without table assignment controls, and retain old lot snapshots unless an authorized forward-only backfill replaces them. Why: new ranches inherit the proper crop program without changing captured history.

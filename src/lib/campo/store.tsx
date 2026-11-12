@@ -283,15 +283,15 @@ async function leerTodo(): Promise<Fila[]> {
 async function escribir(coleccion: Coleccion, antes: Mapa, ahora: Mapa, userId: string) {
   const { guardar, borrar } = diferencias(antes, ahora);
   if (guardar.length > 0) {
-    const { error } = await supabase.from("registros").upsert(
-      guardar.map(([id, data]) => ({
-        coleccion,
-        id,
-        data: JSON.parse(JSON.stringify(data)) as Json,
-        updated_by: userId,
-      })),
-    );
-    if (error) throw error;
+    // Explicit UPDATE avoids running INSERT guards for receipts of existing orders.
+    for (const [id, data] of guardar) {
+      const fila = { coleccion, id, data: JSON.parse(JSON.stringify(data)) as Json, updated_by: userId };
+      const resultado = id in antes
+        ? await supabase.from("registros").update(fila).eq("coleccion", coleccion).eq("id", id).select("id")
+        : await supabase.from("registros").insert(fila).select("id");
+      if (resultado.error) throw resultado.error;
+      if (!resultado.data?.length) throw new Error("Tu puesto no puede guardar este registro.");
+    }
   }
   if (borrar.length > 0) {
     const { error } = await supabase
