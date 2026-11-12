@@ -141,7 +141,7 @@ function Compras() {
 
 function PedidosPlaneacion({ totales }: { totales: boolean }) {
   const { roles } = useSesion();
-  const recibe = puedeCapturar(roles, "/llegadas");
+  const recibe = roles.includes("admin");
   const { ranchos, pedidos, productos, tablas, lotes, semanaActual, reabrirPedido } = useCampo();
   const [todos, setTodos] = useState(false);
   const [entregando, setEntregando] = useState<PedidoPlaneacion | null>(null);
@@ -357,7 +357,7 @@ export function EntregarPedidoDialog({ pedido, onClose }: { pedido: PedidoPlanea
 function ListaSemana({ semana, modo, totales }: { semana: number; modo: "entregar" | "comprar"; totales: boolean }) {
   const { roles } = useSesion();
   const captura = puedeCapturar(roles, "/compras");
-  const recibe = puedeCapturar(roles, "/llegadas");
+  const recibe = roles.includes("admin");
   const { ranchos, lotes: todosLotes, tablas, recetas, adicionales, productos, recepciones, semanaActual, marcar } = useCampo();
   const { pasaLote } = useFiltro();
   const lotes = useMemo(() => todosLotes.filter((l) => pasaLote(l)), [todosLotes, pasaLote]);

@@ -1225,7 +1225,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
   const marcar = useCallback((keys: string[], status: "pendiente" | "comprado" | "cancelado") => {
     setRecepciones((prev) => {
       const next = { ...prev };
-      for (const k of keys) next[k] = { status };
+      for (const k of keys) next[k] = { ...prev[k], status };
       return next;
     });
   }, []);
