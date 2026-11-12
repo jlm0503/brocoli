@@ -43,6 +43,7 @@ import {
   sumarPorProducto,
 } from "@/lib/campo/calc";
 import { useFiltro } from "@/lib/campo/filtro";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import type { AlertaInsumos, OpcionTardia } from "@/lib/campo/types";
 
@@ -74,6 +75,7 @@ const OPCION_LABEL: Record<OpcionTardia, string> = {
 };
 
 function Alertas() {
+  const { roles } = useSesion();
   const { ranchos, alertas: todasAlertas, tardias: todasTardias, tablas, lotes, productos, inventarioAlmacen, hoy } =
     useCampo();
   const { pasaRancho, pasaCultivo } = useFiltro();
@@ -134,9 +136,9 @@ function Alertas() {
                     {formatoMXN(valor(a))}
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setResolviendo(a)}>
+                {roles.includes("admin") && <Button size="sm" onClick={() => setResolviendo(a)}>
                   Resolver
-                </Button>
+                </Button>}
               </div>
               <ul className="mt-3 flex flex-wrap gap-2 text-xs">
                 {[...sumarPorProducto(a.items).entries()].map(([pid, c]) => (

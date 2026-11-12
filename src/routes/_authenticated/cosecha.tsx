@@ -231,9 +231,9 @@ function Panel() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <Button size="sm" variant="outline" onClick={() => setTerminar(l)}>
+                    {roles.includes("admin") && <Button size="sm" variant="outline" onClick={() => setTerminar(l)}>
                       Cosecha terminada
-                    </Button>
+                    </Button>}
                   </td>
                 </tr>
               );

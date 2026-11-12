@@ -38,6 +38,8 @@ import {
   formatoNum,
   semanasReceta,
 } from "@/lib/campo/calc";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import type { Adicional, Cultivo } from "@/lib/campo/types";
 
@@ -73,6 +75,8 @@ const ETAPA_CORTA: Record<string, string> = {
 };
 
 function Paquete() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/paquete");
   const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
   const [programa, setPrograma] = useState("trejo-coliflor");
   const cultivo: Cultivo = programa === "otros-brocoli" ? "brocoli" : "coliflor";
@@ -229,7 +233,7 @@ function Paquete() {
                               step="0.1"
                               value={v === 0 ? "" : v}
                               placeholder="·"
-                              disabled={!paquete}
+                              disabled={!captura || !paquete}
                               onChange={(e) => setDosis(cultivo, p.id, w, Number(e.target.value), paqueteId)}
                               className={`num w-full min-w-11 rounded px-0.5 py-1.5 text-center text-xs focus:ring-1 focus:ring-ring focus:outline-none ${v > 0 ? (w < 0 ? "bg-soil-soft text-soil-foreground" : "bg-primary-soft text-accent-foreground") : "bg-transparent hover:bg-muted"}`}
                               aria-label={`${p.nombre} semana ${w}`}

@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { formatoNum, saldoAplicacion } from "@/lib/campo/calc";
+import { puedeResolverSobrantes } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
@@ -33,6 +35,8 @@ function Aplicaciones() {
 }
 
 function Contenido() {
+  const { roles } = useSesion();
+  const resuelve = puedeResolverSobrantes(roles);
   const { semanaActual, hoy, productos, lotes, tablas, ranchos } = useCampo();
   const { fuentes, aplicaciones, continuaciones, devoluciones, aplicacionesListas, registrarAplicacion, continuarAplicacion, devolverSobrante } = useFase3();
   const { pasaLote } = useFiltro();
@@ -103,7 +107,7 @@ function Contenido() {
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words font-sans text-sm font-semibold tracking-normal">{agrupar === "producto" ? `${ranchos.find(r => r.id === f.ranchoId)?.nombre} · Tabla ${tablas.find(t => t.id === f.tablaId)?.nombre} · ${l?.codigo}` : (p?.nombre ?? f.productoId)}</h3><p className="text-xs text-muted-foreground">{agrupar === "tabla" ? `Lote ${l?.codigo} · ` : ""}{f.tipo} · Sem {f.semana}</p></div>
           <div className="flex shrink-0 gap-1">
             <Button size="icon" className="size-7" title="Registrar avance" aria-label="Registrar avance" disabled={!s.puedeAplicar || s.saldo <= 0 || s.haAplicadas >= f.ha} onClick={() => abrir(f.key,"avance")}><Plus className="size-3.5" /></Button>
-            {f.semana < semanaActual && s.saldo > 0 && <><Button size="icon" className="size-7" variant="outline" title="Devolver sobrante" aria-label="Devolver sobrante" onClick={() => abrir(f.key,"devolver")}><Undo2 className="size-3.5" /></Button>{s.pendienteDevolver && <Button size="icon" className="size-7" variant="outline" title="Continuar aplicando" aria-label="Continuar aplicando" onClick={() => { const error = continuarAplicacion(f.key); if(error) toast.error(error); else toast.success("Disponible para continuar esta semana."); }}><ArrowRight className="size-3.5" /></Button>}</>}
+            {resuelve && f.semana < semanaActual && s.saldo > 0 && <><Button size="icon" className="size-7" variant="outline" title="Devolver sobrante" aria-label="Devolver sobrante" onClick={() => abrir(f.key,"devolver")}><Undo2 className="size-3.5" /></Button>{s.pendienteDevolver && <Button size="icon" className="size-7" variant="outline" title="Continuar aplicando" aria-label="Continuar aplicando" onClick={() => { const error = continuarAplicacion(f.key); if(error) toast.error(error); else toast.success("Disponible para continuar esta semana."); }}><ArrowRight className="size-3.5" /></Button>}</>}
             {!!s.avances.length && <Button size="icon" className="size-7" variant="ghost" title="Ver avances" aria-label="Ver avances" aria-expanded={historial === f.key} onClick={() => setHistorial(historial === f.key ? null : f.key)}><ListChecks className="size-3.5" /></Button>}
           </div>
         </div>

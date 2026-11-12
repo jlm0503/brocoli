@@ -23,6 +23,8 @@ import {
   totalesSolicitud,
 } from "@/lib/campo/calc";
 import { entregarPdf } from "@/lib/campo/pdf-solicitud";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import { useFiltro } from "@/lib/campo/filtro";
 import type { EstatusSolicitud, SolicitudPlanta } from "@/lib/campo/types";
@@ -57,6 +59,8 @@ const VARIANTE: Record<EstatusSolicitud, "pendiente" | "comprado" | "recibido" |
 };
 
 function Solicitudes() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/solicitudes");
   const { solicitudes: todas, lotes, semanaActual } = useCampo();
   const { pasaLote, pasaLoteId } = useFiltro();
   const solicitudes = todas.filter(
@@ -78,7 +82,7 @@ function Solicitudes() {
       description="Cada solicitud lleva folio y se descarga en PDF para mandarla al vivero. Al llegar la planta se captura lo que realmente se recibió."
       filtros
       actions={
-        <Button onClick={() => setGenerando(true)}>
+        captura && <Button onClick={() => setGenerando(true)}>
           <Plus /> Generar solicitud
         </Button>
       }
@@ -120,6 +124,9 @@ function Solicitudes() {
 }
 
 function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => void }) {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/solicitudes");
+  const recibe = roles.includes("admin");
   const { marcarSolicitudEnviada, cancelarSolicitud } = useCampo();
   const tot = totalesSolicitud(s);
   const semanas = [...new Set(s.lineas.map((l) => l.semanaPlantacion))].join(", ");
@@ -136,7 +143,7 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
   const compartir = () => {
     if (!blob) return;
     void entregarPdf(blob, s, true).then((ok) => {
-      if (ok && s.status === "generada") {
+      if (ok && captura && s.status === "generada") {
         marcarSolicitudEnviada(s.id);
         toast.success(`${folioSolicitud(s.folio)} marcada como enviada al vivero`);
       } else if (!ok) toast("Se descargó el PDF para que lo mandes por WhatsApp o correo.");
@@ -218,12 +225,12 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             <Share2 /> Compartir
           </Button>
         )}
-        {s.status === "generada" && !s.cargaParametro && (
+        {captura && s.status === "generada" && !s.cargaParametro && (
           <Button size="sm" variant="ghost" onClick={() => marcarSolicitudEnviada(s.id)}>
             <Send /> Marcar enviada
           </Button>
         )}
-        {(abierta || parcial) && (
+        {recibe && (abierta || parcial) && (
           <Button size="sm" onClick={onRecibir}>
             <PackageCheck /> {parcial ? "Recibir lo que falta" : "Planta recibida"}
           </Button>
@@ -236,7 +243,7 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             </span>
           </VerEvidencia>
         ))}
-        {parcial && (
+        {captura && parcial && (
           <Button
             size="sm"
             variant="ghost"
@@ -249,7 +256,7 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             <X /> Ya no llegará más
           </Button>
         )}
-        {abierta && (
+        {captura && abierta && (
           <Button
             size="sm"
             variant="ghost"
