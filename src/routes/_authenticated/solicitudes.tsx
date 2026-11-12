@@ -243,7 +243,7 @@ function SolicitudCard({ s, onRecibir }: { s: SolicitudPlanta; onRecibir: () => 
             </span>
           </VerEvidencia>
         ))}
-        {captura && parcial && (
+        {recibe && parcial && (
           <Button
             size="sm"
             variant="ghost"

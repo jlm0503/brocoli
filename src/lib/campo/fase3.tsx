@@ -67,7 +67,7 @@ interface Fase3Value {
   alertasDireccion: AlertaDireccion[];
   devoluciones: Devolucion[];
   asignaciones: Asignacion[];
-  /** Ranchos que ve la persona: un ingeniero solo los suyos (sin asignación ve todos). */
+  /** Campo solo ve sus ranchos asignados; sin asignaciones el alcance es vacío. */
   ranchosVisibles: string[] | null;
   crearExtraordinario: (d: {
     tablaIds: string[];

@@ -855,7 +855,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         plantasPorHa: parametroVigente(parametros, "plantasPorHa", p.fechaPlantacion, variedad.id),
       });
       setLotes((ls) => finalizarCosechados([...ls, lote], semanaActual));
-      if (pedido) setPedidos((ps) => [...ps, pedido]);
+      if (pedido) setPedidos((ps) => [...ps, roles.includes("admin") ? pedido : { ...pedido, status: "pendiente", foto: undefined, fechaEntrega: undefined, cantidadesRecibidas: undefined }]);
       return null;
     },
     [
@@ -869,6 +869,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       ingeniero,
       productos,
       parametros,
+      roles,
     ],
   );
 
