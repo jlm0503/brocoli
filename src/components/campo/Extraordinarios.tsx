@@ -6,6 +6,8 @@ import { VerEvidencia, subirEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cantidadesExtraordinario, distanciaM, fechaCorta, formatoNum, fotoRecienTomada, radioValidacion } from "@/lib/campo/calc";
+import { puedeCapturar } from "@/lib/campo/roles";
+import { useSesion } from "@/lib/campo/sesion";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
 import { useCampo } from "@/lib/campo/store";
@@ -151,6 +153,8 @@ export function MapaFotos({ fotos, tablas }: { fotos: FotoGps[]; tablas: Tabla[]
 
 /** Pestaña de Compras: solo llegan los extraordinarios ya autorizados. */
 export function ExtrasCompras() {
+  const { roles } = useSesion();
+  const captura = puedeCapturar(roles, "/compras");
   const { extraordinarios, surtir } = useFase3();
   const { tablas, productos, ranchos } = useCampo();
   const { pasaRancho, pasaTabla } = useFiltro();
@@ -195,7 +199,7 @@ export function ExtrasCompras() {
           </ul>
           <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>Surtir a más tardar {fechaCorta(e.fechaMaxSurtido)}</span>
-            {e.status === "autorizada" ? (
+            {captura && e.status === "autorizada" ? (
               <Button
                 size="sm"
                 onClick={() => {

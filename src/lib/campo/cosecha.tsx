@@ -116,14 +116,16 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     <T extends { id: string }>(col: Col4, item: T) => {
       setters[col]((xs) => (xs.some((x) => x.id === item.id) ? xs.map((x) => (x.id === item.id ? item : x)) : [...xs, item]));
       if (simRef.current || !user) return;
-      void supabase
-        .from("registros")
-        .upsert({ coleccion: col, id: item.id, data: JSON.parse(JSON.stringify(item)) as Json, updated_by: user.id })
+      const fila = { coleccion: col, id: item.id, data: JSON.parse(JSON.stringify(item)) as Json, updated_by: user.id };
+      const escritura = col === "viajes" && !roles.includes("admin")
+        ? supabase.from("registros").insert(fila)
+        : supabase.from("registros").upsert(fila);
+      void escritura
         .then(({ error }) => {
           if (error) toast.error("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.");
         });
     },
-    [setters, user],
+    [setters, user, roles],
   );
 
   const puedeViajes = tiene(roles, ...PERMISOS_COSECHA.viajes);

@@ -33,7 +33,7 @@ import {
   saldoAplicacion,
   validarAplicacion,
 } from "./calc";
-import { tiene, type NavPath } from "./roles";
+import { alcanceRanchos, puedeCapturar, puedeResolverSobrantes, tiene, type NavPath } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
 import { useViajesAtrasados } from "./cosecha";
@@ -204,14 +204,15 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
 
   // Alertas a Dirección: se crean solas (id fijo por causa, así varias pantallas no duplican).
   useEffect(() => {
-    if (!user || !role || !ready) return;
+    if (!user || !role || !ready || !tiene(roles, "admin", "ingeniero", "autorizador")) return;
     for (const a of alertasDireccionNuevas(extraordinarios, alertasDireccion, hoy)) poner("alertas_direccion", a);
-  }, [extraordinarios, alertasDireccion, hoy, user, role, ready, poner]);
+  }, [extraordinarios, alertasDireccion, hoy, user, role, ready, roles, poner]);
 
   const tablasDe = useCallback((ids: string[]) => tablas.filter((t) => ids.includes(t.id)), [tablas]);
 
   const crearExtraordinario: Fase3Value["crearExtraordinario"] = useCallback(
     (d) => {
+      if (!tiene(roles, "admin", "ingeniero")) return { error: "Tu puesto no solicita extraordinarios." };
       const error = validarExtraordinario(d, hoy);
       if (error) return { error };
       const ts = tablasDe(d.tablaIds);
@@ -235,11 +236,12 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       poner("extraordinarios", ex);
       return { ex };
     },
-    [hoy, tablasDe, extraordinarios, user, nombre, poner],
+    [roles, hoy, tablasDe, extraordinarios, user, nombre, poner],
   );
 
   const autorizar: Fase3Value["autorizar"] = useCallback(
     (id, d) => {
+      if (!tiene(roles, "admin", "autorizador")) return "Tu puesto no autoriza solicitudes.";
       const ex = extraordinarios.find((e) => e.id === id);
       if (!ex || ex.status !== "por_autorizar") return "Esta solicitud ya no está por autorizar.";
       if (d.lineas.length === 0 || d.lineas.some((l) => !l.productoId || !(l.porHa > 0)))
@@ -263,11 +265,12 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       });
       return null;
     },
-    [extraordinarios, tablasDe, productos, hoy, nombre, lotes, poner],
+    [roles, extraordinarios, tablasDe, productos, hoy, nombre, lotes, poner],
   );
 
   const rechazar: Fase3Value["rechazar"] = useCallback(
     (id, motivo) => {
+      if (!tiene(roles, "admin", "autorizador")) return "Tu puesto no autoriza solicitudes.";
       const ex = extraordinarios.find((e) => e.id === id);
       if (!ex || ex.status !== "por_autorizar") return "Esta solicitud ya no está por autorizar.";
       if (!motivo.trim()) return "Escribe el motivo del rechazo.";
@@ -278,14 +281,14 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       });
       return null;
     },
-    [extraordinarios, nombre, hoy, poner],
+    [roles, extraordinarios, nombre, hoy, poner],
   );
 
   // El costo se carga al surtir, con el precio vigente ese día.
   const surtir = useCallback(
     (id: string) => {
       const ex = extraordinarios.find((e) => e.id === id);
-      if (!ex || ex.status !== "autorizada") return;
+      if (!tiene(roles, "admin", "compras") || !ex || ex.status !== "autorizada") return;
       const ts = tablasDe(ex.tablaIds);
       poner("extraordinarios", {
         ...ex,
@@ -294,7 +297,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
         reparto: repartirPorHa(costoExtraordinario(ex.lineas, ts, productos, hoy), ts, lotes),
       });
     },
-    [extraordinarios, tablasDe, productos, lotes, hoy, nombre, poner],
+    [roles, extraordinarios, tablasDe, productos, lotes, hoy, nombre, poner],
   );
 
   const reportarMejora: Fase3Value["reportarMejora"] = useCallback(
@@ -336,6 +339,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
 
   const registrarDevolucion: Fase3Value["registrarDevolucion"] = useCallback(
     (d) => {
+      if (!puedeCapturar(roles, "/devoluciones")) return "Tu puesto no registra devoluciones.";
       const error = validarDevolucion(d);
       if (error) return error;
       const t = tablas.find((x) => x.id === d.tablaId);
@@ -352,16 +356,17 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
         productoId: p.id,
         cantidad: d.cantidad,
         precio: precioVigente(p, hoy),
-        foto: d.foto!,
+        foto: d.foto ?? "",
         por: nombre,
       } satisfies Devolucion);
       return null;
     },
-    [tablas, productos, lotes, hoy, nombre, poner],
+    [roles, tablas, productos, lotes, hoy, nombre, poner],
   );
 
   const registrarDevolucionSemana: Fase3Value["registrarDevolucionSemana"] = useCallback(
     (d) => {
+      if (!puedeCapturar(roles, "/devoluciones")) return "Tu puesto no registra devoluciones.";
       if (!d.productoId) return "Elige el producto.";
       if (d.reparto.length === 0) return "Indica la cantidad devuelta.";
       if (!d.foto) return "Toma la foto de lo retirado.";
@@ -380,30 +385,29 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
           productoId: p.id,
           cantidad: r.cantidad,
           precio: precioVigente(p, hoy),
-          foto: d.foto!,
+          foto: d.foto ?? "",
           por: nombre,
         } satisfies Devolucion),
       );
       return null;
     },
-    [productos, hoy, nombre, poner],
+    [roles, productos, hoy, nombre, poner],
   );
 
-  const eliminarDevolucion = useCallback((id: string) => quitar("devoluciones", id), [quitar]);
+  const eliminarDevolucion = useCallback((id: string) => { if (puedeCapturar(roles, "/devoluciones")) quitar("devoluciones", id); }, [quitar, roles]);
   const guardarAsignacion = useCallback(
     (userId: string, ranchoIds: string[]) => poner("asignaciones", { id: userId, ranchoIds }),
     [poner],
   );
 
   const ranchosVisibles = useMemo(() => {
-    if (tiene(roles, "admin", "administrador", "autorizador", "direccion", "compras", "almacen")) return null;
     const a = asignaciones.find((x) => x.id === user?.id);
-    return a && a.ranchoIds.length > 0 ? a.ranchoIds : null;
+    return alcanceRanchos(roles, a?.ranchoIds ?? []);
   }, [roles, asignaciones, user]);
 
   const fuentes = useMemo(() => fuentesAplicacion(lotes, lineasSemana(lotes, recetas, adicionales, Array.from({ length: semanaActual }, (_, i) => i + 1)), recepciones, pedidos, extraordinarios, tablas), [lotes, recetas, adicionales, semanaActual, recepciones, pedidos, extraordinarios, tablas]);
   const fuentePermitida = (key: string) => {
-    if (!aplicacionesListas || !tiene(roles, "admin", "ingeniero", "administrador")) return undefined;
+    if (!aplicacionesListas || !puedeCapturar(roles, "/aplicaciones")) return undefined;
     const f = fuentes.find(x => x.key === key);
     const l = lotes.find(x => x.id === f?.loteId);
     return f && l && !l.cerrado && !l.cancelado && (!ranchosVisibles || ranchosVisibles.includes(f.ranchoId)) ? f : undefined;
@@ -420,12 +424,14 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     return null;
   };
   const continuarAplicacion: Fase3Value["continuarAplicacion"] = key => {
+    if (!puedeResolverSobrantes(roles)) return "Tu puesto solo registra avances.";
     const f = fuentePermitida(key);
     if (!f || f.semana >= semanaActual || saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual).saldo <= 0) return "No hay sobrante para continuar.";
     poner("continuaciones_aplicacion", { id: key, semanaHasta: semanaActual, fecha: hoy, por: nombre } satisfies ContinuacionAplicacion);
     return null;
   };
   const devolverSobrante: Fase3Value["devolverSobrante"] = (key, cantidad, foto) => {
+    if (!puedeResolverSobrantes(roles)) return "Tu puesto solo registra avances.";
     const f = fuentePermitida(key);
     if (!f) return "No puedes devolver este producto.";
     const saldo = saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual);

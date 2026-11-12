@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 import { cultivosDelRancho, idGasto, validarGasto, validarReparto, type DatosGasto } from "./calc";
-import { tiene } from "./roles";
+import { puedeCapturar as permiteCaptura } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
 import type { GastoRancho, RepartoCultivo } from "./types";
@@ -109,7 +109,7 @@ export function GastosProvider({ children }: { children: ReactNode }) {
     [setters, user],
   );
 
-  const puedeCapturar = tiene(roles, "admin", "encargado");
+  const puedeCapturar = permiteCaptura(roles, "/gastos");
 
   const guardarGasto = useCallback(
     (d: DatosGasto) => {
