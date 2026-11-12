@@ -311,6 +311,7 @@ function GastosRancho() {
                       <td key={c.id} className="px-1 py-1 text-right">
                         <button
                           type="button"
+                          disabled={!puedeCapturar}
                           onClick={() => puedeCapturar && abrir({ cultivo: f.cultivo, modo: f.modo, concepto: c.id }, gasto)}
                           className={`w-full rounded-md px-2 py-1 text-right num transition-colors hover:bg-primary/10 ${
                             gasto ? "font-medium text-foreground" : "text-muted-foreground/60"
