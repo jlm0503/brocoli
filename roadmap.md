@@ -61,6 +61,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
+- [ ] Crear cuentas y asignar contraseñas desde Usuarios, conservando registro abierto, puestos y ranchos; verificar seguridad y flujo.
 - [x] Reorganizar permisos según la tabla del 11 nov: correspondencia presentada y aprobada, menú y consulta/captura, recepciones en Llegadas, salidas de Encargado, restricciones por acción y ranchos en la nube; 252 pruebas pasando. Ingeniería y administración comprobados con datos reales; demás puestos cubiertos por pruebas de matriz, sin cuentas existentes para comprobación de pantalla.
 - [x] Habilitar salidas e históricos para Ingeniero; 22 pruebas pasando, permiso de guardado confirmado y ambas pestañas consultadas con su cuenta. Evaluaciones, cambios y eliminación de viajes reservados al Super Admin; sin viajes ficticios guardados.
 - [x] Entregar Excel semanas 46/47 con surtido por rancho, totales Trejo/Otros, listas completas de paquetes y plantaciones futuras; 1,268 fórmulas con valores y cantidades conciliados. Registrar 525 líneas semanales pendientes y 4 pedidos de preparación semanas 46–49 vinculados a lotes sin recepciones ficticias; Compras y Llegadas verificados, 56 pruebas pasando, semana 48 mantiene flujo normal.
