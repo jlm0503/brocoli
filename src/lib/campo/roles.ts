@@ -152,6 +152,26 @@ export function alcanceRanchos(roles: Role[], asignados: string[]): string[] | n
   return roles.some(r => r !== "ingeniero" && r !== "encargado") ? null : asignados;
 }
 
+export const OPERACIONES_CAMPO: Record<string, NavPath> = {
+  guardarParametro: "/parametros", eliminarParametro: "/parametros",
+  agregarSimple: "/catalogos", renombrarSimple: "/catalogos", eliminarSimple: "/catalogos",
+  agregarVariedad: "/catalogos", editarDiasVariedad: "/catalogos", eliminarVariedad: "/catalogos",
+  setPrecio: "/catalogos", agregarProducto: "/catalogos", editarProducto: "/catalogos",
+  agregarRancho: "/catalogos", eliminarRancho: "/catalogos", agregarTabla: "/catalogos",
+  eliminarTabla: "/catalogos", reactivarTabla: "/catalogos",
+  setDosis: "/paquete", guardarAdicional: "/paquete", eliminarAdicional: "/paquete",
+  planearLote: "/planeacion", registrarPlantacion: "/planeacion", cancelarLote: "/planeacion", registrarAvance: "/planeacion",
+  generarSolicitud: "/solicitudes", marcarSolicitudEnviada: "/solicitudes", cancelarSolicitud: "/solicitudes",
+  recibirPlanta: "/llegadas", entregarPedido: "/llegadas", reabrirPedido: "/llegadas", recibir: "/llegadas",
+  marcar: "/compras", resolverAlerta: "/alertas", terminarCosecha: "/historicos", marcarCerrado: "/historicos",
+  corregirFechas: "/parametros",
+};
+
+export function puedeOperacionCampo(roles: Role[], operacion: string): boolean {
+  const path = OPERACIONES_CAMPO[operacion];
+  return !!path && puedeCapturar(roles, path);
+}
+
 /** Solo el Super Admin corrige fechas de plantación y cosecha ya registradas. */
 export function puedeCorregirFechas(role: Role | null): boolean {
   return role === "admin";

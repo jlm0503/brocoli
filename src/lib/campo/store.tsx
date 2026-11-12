@@ -73,7 +73,7 @@ import {
   type Coleccion,
   type Mapa,
 } from "./sync";
-import { puedeCorregirFechas } from "./roles";
+import { OPERACIONES_CAMPO, puedeOperacionCampo, puedeCorregirFechas } from "./roles";
 import type {
   Adicional,
   AlertaInsumos,
@@ -383,7 +383,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
     // Cierre de las semanas que pasaron: lo hace solo quien llegue primero.
     let lotesAlDia = datos.lotes;
-    if (semanaGuardada < semanaReal) {
+    if (semanaGuardada < semanaReal && roles.includes("admin")) {
       const { data: ok } = await supabase
         .from("registros")
         .update({ data: { semana: semanaReal } })
@@ -397,7 +397,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
         lotesAlDia = ponerAlDia(datos.lotes, semanaGuardada, semanaReal, () => nuevoId("lt"));
       }
     } else {
-      lotesAlDia = ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt"));
+      lotesAlDia = roles.includes("admin") ? ponerAlDia(datos.lotes, semanaReal, semanaReal, () => nuevoId("lt")) : datos.lotes;
     }
 
     remotos.current = {};
@@ -444,7 +444,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     setParametros(datos.parametros);
     setSolicitudes(datos.solicitudes);
     setCargado(true);
-  }, []);
+  }, [roles]);
 
   useEffect(() => {
     if (!lista) return;
@@ -1588,6 +1588,19 @@ export function CampoProvider({ children }: { children: ReactNode }) {
 
 export function useCampo() {
   const ctx = useContext(CampoContext);
+  const { roles } = useSesion();
   if (!ctx) throw new Error("useCampo debe usarse dentro de CampoProvider");
-  return ctx;
+  // Also guard calls made from dialogs or shared components, not just visible buttons.
+  return new Proxy(ctx, {
+    get(target, prop, receiver) {
+      const valor = Reflect.get(target, prop, receiver);
+      if (typeof prop !== "string" || !OPERACIONES_CAMPO[prop] || typeof valor !== "function") return valor;
+      if (puedeOperacionCampo(roles, prop)) return valor;
+      return () => {
+        const error = "Tu puesto solo consulta esta operación.";
+        toast.error(error);
+        return prop === "planearLote" || prop === "generarSolicitud" ? { error } : error;
+      };
+    },
+  });
 }
