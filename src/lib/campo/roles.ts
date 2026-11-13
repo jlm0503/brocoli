@@ -159,7 +159,7 @@ export const OPERACIONES_CAMPO: Record<string, NavPath> = {
   setPrecio: "/catalogos", agregarProducto: "/catalogos", editarProducto: "/catalogos",
   agregarRancho: "/catalogos", eliminarRancho: "/catalogos", agregarTabla: "/catalogos",
   eliminarTabla: "/catalogos", reactivarTabla: "/catalogos",
-  setDosis: "/paquete", guardarAdicional: "/paquete", eliminarAdicional: "/paquete",
+  setDosis: "/paquete", eliminarProductoPaquete: "/paquete", guardarAdicional: "/paquete", eliminarAdicional: "/paquete",
   planearLote: "/planeacion", registrarPlantacion: "/planeacion", cancelarLote: "/planeacion", registrarAvance: "/planeacion",
   generarSolicitud: "/solicitudes", marcarSolicitudEnviada: "/solicitudes", cancelarSolicitud: "/solicitudes",
   recibirPlanta: "/llegadas", entregarPedido: "/llegadas", reabrirPedido: "/llegadas", recibir: "/llegadas",

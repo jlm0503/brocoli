@@ -77,7 +77,12 @@ const ETAPA_CORTA: Record<string, string> = {
 function Paquete() {
   const { roles } = useSesion();
   const captura = puedeCapturar(roles, "/paquete");
-  const { productos, recetas, variedades, cultivos, setDosis, parametro, hoy } = useCampo();
+  const { productos, recetas, variedades, cultivos, setDosis, eliminarProductoPaquete, parametro, hoy } = useCampo();
+  const [agregando, setAgregando] = useState(false);
+  const [nuevoProducto, setNuevoProducto] = useState("");
+  const [nuevaSemana, setNuevaSemana] = useState("1");
+  const [nuevaDosis, setNuevaDosis] = useState("");
+  const [quitando, setQuitando] = useState<string | null>(null);
   const [programa, setPrograma] = useState("trejo-coliflor");
   const cultivo: Cultivo = programa === "otros-brocoli" ? "brocoli" : "coliflor";
   const paqueteId = programa;
@@ -92,7 +97,7 @@ function Paquete() {
     w === SEMANA_PLANEACION && pid === cinta?.productoId ? cinta.porHa : (receta.dosis[w]?.[pid] ?? 0);
   const SEMANAS = useMemo(() => [...new Set([...semanasReceta(cultivo, variedades), ...Object.keys(receta.dosis).map(Number)])].sort((a, b) => a - b), [cultivo, variedades, receta]);
   const vacia = Object.values(receta.dosis).every((sem) => Object.values(sem).every((d) => !(d > 0)));
-  const productosPaquete = productos.filter((p) => Object.values(receta.dosis).some((sem) => (sem[p.id] ?? 0) > 0));
+  const productosPaquete = productos.filter((p) => Object.values(receta.dosis).some((sem) => Object.hasOwn(sem, p.id)));
   const categoriaVisual = (p: (typeof productos)[number]) =>
     p.familia === "Fertilizante" ? "Fertilizantes" : p.familia;
   const sinPrecio = productosPaquete.filter(
@@ -167,6 +172,11 @@ function Paquete() {
         <Stat label="Productos del paquete" value={productosPaquete.length} hint="Precios en Catálogos" />
       </div>
 
+      {captura && paquete && <div className="mb-3 flex justify-end">
+        <Button onClick={() => { setNuevoProducto(""); setNuevaDosis(""); setAgregando(true); }}>
+          <Plus className="size-4" /> Agregar producto
+        </Button>
+      </div>}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
         <table className="w-full min-w-[1100px] border-collapse text-sm">
           <thead>
@@ -205,6 +215,7 @@ function Paquete() {
                       <td className="sticky left-0 z-10 bg-card px-4 py-1.5 whitespace-nowrap">
                         <span className="num mr-2 text-xs text-muted-foreground">{p.codigo}</span>
                         <span className="font-medium">{p.nombre}</span>
+                        {captura && <Button variant="ghost" size="icon" className="ml-2 size-7 text-destructive" title={`Quitar ${p.nombre} del paquete`} aria-label={`Quitar ${p.nombre} del paquete`} onClick={() => setQuitando(p.id)}><Trash2 className="size-3.5" /></Button>}
                         {precioHoy(p) <= 0 && (
                           <span className="ml-2 text-[0.65rem] text-destructive">sin precio</span>
                         )}
@@ -267,6 +278,28 @@ function Paquete() {
         su costo se carga al 100% al lote. Las semanas sin productos se quedan vacías.
       </p>
 
+      <Dialog open={agregando} onOpenChange={setAgregando}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Agregar producto al paquete</DialogTitle><DialogDescription>{paquete?.nombre}</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Producto</Label><Select value={nuevoProducto} onValueChange={setNuevoProducto}><SelectTrigger aria-label="Producto para agregar"><SelectValue placeholder="Selecciona un producto" /></SelectTrigger><SelectContent>{productos.filter(p => !productosPaquete.some(x => x.id === p.id)).sort((a,b) => a.nombre.localeCompare(b.nombre, "es-MX")).map(p => <SelectItem key={p.id} value={p.id}>{p.nombre} · {p.unidad}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Semana de receta</Label><Select value={nuevaSemana} onValueChange={setNuevaSemana}><SelectTrigger aria-label="Semana de receta"><SelectValue /></SelectTrigger><SelectContent>{SEMANAS.map(w => <SelectItem key={w} value={String(w)}>Semana {w} · {etapa(w)}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="dosis-producto">Dosis por hectárea ({productos.find(p => p.id === nuevoProducto)?.unidad ?? "unidad"}/ha)</Label><Input id="dosis-producto" type="number" min="0" step="any" value={nuevaDosis} onChange={e => setNuevaDosis(e.target.value)} /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setAgregando(false)}>Cancelar</Button><Button disabled={!nuevoProducto || !(Number(nuevaDosis) > 0)} onClick={() => {
+            if (!captura || !paquete || !nuevoProducto || !(Number(nuevaDosis) > 0)) return;
+            setDosis(cultivo, nuevoProducto, Number(nuevaSemana), Number(nuevaDosis), paqueteId);
+            setAgregando(false); toast.success("Producto agregado al paquete");
+          }}>Agregar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={quitando !== null} onOpenChange={open => { if (!open) setQuitando(null); }}><DialogContent>
+        <DialogHeader><DialogTitle>Quitar producto del paquete</DialogTitle><DialogDescription>Se quitará {productos.find(p => p.id === quitando)?.nombre} de todas las semanas de este paquete. Se conservan el catálogo, las aplicaciones y las recetas guardadas de las plantaciones.</DialogDescription></DialogHeader>
+        <DialogFooter><Button variant="outline" onClick={() => setQuitando(null)}>Cancelar</Button><Button variant="destructive" onClick={() => {
+          if (!captura || !paquete || !quitando) return;
+          eliminarProductoPaquete(cultivo, paqueteId, quitando); setQuitando(null); toast.success("Producto retirado del paquete");
+        }}>Quitar producto</Button></DialogFooter>
+      </DialogContent></Dialog>
     </AppShell>
   );
 }
