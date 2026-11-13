@@ -18,9 +18,9 @@ describe("Productos de paquetes", () => {
       { id: "otros", nombre: "Otros", ranchoId: "", tablaIds: [], desde: "2026-11-10", dosis: { 1: { fosfo: 70 } } },
     ] } };
     const result = quitarProductoPaquete(recetas, "coliflor", "trejo", "fosfo");
-    expect(result.coliflor.variantes?.[0]?.dosis).toEqual({ 1: { otro: 2 }, 4: {} });
-    expect(result.coliflor.variantes?.[1]?.dosis[1]?.fosfo).toBe(70);
-    expect(recetas.coliflor.variantes?.[0]?.dosis[1]?.fosfo).toBe(150);
-    expect(result.brocoli).toBe(recetas.brocoli);
+    expect(result['coliflor']?.variantes?.[0]?.dosis).toEqual({ 1: { otro: 2 }, 4: {} });
+    expect(result['coliflor']?.variantes?.[1]?.dosis[1]?.['fosfo']).toBe(70);
+    expect(recetas['coliflor']?.variantes?.[0]?.dosis[1]?.['fosfo']).toBe(150);
+    expect(result['brocoli']).toBe(recetas['brocoli']);
   });
 });
