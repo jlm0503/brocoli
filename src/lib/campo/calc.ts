@@ -265,6 +265,20 @@ export function codigoDisponible(
 
 /* ───────────────────────── Receta ───────────────────────── */
 
+/** Quita un producto solo del paquete elegido, sin tocar catálogos ni copias de lotes. */
+export function quitarProductoPaquete(recetas: Recetas, cultivo: Cultivo, paqueteId: string, productoId: string): Recetas {
+  const base = recetas[cultivo];
+  if (!base?.variantes?.some(p => p.id === paqueteId)) return recetas;
+  return { ...recetas, [cultivo]: { ...base, variantes: base.variantes.map(p => {
+    if (p.id !== paqueteId) return p;
+    const dosis: DosisPorSemana = {};
+    for (const [semana, productos] of Object.entries(p.dosis)) {
+      dosis[Number(semana)] = Object.fromEntries(Object.entries(productos).filter(([id]) => id !== productoId));
+    }
+    return { ...p, dosis };
+  }) } };
+}
+
 /** Receta base + adicionales de esa tabla, por semana de receta. */
 export function recetaEfectiva(
   receta: Receta,

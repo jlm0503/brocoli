@@ -43,6 +43,7 @@ import {
   parametroVigente,
   plantasSugeridas,
   recetaDe,
+  quitarProductoPaquete,
   validarNombreCatalogo,
   validarParametro,
   validarPlantas,
@@ -198,6 +199,7 @@ interface CampoContextValue {
   ) => string | null;
   cancelarSolicitud: (id: string) => string | null;
   setDosis: (cultivo: Cultivo, productoId: string, semana: number, valor: number, paqueteId?: string) => void;
+  eliminarProductoPaquete: (cultivo: Cultivo, paqueteId: string, productoId: string) => void;
   /** Cambia el precio de un producto a partir de `desde`; lo anterior conserva su precio. */
   setPrecio: (productoId: string, precio: number, desde: string) => string | null;
   agregarProducto: (p: Omit<Producto, "id">) => string | null;
@@ -611,6 +613,10 @@ export function CampoProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  const eliminarProductoPaquete = useCallback((cultivo: Cultivo, paqueteId: string, productoId: string) => {
+    setRecetas(rs => quitarProductoPaquete(rs, cultivo, paqueteId, productoId));
+  }, []);
 
   const setPrecio = useCallback((productoId: string, precio: number, desde: string) => {
     if (!Number.isFinite(precio) || precio < 0) return "El precio debe ser mayor o igual a 0.";
@@ -1490,6 +1496,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       recibirPlanta,
       cancelarSolicitud,
       setDosis,
+      eliminarProductoPaquete,
       setPrecio,
       agregarProducto,
       editarProducto,
@@ -1555,6 +1562,7 @@ export function CampoProvider({ children }: { children: ReactNode }) {
       recibirPlanta,
       cancelarSolicitud,
       setDosis,
+      eliminarProductoPaquete,
       setPrecio,
       agregarProducto,
       editarProducto,
