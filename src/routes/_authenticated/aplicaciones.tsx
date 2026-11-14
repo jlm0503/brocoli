@@ -4,6 +4,7 @@ import { Loader2, Plus, Undo2, ArrowRight, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/campo/AppShell";
 import { AplicacionAdicional } from "@/components/campo/AplicacionAdicional";
+import { MultiSelectTablas } from "@/components/campo/MultiSelectTablas";
 import { FotoInput } from "@/components/campo/Evidencia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ function Contenido() {
   const [semana, setSemana] = useState<string | null>(null);
   const [vista, setVista] = useState("semana");
   const [agrupar, setAgrupar] = useState("tabla");
-  const [tablaId, setTablaId] = useState("todas");
+  const [tablasSel, setTablasSel] = useState<string[]>([]);
   const [buscar, setBuscar] = useState("");
   const [dialogo, setDialogo] = useState<{ key: string; tipo: "avance" | "devolver" } | null>(null);
   const [cantidad, setCantidad] = useState("");
@@ -58,7 +59,7 @@ function Contenido() {
   const opciones = tablas.filter(t => candidatas.some(f => f.tablaId === t.id));
   const filas = candidatas.map(f => ({ f, s: saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual) })).filter(({f,s}) =>
     (vista === "sobrantes" ? f.semana < semanaActual && s.saldo > 0 : f.semana === elegida || (elegida === semanaActual && s.puedeAplicar && f.semana < semanaActual && (s.saldo > 0 || s.avances.some(a => a.fecha >= hoy)))) &&
-    (tablaId === "todas" || f.tablaId === tablaId) && (productos.find(p => p.id === f.productoId)?.nombre ?? f.productoId).toLocaleLowerCase("es-MX").includes(buscar.toLocaleLowerCase("es-MX"))
+    (tablasSel.length === 0 || tablasSel.includes(f.tablaId)) && (productos.find(p => p.id === f.productoId)?.nombre ?? f.productoId).toLocaleLowerCase("es-MX").includes(buscar.toLocaleLowerCase("es-MX"))
   ).sort((a,b) => a.f.ranchoId.localeCompare(b.f.ranchoId) || a.f.tablaId.localeCompare(b.f.tablaId) || a.f.productoId.localeCompare(b.f.productoId));
   const grupos = [...filas.reduce((map, fila) => {
     const id = agrupar === "tabla" ? fila.f.tablaId : fila.f.productoId;
@@ -85,11 +86,11 @@ function Contenido() {
   };
   if (!aplicacionesListas) return <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" />Cargando aplicaciones…</p>;
   return <div className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2"><Tabs value={vista} onValueChange={setVista}><TabsList><TabsTrigger value="semana">Aplicaciones</TabsTrigger><TabsTrigger value="sobrantes">Sobrantes al cierre</TabsTrigger></TabsList></Tabs>{resuelve && <AplicacionAdicional alGuardar={() => { setSemana(String(semanaActual)); setVista("semana"); setTablaId("todas"); setBuscar(""); }} />}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><Tabs value={vista} onValueChange={setVista}><TabsList><TabsTrigger value="semana">Aplicaciones</TabsTrigger><TabsTrigger value="sobrantes">Sobrantes al cierre</TabsTrigger></TabsList></Tabs>{resuelve && <AplicacionAdicional alGuardar={() => { setSemana(String(semanaActual)); setVista("semana"); setTablasSel([]); setBuscar(""); }} />}</div>
     <div className="flex flex-wrap items-center gap-3"><Label>Agrupar por</Label><Tabs value={agrupar} onValueChange={setAgrupar}><TabsList aria-label="Agrupar aplicaciones"><TabsTrigger value="tabla">Por tabla</TabsTrigger><TabsTrigger value="producto">Por producto</TabsTrigger></TabsList></Tabs></div>
     <div className="grid gap-3 sm:grid-cols-3">
       {vista === "semana" && <div className="space-y-1"><Label>Semana de aplicación</Label><Select value={String(elegida)} onValueChange={setSemana}><SelectTrigger aria-label="Semana de aplicación"><SelectValue /></SelectTrigger><SelectContent>{semanas.map(w => <SelectItem key={w} value={String(w)}>Semana {w}{w === semanaActual ? " · actual" : ""}</SelectItem>)}</SelectContent></Select></div>}
-      <div className="space-y-1"><Label>Tabla</Label><Select value={tablaId} onValueChange={setTablaId}><SelectTrigger aria-label="Tabla"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas las tablas</SelectItem>{opciones.map(t => <SelectItem value={t.id} key={t.id}>{ranchos.find(r => r.id === t.ranchoId)?.nombre} · {t.nombre}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-1"><Label>Tablas</Label><MultiSelectTablas ariaLabel="Tablas" opciones={opciones.map(t => ({ id: t.id, etiqueta: `${ranchos.find(r => r.id === t.ranchoId)?.nombre} · ${t.nombre}` }))} seleccion={tablasSel} onChange={setTablasSel} /></div>
       <div className="space-y-1"><Label htmlFor="buscar-aplicaciones">Producto</Label><Input id="buscar-aplicaciones" placeholder="Buscar producto" value={buscar} onChange={e => setBuscar(e.target.value)} /></div>
     </div>
     <div className="flex flex-wrap gap-x-4 gap-y-1 border-y border-border py-2 text-xs"><span><strong>{filas.length}</strong> aplicaciones</span><span><strong>{filas.filter(x => x.s.aplicado > 0).length}</strong> con avance</span><span className="text-destructive"><strong>{filas.filter(x => x.s.pendienteDevolver).length}</strong> sobrantes por resolver</span></div>
