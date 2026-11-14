@@ -3070,6 +3070,7 @@ export interface ConsumoProducto {
   receta: number;
   planeacion: number;
   extraordinarios: number;
+  fueraPaquete?: number;
   devuelto: number;
   /** receta + planeación + extraordinarios − devuelto (nunca menos de 0) */
   neto: number;
@@ -3085,6 +3086,7 @@ export function consumoProductosLote(
     pedidos: PedidoPlaneacion[];
     extraordinarios: Extraordinario[];
     devoluciones: Devolucion[];
+    aplicaciones?: AplicacionCampo[];
   },
 ): ConsumoProducto[] {
   const m = new Map<string, ConsumoProducto>();
@@ -3100,9 +3102,10 @@ export function consumoProductosLote(
       for (const ln of e.lineas) get(ln.productoId).extraordinarios += ln.porHa * r.ha;
   }
   for (const d of ctx.devoluciones.filter((d) => d.loteId === l.id)) get(d.productoId).devuelto += d.cantidad;
+  for (const f of fuentesManuales(ctx.aplicaciones ?? []).filter(f => f.loteId === l.id)) get(f.productoId).fueraPaquete = (get(f.productoId).fueraPaquete ?? 0) + f.recibido;
   return [...m.values()]
     .map((c) => {
-      const neto = consumoTeorico(c.receta + c.planeacion + c.extraordinarios, c.devuelto);
+      const neto = consumoTeorico(c.receta + c.planeacion + c.extraordinarios + (c.fueraPaquete ?? 0), c.devuelto);
       return {
         ...c,
         receta: redondear(c.receta),
@@ -3113,7 +3116,7 @@ export function consumoProductosLote(
         porHa: l.ha > 0 ? redondear(neto / l.ha) : 0,
       };
     })
-    .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.devuelto);
+    .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.fueraPaquete || c.devuelto);
 }
 
 /** Plantación real y pendiente por semana; nunca cuenta lotes cancelados o finalizados como plan futuro. */

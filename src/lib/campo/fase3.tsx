@@ -63,7 +63,7 @@ interface Fase3Value {
   continuaciones: ContinuacionAplicacion[];
   fuentes: FuenteAplicacion[];
   aplicacionesListas: boolean;
-  registrarAplicacion: (key: string, d: { cantidad: number; ha: number; fecha: string }) => string | null;
+  registrarAplicacion: (key: string, d: { cantidad: number; ha: number; fecha: string }, continuar?: boolean) => string | null;
   registrarAplicacionManual: (d: { loteId: string; productoId: string; recibido: number; dosis: number; cantidad: number; ha: number; fecha: string; motivo: string }) => string | null;
   continuarAplicacion: (key: string) => string | null;
   devolverSobrante: (key: string, cantidad: number, foto: string) => string | null;
@@ -421,14 +421,16 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     const l = lotes.find(x => x.id === f?.loteId);
     return f && l && !l.cerrado && !l.cancelado && (!ranchosVisibles || ranchosVisibles.includes(f.ranchoId)) ? f : undefined;
   };
-  const registrarAplicacion: Fase3Value["registrarAplicacion"] = (key, d) => {
+  const registrarAplicacion: Fase3Value["registrarAplicacion"] = (key, d, continuar = false) => {
     const f = fuentePermitida(key);
     if (!f) return "No puedes registrar esta aplicación.";
     const saldo = saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual);
-    const error = validarAplicacion(f, saldo, d, hoy);
+    const permiteContinuar = continuar && puedeResolverSobrantes(roles) && f.semana < semanaActual;
+    const error = validarAplicacion(f, permiteContinuar ? { ...saldo, puedeAplicar: true } : saldo, d, hoy);
     if (error) return error;
     const p = productos.find(x => x.id === f.productoId);
     if (!p) return "Producto no encontrado.";
+    if (permiteContinuar) poner("continuaciones_aplicacion", { id: key, semanaHasta: semanaActual, fecha: hoy, por: nombre } satisfies ContinuacionAplicacion);
     poner("aplicaciones_campo", { id: `ap-${crypto.randomUUID()}`, fuenteKey: key, loteId: f.loteId, tablaId: f.tablaId, ranchoId: f.ranchoId, productoId: f.productoId, semanaOrigen: f.semana, ...d, dosis: saldo.dosis, unidad: p.unidad, por: nombre } satisfies AplicacionCampo);
     return null;
   };

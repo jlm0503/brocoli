@@ -7,14 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatoNum, plantadasLote, saldoAplicacion, validarAplicacion } from "@/lib/campo/calc";
+import { formatoNum, plantadasLote, saldoAplicacion } from "@/lib/campo/calc";
 import { useCampo } from "@/lib/campo/store";
 import { useFase3 } from "@/lib/campo/fase3";
 import { useFiltro } from "@/lib/campo/filtro";
 
 export function AplicacionAdicional({ alGuardar }: { alGuardar: () => void }) {
   const { lotes, tablas, ranchos, productos, hoy, semanaActual } = useCampo();
-  const { fuentes, aplicaciones, devoluciones, continuaciones, registrarAplicacion, registrarAplicacionManual, continuarAplicacion } = useFase3();
+  const { fuentes, aplicaciones, devoluciones, continuaciones, registrarAplicacion, registrarAplicacionManual } = useFase3();
   const { pasaLote } = useFiltro();
   const [open, setOpen] = useState(false);
   const [modo, setModo] = useState("pendiente");
@@ -39,16 +39,7 @@ export function AplicacionAdicional({ alGuardar }: { alGuardar: () => void }) {
     let error: string | null;
     if (modo === "pendiente") {
       if (!fuente || !saldo) return void toast.error("Selecciona la entrega pendiente.");
-      error = validarAplicacion(fuente, { ...saldo, puedeAplicar: true }, d, hoy);
-      if (error) return void toast.error(error);
-      if (!saldo.puedeAplicar) {
-        error = continuarAplicacion(fuente.key);
-        if (error) return void toast.error(error);
-        // La continuidad se refleja al siguiente render; guardar el avance entonces.
-        toast.success("Entrega habilitada para esta semana. Confirma Guardar aplicación.");
-        return;
-      }
-      error = registrarAplicacion(fuente.key, d);
+      error = registrarAplicacion(fuente.key, d, true);
     } else {
       error = registrarAplicacionManual({ ...d, loteId, productoId, recibido: Number(recibido), dosis: Number(dosis), motivo });
     }

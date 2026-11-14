@@ -104,16 +104,16 @@ function Contenido() {
 function ReporteTabla({ sel }: { sel: string }) {
   const { lotes, productos, recepciones, pedidos } = useCampo();
   const { ciclos } = useCosecha();
-  const { extraordinarios, devoluciones } = useFase3();
+  const { extraordinarios, devoluciones, aplicaciones } = useFase3();
   const { porLote } = useCostos();
   const historico = ciclos.find((c) => c.id === sel && c.importacion);
   const lote = lotes.find((l) => l.id === sel);
   const filas = useMemo(
     () =>
       lote
-        ? consumoProductosLote(lote, { lineas: porLote.get(lote.id) ?? [], recepciones, pedidos, extraordinarios, devoluciones })
+        ? consumoProductosLote(lote, { lineas: porLote.get(lote.id) ?? [], recepciones, pedidos, extraordinarios, devoluciones, aplicaciones })
         : [],
-    [lote, porLote, recepciones, pedidos, extraordinarios, devoluciones],
+    [lote, porLote, recepciones, pedidos, extraordinarios, devoluciones, aplicaciones],
   );
   const prod = new Map(productos.map((p) => [p.id, p]));
 
@@ -128,6 +128,7 @@ function ReporteTabla({ sel }: { sel: string }) {
               <th className="p-3 text-right">Receta</th>
               <th className="p-3 text-right">Preparación</th>
               <th className="p-3 text-right">Extraordinarios</th>
+              <th className="p-3 text-right">Fuera de paquete</th>
               <th className="p-3 text-right">Devuelto</th>
               <th className="p-3 text-right">Consumo real</th>
               <th className="p-3 text-right">Por ha</th>
@@ -143,6 +144,7 @@ function ReporteTabla({ sel }: { sel: string }) {
                   <td className="p-3 text-right font-mono">{formatoNum(f.receta)}</td>
                   <td className="p-3 text-right font-mono">{formatoNum(f.planeacion)}</td>
                   <td className="p-3 text-right font-mono">{formatoNum(f.extraordinarios)}</td>
+                  <td className="p-3 text-right font-mono">{formatoNum(f.fueraPaquete ?? 0)}</td>
                   <td className="p-3 text-right font-mono text-destructive">{f.devuelto ? `−${formatoNum(f.devuelto)}` : "0"}</td>
                   <td className="p-3 text-right font-mono font-semibold">{formatoNum(f.neto)} {u}</td>
                   <td className="p-3 text-right font-mono">{formatoNum(f.porHa)} {u}/ha</td>
@@ -150,7 +152,7 @@ function ReporteTabla({ sel }: { sel: string }) {
               );
             })}
             {!filas.length && (
-              <tr><td colSpan={7} className="p-3 text-muted-foreground">Sin productos recibidos en la app.</td></tr>
+              <tr><td colSpan={8} className="p-3 text-muted-foreground">Sin productos recibidos en la app.</td></tr>
             )}
           </tbody>
         </table>
