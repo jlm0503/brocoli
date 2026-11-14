@@ -131,7 +131,7 @@ export function AppShell({ path, eyebrow, title, description, actions, filtros, 
         </div>
 
         <nav
-          className={`${menuAbierto ? "flex" : "hidden"} flex-col gap-1 px-3 pb-3 lg:flex lg:pb-0`}
+          className={`${menuAbierto ? "flex" : "hidden"} max-h-[62vh] flex-col gap-1 overflow-y-auto px-3 pb-3 lg:flex lg:max-h-none lg:flex-1 lg:pb-0`}
         >
           {items.map((item) => {
             const Icon = ICONS[item.to];
