@@ -3,7 +3,7 @@ import { costoAplicacionesManuales, fuentesManuales, validarAplicacionManual, sa
 import type { AplicacionCampo, FuenteAplicacion } from "@/lib/campo/aplicaciones-types";
 import type { Lote, Producto } from "@/lib/campo/types";
 
-const lote = { id: "l", tablaId: "t", ranchoId: "r", ha: 4, avances: [{ ha: 4, semana: 40, fecha: "2026-10-01" }], insumos: [] } as Lote;
+const lote = { id: "l", tablaId: "t", ranchoId: "r", ha: 4, avances: [{ ha: 4, semana: 40, fecha: "2026-10-01" }], insumos: [] } as unknown as Lote;
 const producto = { id: "xhanto", unidad: "L" } as Producto;
 const datos = { recibido: 8, dosis: 2, cantidad: 4, ha: 2, fecha: "2026-11-14", motivo: "Xhanto llegó tarde" };
 const fuente: FuenteAplicacion = { key: "l|manual-a|xhanto", loteId: "l", tablaId: "t", ranchoId: "r", productoId: "xhanto", semana: 46, tipo: "Fuera de paquete", esperado: 8, recibido: 8, ha: 4 };
