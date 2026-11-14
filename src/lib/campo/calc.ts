@@ -3333,3 +3333,22 @@ export function validarAplicacion(f: FuenteAplicacion, saldo: ReturnType<typeof 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha) || d.fecha > hoy || semanaDeFecha(d.fecha) < f.semana) return "Elige una fecha válida, no futura ni anterior a la semana de aplicación.";
   return null;
 }
+
+/** Los registros manuales conservan su disponibilidad y dosis originales al recargar. */
+export function fuentesManuales(aplicaciones: AplicacionCampo[]): FuenteAplicacion[] {
+  return [...new Map(aplicaciones.flatMap(a => a.fuenteManual ? [[a.fuenteManual.key, a.fuenteManual] as const] : [])).values()];
+}
+
+export function validarAplicacionManual(lote: Lote, producto: Producto, d: { recibido: number; dosis: number; cantidad: number; ha: number; fecha: string; motivo: string }, hoy: string): string | null {
+  if (lote.cancelado || lote.cerrado || plantadasLote(lote) <= 0) return "Selecciona una tabla plantada con ciclo abierto.";
+  if (!d.motivo.trim()) return "Indica el motivo de esta aplicación fuera de planeación.";
+  if (!producto.unidad) return "El producto necesita su unidad en Catálogos.";
+  if (!Number.isFinite(d.recibido) || d.recibido <= 0 || !Number.isFinite(d.dosis) || d.dosis <= 0) return "Captura la cantidad disponible y una dosis mayor a cero.";
+  if (d.fecha < fechaPlantacionLote(lote)) return "La aplicación no puede ser anterior a la plantación.";
+  const f: FuenteAplicacion = { key: "manual", loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: producto.id, semana: semanaDeFecha(d.fecha), tipo: "Fuera de paquete", esperado: d.dosis * plantadasLote(lote), recibido: d.recibido, ha: plantadasLote(lote) };
+  return validarAplicacion(f, { ...saldoAplicacion(f, [], [], [], f.semana), puedeAplicar: true }, d, hoy);
+}
+
+export function costoAplicacionesManuales(loteId: string, aplicaciones: AplicacionCampo[]): number {
+  return redondear(aplicaciones.filter(a => a.loteId === loteId && a.fuenteManual).reduce((s, a) => s + (a.fuenteManual?.recibido ?? 0) * (a.precioManual ?? 0), 0));
+}

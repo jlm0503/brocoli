@@ -32,6 +32,9 @@ import {
   lineasSemana,
   saldoAplicacion,
   validarAplicacion,
+  validarAplicacionManual,
+  fuentesManuales,
+  plantadasLote,
 } from "./calc";
 import { alcanceRanchos, puedeCapturar, puedeResolverSobrantes, tiene, type NavPath } from "./roles";
 import { useSesion } from "./sesion";
@@ -61,6 +64,7 @@ interface Fase3Value {
   fuentes: FuenteAplicacion[];
   aplicacionesListas: boolean;
   registrarAplicacion: (key: string, d: { cantidad: number; ha: number; fecha: string }) => string | null;
+  registrarAplicacionManual: (d: { loteId: string; productoId: string; recibido: number; dosis: number; cantidad: number; ha: number; fecha: string; motivo: string }) => string | null;
   continuarAplicacion: (key: string) => string | null;
   devolverSobrante: (key: string, cantidad: number, foto: string) => string | null;
   extraordinarios: Extraordinario[];
@@ -410,7 +414,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     return alcanceRanchos(roles, a?.ranchoIds ?? []);
   }, [roles, asignaciones, user]);
 
-  const fuentes = useMemo(() => fuentesAplicacion(lotes, lineasSemana(lotes, recetas, adicionales, Array.from({ length: semanaActual }, (_, i) => i + 1)), recepciones, pedidos, extraordinarios, tablas), [lotes, recetas, adicionales, semanaActual, recepciones, pedidos, extraordinarios, tablas]);
+  const fuentes = useMemo(() => [...fuentesAplicacion(lotes, lineasSemana(lotes, recetas, adicionales, Array.from({ length: semanaActual }, (_, i) => i + 1)), recepciones, pedidos, extraordinarios, tablas), ...fuentesManuales(aplicaciones)], [lotes, recetas, adicionales, semanaActual, recepciones, pedidos, extraordinarios, tablas, aplicaciones]);
   const fuentePermitida = (key: string) => {
     if (!aplicacionesListas || !puedeCapturar(roles, "/aplicaciones")) return undefined;
     const f = fuentes.find(x => x.key === key);
@@ -426,6 +430,19 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
     const p = productos.find(x => x.id === f.productoId);
     if (!p) return "Producto no encontrado.";
     poner("aplicaciones_campo", { id: `ap-${crypto.randomUUID()}`, fuenteKey: key, loteId: f.loteId, tablaId: f.tablaId, ranchoId: f.ranchoId, productoId: f.productoId, semanaOrigen: f.semana, ...d, dosis: saldo.dosis, unidad: p.unidad, por: nombre } satisfies AplicacionCampo);
+    return null;
+  };
+  const registrarAplicacionManual: Fase3Value["registrarAplicacionManual"] = d => {
+    if (!aplicacionesListas || !puedeResolverSobrantes(roles)) return "Tu puesto solo registra avances de aplicaciones existentes.";
+    const lote = lotes.find(l => l.id === d.loteId);
+    const p = productos.find(p => p.id === d.productoId);
+    if (!lote || !p || (ranchosVisibles && !ranchosVisibles.includes(lote.ranchoId))) return "Selecciona una tabla y un producto permitidos.";
+    const error = validarAplicacionManual(lote, p, d, hoy);
+    if (error) return error;
+    if (fuentes.some(f => f.loteId === lote.id && f.productoId === p.id && saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual).saldo > 0)) return "Este producto tiene una entrega disponible. Selecciona Usar recibido pendiente para no duplicarla.";
+    const id = `ap-${crypto.randomUUID()}`;
+    const fuente: FuenteAplicacion = { key: `${lote.id}|manual-${id}|${p.id}`, loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: p.id, semana: semanaDeFecha(d.fecha), tipo: "Fuera de paquete", esperado: d.dosis * plantadasLote(lote), recibido: d.recibido, ha: plantadasLote(lote) };
+    poner("aplicaciones_campo", { id, fuenteKey: fuente.key, loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: p.id, semanaOrigen: fuente.semana, fecha: d.fecha, cantidad: d.cantidad, ha: d.ha, dosis: d.dosis, unidad: p.unidad, por: nombre, fuenteManual: fuente, precioManual: precioVigente(p, d.fecha), motivo: d.motivo.trim() } satisfies AplicacionCampo);
     return null;
   };
   const continuarAplicacion: Fase3Value["continuarAplicacion"] = key => {
@@ -450,7 +467,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Fase3Value>(
     () => ({
-      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, continuarAplicacion, devolverSobrante,
+      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, registrarAplicacionManual, continuarAplicacion, devolverSobrante,
       extraordinarios,
       alertasDireccion,
       devoluciones,
@@ -468,7 +485,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
       guardarAsignacion,
     }),
     [
-      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, continuarAplicacion, devolverSobrante,
+      aplicaciones, continuaciones, fuentes, aplicacionesListas, registrarAplicacion, registrarAplicacionManual, continuarAplicacion, devolverSobrante,
       extraordinarios,
       alertasDireccion,
       devoluciones,
