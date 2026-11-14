@@ -8,13 +8,14 @@ const producto = { id: "xhanto", unidad: "L" } as Producto;
 const datos = { recibido: 8, dosis: 2, cantidad: 4, ha: 2, fecha: "2026-11-14", motivo: "Xhanto llegó tarde" };
 const fuente: FuenteAplicacion = { key: "l|manual-a|xhanto", loteId: "l", tablaId: "t", ranchoId: "r", productoId: "xhanto", semana: 46, tipo: "Fuera de paquete", esperado: 8, recibido: 8, ha: 4 };
 const avance: AplicacionCampo = { id: "a", fuenteKey: fuente.key, loteId: "l", tablaId: "t", ranchoId: "r", productoId: "xhanto", semanaOrigen: 46, fecha: datos.fecha, ha: 2, cantidad: 4, dosis: 2, unidad: "L", por: "Jimena", fuenteManual: fuente, precioManual: 100, motivo: datos.motivo };
+const { fuenteManual: _fuente, ...posterior } = avance;
 
 describe("Aplicaciones fuera del paquete", () => {
   it("permite Xhanto aunque el lote no tenga receta ni planeación para ese producto", () => {
     expect(validarAplicacionManual(lote, producto, datos, "2026-11-14")).toBeNull();
   });
   it("conserva 8 litros confirmados y 4 disponibles después del avance", () => {
-    expect(fuentesManuales([avance, { ...avance, id: "b", fuenteManual: undefined }])).toEqual([fuente]);
+    expect(fuentesManuales([avance, { ...posterior, id: "b" }])).toEqual([fuente]);
     expect(saldoAplicacion(fuente, [avance], [], [], 46).saldo).toBe(4);
   });
   it("no permite aplicar más de los 8 litros disponibles", () => {
@@ -27,10 +28,10 @@ describe("Aplicaciones fuera del paquete", () => {
     expect(validarAplicacionManual({ ...lote, cerrado: true }, producto, datos, "2026-11-14")).not.toBeNull();
   });
   it("cobra una sola vez la disponibilidad con el precio registrado", () => {
-    expect(costoAplicacionesManuales("l", [avance, { ...avance, id: "b", fuenteManual: undefined, cantidad: 2 }])).toBe(800);
+    expect(costoAplicacionesManuales("l", [avance, { ...posterior, id: "b", cantidad: 2 }])).toBe(800);
   });
   it("integra el consumo fuera del paquete sin duplicar avances posteriores", () => {
-    const c = consumoProductosLote(lote, { lineas: [], recepciones: {}, pedidos: [], extraordinarios: [], devoluciones: [], aplicaciones: [avance, { ...avance, id: "b", fuenteManual: undefined }] });
+    const c = consumoProductosLote(lote, { lineas: [], recepciones: {}, pedidos: [], extraordinarios: [], devoluciones: [], aplicaciones: [avance, { ...posterior, id: "b" }] });
     expect(c[0]?.fueraPaquete).toBe(8);
     expect(c[0]?.neto).toBe(8);
   });
