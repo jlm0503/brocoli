@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Loader2, Plus, Undo2, ArrowRight, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/campo/AppShell";
+import { AplicacionAdicional } from "@/components/campo/AplicacionAdicional";
 import { FotoInput } from "@/components/campo/Evidencia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ function Contenido() {
   const semanas = [...new Set([semanaActual, ...candidatas.map(f => f.semana)])].sort((a,b) => b-a);
   const opciones = tablas.filter(t => candidatas.some(f => f.tablaId === t.id));
   const filas = candidatas.map(f => ({ f, s: saldoAplicacion(f, aplicaciones, devoluciones, continuaciones, semanaActual) })).filter(({f,s}) =>
-    (vista === "sobrantes" ? f.semana < semanaActual && s.saldo > 0 : f.semana === elegida) &&
+    (vista === "sobrantes" ? f.semana < semanaActual && s.saldo > 0 : f.semana === elegida || (elegida === semanaActual && s.puedeAplicar && f.semana < semanaActual && (s.saldo > 0 || s.avances.some(a => a.fecha >= hoy)))) &&
     (tablaId === "todas" || f.tablaId === tablaId) && (productos.find(p => p.id === f.productoId)?.nombre ?? f.productoId).toLocaleLowerCase("es-MX").includes(buscar.toLocaleLowerCase("es-MX"))
   ).sort((a,b) => a.f.ranchoId.localeCompare(b.f.ranchoId) || a.f.tablaId.localeCompare(b.f.tablaId) || a.f.productoId.localeCompare(b.f.productoId));
   const grupos = [...filas.reduce((map, fila) => {
@@ -84,7 +85,7 @@ function Contenido() {
   };
   if (!aplicacionesListas) return <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-4 animate-spin" />Cargando aplicaciones…</p>;
   return <div className="space-y-3">
-    <Tabs value={vista} onValueChange={setVista}><TabsList><TabsTrigger value="semana">Aplicaciones</TabsTrigger><TabsTrigger value="sobrantes">Sobrantes al cierre</TabsTrigger></TabsList></Tabs>
+    <div className="flex flex-wrap items-center justify-between gap-2"><Tabs value={vista} onValueChange={setVista}><TabsList><TabsTrigger value="semana">Aplicaciones</TabsTrigger><TabsTrigger value="sobrantes">Sobrantes al cierre</TabsTrigger></TabsList></Tabs>{resuelve && <AplicacionAdicional alGuardar={() => { setSemana(String(semanaActual)); setVista("semana"); setTablaId("todas"); setBuscar(""); }} />}</div>
     <div className="flex flex-wrap items-center gap-3"><Label>Agrupar por</Label><Tabs value={agrupar} onValueChange={setAgrupar}><TabsList aria-label="Agrupar aplicaciones"><TabsTrigger value="tabla">Por tabla</TabsTrigger><TabsTrigger value="producto">Por producto</TabsTrigger></TabsList></Tabs></div>
     <div className="grid gap-3 sm:grid-cols-3">
       {vista === "semana" && <div className="space-y-1"><Label>Semana de aplicación</Label><Select value={String(elegida)} onValueChange={setSemana}><SelectTrigger aria-label="Semana de aplicación"><SelectValue /></SelectTrigger><SelectContent>{semanas.map(w => <SelectItem key={w} value={String(w)}>Semana {w}{w === semanaActual ? " · actual" : ""}</SelectItem>)}</SelectContent></Select></div>}
