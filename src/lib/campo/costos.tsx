@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
   cargosPlanta,
   costoAplicacionesPrevias,
+  costoAplicacionesManuales,
   costoDevolucionesLote,
   costoExtraLote,
   costoLineas,
@@ -18,7 +19,7 @@ import type { LineaDemanda } from "./types";
 /** Gasto directo de cada lote: receta recibida + planeación + planta real + extraordinarios surtidos − devoluciones. */
 export function useCostos() {
   const { lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes } = useCampo();
-  const { extraordinarios, devoluciones } = useFase3();
+  const { extraordinarios, devoluciones, aplicaciones } = useFase3();
   return useMemo(() => {
     const cargos = cargosPlanta(solicitudes);
     const plantaLote = (loteId: string) => costoPlantaLote(loteId, cargos);
@@ -37,6 +38,7 @@ export function useCostos() {
       // Extraordinarios autorizados (por ha) suman; lo que el Almacén retiró se resta.
       return (
         semanal +
+        costoAplicacionesManuales(loteId, aplicaciones) +
         (lote ? costoPlaneacionLote(lote, pedidos, productos) + costoAplicacionesPrevias(lote) : 0) +
         plantaLote(loteId) +
         costoExtraLote(loteId, extraordinarios) -
@@ -46,6 +48,6 @@ export function useCostos() {
     const costoTabla = (tablaId: string, pasa: (l: (typeof lotes)[number]) => boolean = () => true) =>
       lotes.filter((l) => l.tablaId === tablaId && pasa(l)).reduce((s, l) => s + costoLote(l.id), 0);
     return { porLote, costoLote, costoTabla, plantaLote };
-  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes, extraordinarios, devoluciones]);
+  }, [lotes, recetas, adicionales, productos, recepciones, pedidos, semanaActual, solicitudes, extraordinarios, devoluciones, aplicaciones]);
 }
 

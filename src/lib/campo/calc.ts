@@ -3070,6 +3070,7 @@ export interface ConsumoProducto {
   receta: number;
   planeacion: number;
   extraordinarios: number;
+  fueraPaquete?: number;
   devuelto: number;
   /** receta + planeación + extraordinarios − devuelto (nunca menos de 0) */
   neto: number;
@@ -3085,6 +3086,7 @@ export function consumoProductosLote(
     pedidos: PedidoPlaneacion[];
     extraordinarios: Extraordinario[];
     devoluciones: Devolucion[];
+    aplicaciones?: AplicacionCampo[];
   },
 ): ConsumoProducto[] {
   const m = new Map<string, ConsumoProducto>();
@@ -3100,9 +3102,10 @@ export function consumoProductosLote(
       for (const ln of e.lineas) get(ln.productoId).extraordinarios += ln.porHa * r.ha;
   }
   for (const d of ctx.devoluciones.filter((d) => d.loteId === l.id)) get(d.productoId).devuelto += d.cantidad;
+  for (const f of fuentesManuales(ctx.aplicaciones ?? []).filter(f => f.loteId === l.id)) get(f.productoId).fueraPaquete = (get(f.productoId).fueraPaquete ?? 0) + f.recibido;
   return [...m.values()]
     .map((c) => {
-      const neto = consumoTeorico(c.receta + c.planeacion + c.extraordinarios, c.devuelto);
+      const neto = consumoTeorico(c.receta + c.planeacion + c.extraordinarios + (c.fueraPaquete ?? 0), c.devuelto);
       return {
         ...c,
         receta: redondear(c.receta),
@@ -3113,7 +3116,7 @@ export function consumoProductosLote(
         porHa: l.ha > 0 ? redondear(neto / l.ha) : 0,
       };
     })
-    .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.devuelto);
+    .filter((c) => c.receta || c.planeacion || c.extraordinarios || c.fueraPaquete || c.devuelto);
 }
 
 /** Plantación real y pendiente por semana; nunca cuenta lotes cancelados o finalizados como plan futuro. */
@@ -3332,4 +3335,23 @@ export function validarAplicacion(f: FuenteAplicacion, saldo: ReturnType<typeof 
   if (!Number.isFinite(d.ha) || d.ha <= 0 || redondear(d.ha + saldo.haAplicadas, 6) > f.ha) return "El avance no puede superar las hectáreas de esta aplicación.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha) || d.fecha > hoy || semanaDeFecha(d.fecha) < f.semana) return "Elige una fecha válida, no futura ni anterior a la semana de aplicación.";
   return null;
+}
+
+/** Los registros manuales conservan su disponibilidad y dosis originales al recargar. */
+export function fuentesManuales(aplicaciones: AplicacionCampo[]): FuenteAplicacion[] {
+  return [...new Map(aplicaciones.flatMap(a => a.fuenteManual ? [[a.fuenteManual.key, a.fuenteManual] as const] : [])).values()];
+}
+
+export function validarAplicacionManual(lote: Lote, producto: Producto, d: { recibido: number; dosis: number; cantidad: number; ha: number; fecha: string; motivo: string }, hoy: string): string | null {
+  if (lote.cancelado || lote.cerrado || plantadasLote(lote) <= 0) return "Selecciona una tabla plantada con ciclo abierto.";
+  if (!d.motivo.trim()) return "Indica el motivo de esta aplicación fuera de planeación.";
+  if (!producto.unidad) return "El producto necesita su unidad en Catálogos.";
+  if (!Number.isFinite(d.recibido) || d.recibido <= 0 || !Number.isFinite(d.dosis) || d.dosis <= 0) return "Captura la cantidad disponible y una dosis mayor a cero.";
+  if (d.fecha < fechaPlantacionLote(lote)) return "La aplicación no puede ser anterior a la plantación.";
+  const f: FuenteAplicacion = { key: "manual", loteId: lote.id, tablaId: lote.tablaId, ranchoId: lote.ranchoId, productoId: producto.id, semana: semanaDeFecha(d.fecha), tipo: "Fuera de paquete", esperado: d.dosis * plantadasLote(lote), recibido: d.recibido, ha: plantadasLote(lote) };
+  return validarAplicacion(f, { ...saldoAplicacion(f, [], [], [], f.semana), puedeAplicar: true }, d, hoy);
+}
+
+export function costoAplicacionesManuales(loteId: string, aplicaciones: AplicacionCampo[]): number {
+  return redondear(aplicaciones.filter(a => a.loteId === loteId && a.fuenteManual).reduce((s, a) => s + (a.fuenteManual?.recibido ?? 0) * (a.precioManual ?? 0), 0));
 }

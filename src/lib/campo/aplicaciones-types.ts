@@ -7,7 +7,7 @@ export interface FuenteAplicacion {
   ranchoId: string;
   productoId: string;
   semana: number;
-  tipo: "Receta" | "Preparación" | "Extraordinario";
+  tipo: "Receta" | "Preparación" | "Extraordinario" | "Fuera de paquete";
   esperado: number;
   recibido: number;
   ha: number;
@@ -27,6 +27,10 @@ export interface AplicacionCampo {
   dosis: number;
   unidad: Unidad;
   por: string;
+  /** Disponibilidad confirmada manualmente; no crea una compra ni altera la receta. */
+  fuenteManual?: FuenteAplicacion;
+  precioManual?: number;
+  motivo?: string;
 }
 
 export interface ContinuacionAplicacion {

@@ -35,7 +35,7 @@ function Contenido() {
   const { lotes, tablas, ranchos, variedades, productos, parametros, recepciones, pedidos, semanaActual, hoy } = useCampo();
   const { ciclos, viajes } = useCosecha();
   const { costoLote, porLote } = useCostos();
-  const { extraordinarios, devoluciones } = useFase3();
+  const { extraordinarios, devoluciones, aplicaciones } = useFase3();
   const { gastos, repartos } = useGastos();
   const { pasaLote, pasaRancho, pasaCultivo } = useFiltro();
   const { setRanchoIds, setCultivos } = useFiltroEstado();
@@ -78,7 +78,7 @@ function Contenido() {
   const consumos: { lote: string; nombre: string; unidad: string; cantidad: number; ha: number }[] = [];
   for (const l of ls) {
     for (const a of l.aplicacionesPrevias ?? []) consumos.push({ lote: l.id, nombre: a.nombre, unidad: a.unidad, cantidad: a.cantidad, ha: l.ha });
-    for (const c of consumoProductosLote(l, { lineas: porLote.get(l.id) ?? [], recepciones, pedidos, extraordinarios, devoluciones })) { const p = productos.find((p) => p.id === c.productoId); consumos.push({ lote: l.id, nombre: p?.nombre ?? c.productoId, unidad: p?.unidad ?? "", cantidad: c.neto, ha: l.ha }); }
+    for (const c of consumoProductosLote(l, { lineas: porLote.get(l.id) ?? [], recepciones, pedidos, extraordinarios, devoluciones, aplicaciones })) { const p = productos.find((p) => p.id === c.productoId); consumos.push({ lote: l.id, nombre: p?.nombre ?? c.productoId, unidad: p?.unidad ?? "", cantidad: c.neto, ha: l.ha }); }
   }
   for (const c of hist) for (const p of c.importacion?.productos ?? []) consumos.push({ lote: c.id, nombre: p.nombre, unidad: p.unidad, cantidad: p.cantidad, ha: c.ha });
   const opcionesProductos = [...new Set(consumos.map((c) => c.nombre))].sort().map((nombre) => ({ id: nombre, nombre }));
