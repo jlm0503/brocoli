@@ -285,7 +285,9 @@ describe("Lo que llega al rancho", () => {
       status: "pendiente",
     } as unknown as PedidoPlaneacion;
     expect(pedidosQueLleganEnSemana([p], 46)).toHaveLength(1);
-    expect(pedidosQueLleganEnSemana([p], 47)).toHaveLength(0);
+    // Un pedido pendiente atrasado sigue apareciendo en las semanas siguientes hasta recibirse.
+    expect(pedidosQueLleganEnSemana([p], 47)).toHaveLength(1);
+    expect(pedidosQueLleganEnSemana([{ ...p, status: "recibido" }], 47)).toHaveLength(0);
     expect(pedidosQueLleganEnSemana([{ ...p, status: "cancelado" }], 46)).toHaveLength(0);
   });
 });
