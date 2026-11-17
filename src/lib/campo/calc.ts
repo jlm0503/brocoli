@@ -2707,6 +2707,16 @@ export interface DatosGasto {
   comprobante?: string | undefined;
 }
 
+/** Divide un único gasto entre ranchos sin duplicar el total ni perder centavos. */
+export function repartirGastoRanchos(monto: number, ranchoIds: string[]): Record<string, number> {
+  const ids = [...new Set(ranchoIds.filter(Boolean))];
+  if (!Number.isFinite(monto) || monto <= 0 || ids.length === 0) return {};
+  const centavos = Math.round(monto * 100);
+  const base = Math.floor(centavos / ids.length);
+  const sobrantes = centavos % ids.length;
+  return Object.fromEntries(ids.map((id, i) => [id, (base + (i < sobrantes ? 1 : 0)) / 100]));
+}
+
 /** Todas las semanas desde el inicio del calendario, incluida la próxima. */
 export function semanasCapturaGastos(semanaActual: number): number[] {
   return Array.from({ length: Math.max(1, semanaActual + 1) }, (_, i) => Math.max(1, semanaActual + 1) - i);

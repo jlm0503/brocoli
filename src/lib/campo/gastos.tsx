@@ -33,6 +33,7 @@ interface GastosValue {
   /** Solo el Super Admin y el Encargado de rancho capturan gastos. */
   puedeCapturar: boolean;
   guardarGasto: (d: DatosGasto) => string | null;
+  guardarGastos: (datos: DatosGasto[]) => string | null;
   eliminarGasto: (id: string) => void;
   /** Guarda los % de un rancho; con `semana` guarda el ajuste de esa semana. */
   guardarReparto: (ranchoId: string, pct: Record<string, number>, semana?: number) => string | null;
@@ -44,7 +45,7 @@ const GastosContext: Context<GastosValue | null> = g[KEY] ?? (g[KEY] = createCon
 
 export function GastosProvider({ children }: { children: ReactNode }) {
   const { user, role, roles, nombre } = useSesion();
-  const { hoy, lotes, semanasAdelantadas } = useCampo();
+  const { hoy, lotes, ranchos, semanasAdelantadas } = useCampo();
   const simulando = semanasAdelantadas > 0;
   const simRef = useRef(simulando);
   simRef.current = simulando;
@@ -158,6 +159,25 @@ export function GastosProvider({ children }: { children: ReactNode }) {
     [puedeCapturar],
   );
 
+  const guardarGastos = useCallback((datos: DatosGasto[]) => {
+    if (!puedeCapturar) return "Tu puesto no captura gastos de rancho.";
+    if (datos.length === 0) return "Elige al menos un rancho.";
+    // Revisar todos los destinos antes de modificar cualquier gasto existente.
+    const ids = new Set<string>();
+    for (const d of datos) {
+      if (ids.has(idGasto(d))) return "El mismo rancho aparece más de una vez.";
+      ids.add(idGasto(d));
+      const error = validarGasto(d, {
+        gastos,
+        reparto: repartos.find((r) => r.ranchoId === d.ranchoId),
+        cultivos: cultivosDelRancho(lotes, d.ranchoId),
+      });
+      if (error) return `${ranchos.find((r) => r.id === d.ranchoId)?.nombre ?? "Rancho"}: ${error}`;
+    }
+    for (const d of datos) guardarGasto(d);
+    return null;
+  }, [puedeCapturar, gastos, repartos, lotes, ranchos, guardarGasto]);
+
   const guardarReparto = useCallback(
     (ranchoId: string, pct: Record<string, number>, semana?: number) => {
       if (!puedeCapturar) return "Tu puesto no configura el reparto de gastos.";
@@ -179,8 +199,8 @@ export function GastosProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<GastosValue>(
-    () => ({ gastos, repartos, puedeCapturar, guardarGasto, eliminarGasto, guardarReparto }),
-    [gastos, repartos, puedeCapturar, guardarGasto, eliminarGasto, guardarReparto],
+    () => ({ gastos, repartos, puedeCapturar, guardarGasto, guardarGastos, eliminarGasto, guardarReparto }),
+    [gastos, repartos, puedeCapturar, guardarGasto, guardarGastos, eliminarGasto, guardarReparto],
   );
   return <GastosContext.Provider value={value}>{children}</GastosContext.Provider>;
 }

@@ -10,6 +10,7 @@ import {
   prorrateoRango,
   prorrateoSemana,
   repartoVigente,
+  repartirGastoRanchos,
   semanasCapturaGastos,
   utilidadLote,
   validarGasto,
@@ -133,6 +134,25 @@ describe("Fase 6 · prorrateo de gastos comunes", () => {
 describe("Fase 6 · captura de gastos", () => {
   const ctx = { gastos: [nomina45], reparto, cultivos: ["brocoli", "coliflor"] };
   const d: DatosGasto = { semana: 46, ranchoId: "dolores", cultivo: "brocoli", concepto: "nomina", monto: 5000, modo: "directo" };
+
+  it("asigna un solo gasto a varios ranchos sin duplicar el monto", () => {
+    expect(repartirGastoRanchos(5000, ["dolores", "trejo"])).toEqual({ dolores: 2500, trejo: 2500 });
+  });
+
+  it("conserva los centavos al repartir entre tres ranchos", () => {
+    const asignado = repartirGastoRanchos(100, ["dolores", "trejo", "vergel"]);
+    expect(asignado).toEqual({ dolores: 33.34, trejo: 33.33, vergel: 33.33 });
+    expect(Object.values(asignado).reduce((s, n) => s + Math.round(n * 100), 0)).toBe(10000);
+  });
+
+  it("un rancho repetido recibe una sola asignación", () => {
+    expect(repartirGastoRanchos(5000, ["dolores", "dolores", "trejo"])).toEqual({ dolores: 2500, trejo: 2500 });
+  });
+
+  it("sin ranchos o con monto inválido no genera asignaciones", () => {
+    expect(repartirGastoRanchos(5000, [])).toEqual({});
+    expect(repartirGastoRanchos(Infinity, ["dolores"])).toEqual({});
+  });
 
   it("deja capturar un gasto nuevo", () => {
     expect(validarGasto(d, ctx)).toBeNull();

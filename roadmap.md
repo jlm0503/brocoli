@@ -54,6 +54,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Temporada = de la plantación al cierre de cosecha (máx. 2 semanas de cosecha; aviso para cerrar)
 - [x] Gastos comunes en la foto fija (llegan en Fase 6; se prorratean de la planeación al cierre)
 ## Fase 6 — Gastos comunes por rancho y cultivo, utilidad real
+- [x] Seleccionar varios ranchos al agregar un gasto, repartir un solo total con montos ajustables y validar todos los destinos sin sobrescribir capturas existentes.
 - [x] Captura semanal por rancho y cultivo: nómina, diésel, gasolina, mano de obra extra, mantenimiento, otros (con detalle)
 - [x] Modo "Total del rancho" repartido entre cultivos con % (generales y ajuste por semana)
 - [x] Prorrateo por hectáreas entre lotes activos del mismo cultivo y rancho; lo que no se puede repartir queda "Gasto no asignado"

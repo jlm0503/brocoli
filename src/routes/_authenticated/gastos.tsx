@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/campo/AppShell";
 import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
   nombreCultivo,
   prorrateoSemana,
   repartoVigente,
+  repartirGastoRanchos,
   semanasCapturaGastos,
   type DatosGasto,
 } from "@/lib/campo/calc";
@@ -69,7 +71,7 @@ const TIPOS_CAPTURA: { id: ConceptoGasto; nombre: string }[] = [
 
 function GastosRancho() {
   const { ranchos, lotes, cultivos, semanaActual } = useCampo();
-  const { gastos, repartos, puedeCapturar, guardarGasto, eliminarGasto, guardarReparto } = useGastos();
+  const { gastos, repartos, puedeCapturar, guardarGasto, guardarGastos, eliminarGasto, guardarReparto } = useGastos();
   const [semana, setSemana] = useState(semanaActual);
   const [ranchoElegido, setRanchoElegido] = useState("");
   // Los ranchos llegan de la nube: si aún no se elige uno, usa el primero que exista.
@@ -77,6 +79,8 @@ function GastosRancho() {
   const [celda, setCelda] = useState<Celda | null>(null);
   const [editando, setEditando] = useState<GastoRancho | null>(null);
   const [monto, setMonto] = useState("");
+  const [ranchosGasto, setRanchosGasto] = useState<string[]>([]);
+  const [montosRanchos, setMontosRanchos] = useState<Record<string, string>>({});
   const [detalle, setDetalle] = useState("");
   const [comentario, setComentario] = useState("");
   const [comprobante, setComprobante] = useState<string | undefined>();
@@ -109,17 +113,27 @@ function GastosRancho() {
     setCelda(c);
     setEditando(previo ?? null);
     setMonto(previo ? String(previo.monto) : "");
+    setRanchosGasto([previo?.ranchoId ?? ranchoId]);
+    setMontosRanchos({});
     setDetalle(previo?.detalle ?? "");
     setComentario(previo?.comentario ?? "");
     setComprobante(previo?.comprobante);
     setClave((k) => k + 1);
   };
 
+  const repartoRanchos = repartirGastoRanchos(Number(monto), ranchosGasto);
+  const asignadoRancho = (id: string) => Number(montosRanchos[id] ?? repartoRanchos[id] ?? 0);
+  const totalAsignado = ranchosGasto.reduce((s, id) => s + Math.round(asignadoRancho(id) * 100), 0);
+
   const guardar = () => {
     if (!celda) return;
+    if (ranchosGasto.length === 0) return void toast.error("Elige al menos un rancho.");
+    if (ranchosGasto.length > 1 && totalAsignado !== Math.round(Number(monto) * 100)) {
+      return void toast.error("Los montos por rancho deben sumar el monto total del gasto.");
+    }
     const d: DatosGasto = {
       semana,
-      ranchoId,
+      ranchoId: ranchosGasto[0] ?? ranchoId,
       cultivo: celda.modo === "total" ? CULTIVO_TOTAL : celda.cultivo,
       concepto: celda.concepto,
       monto: Number(monto),
@@ -128,11 +142,13 @@ function GastosRancho() {
       comentario: comentario || undefined,
       comprobante: comprobante || undefined,
     };
-    const error = guardarGasto(d);
+    const error = ranchosGasto.length > 1
+      ? guardarGastos(ranchosGasto.map((id) => ({ ...d, ranchoId: id, monto: asignadoRancho(id) })))
+      : guardarGasto(d);
     if (error) return void toast.error(error);
     // Si el detalle de «Otros» cambió, la línea anterior queda sustituida.
     if (editando && editando.id !== idGasto(d)) eliminarGasto(editando.id);
-    toast.success(`Gasto guardado: ${nombreConceptoGasto(celda.concepto)}.`);
+    toast.success(`Gasto guardado: ${nombreConceptoGasto(celda.concepto)}${ranchosGasto.length > 1 ? ` en ${ranchosGasto.length} ranchos` : ""}.`);
     setCelda(null);
     setEditando(null);
   };
@@ -450,16 +466,35 @@ function GastosRancho() {
       </section>
 
       <Dialog open={!!celda} onOpenChange={(o) => !o && setCelda(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">
               {celda ? `${nombreConceptoGasto(celda.concepto)} · ${celda.modo === "total" ? "Total del rancho" : nombreCultivo(cultivos, celda.cultivo)}` : ""}
             </DialogTitle>
             <DialogDescription>
-              Semana {semana} · {rancho?.nombre}. El monto queda guardado con tu nombre y la fecha de hoy.
+              Semana {semana} · {ranchos.filter((r) => ranchosGasto.includes(r.id)).map((r) => r.nombre).join(" · ")}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Ranchos</legend>
+              <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
+                {ranchos.map((r) => (
+                  <label key={r.id} className="flex min-w-0 items-center gap-2 text-sm">
+                    <Checkbox
+                      aria-label={r.nombre}
+                      checked={ranchosGasto.includes(r.id)}
+                      disabled={!!editando}
+                      onCheckedChange={(checked) => {
+                        setRanchosGasto((ids) => checked ? [...ids, r.id] : ids.filter((id) => id !== r.id));
+                        setMontosRanchos({});
+                      }}
+                    />
+                    <span className="break-words">{r.nombre}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div className="space-y-2">
               <Label>Tipo de gasto</Label>
               <Select value={celda?.concepto ?? "nomina"} onValueChange={(v) => {
@@ -483,9 +518,25 @@ function GastosRancho() {
               </Select>
             </div>}
             <div className="space-y-2">
-              <Label htmlFor="gs-monto">Monto (MXN)</Label>
-              <Input id="gs-monto" type="number" inputMode="decimal" className="num" value={monto} onChange={(e) => setMonto(e.target.value)} autoFocus />
+              <Label htmlFor="gs-monto">{ranchosGasto.length > 1 ? "Monto total del gasto (MXN)" : "Monto (MXN)"}</Label>
+              <Input id="gs-monto" type="number" min="0.01" step="0.01" inputMode="decimal" className="num" value={monto} onChange={(e) => { setMonto(e.target.value); setMontosRanchos({}); }} autoFocus />
             </div>
+            {ranchosGasto.length > 1 && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Asignación por rancho (MXN)</legend>
+                {ranchos.filter((r) => ranchosGasto.includes(r.id)).map((r) => (
+                  <div key={r.id} className="grid grid-cols-2 items-center gap-3">
+                    <Label htmlFor={`gs-asignado-${r.id}`}>{r.nombre}</Label>
+                    <Input id={`gs-asignado-${r.id}`} className="num" type="number" min="0.01" step="0.01" inputMode="decimal"
+                      value={montosRanchos[r.id] ?? String(repartoRanchos[r.id] ?? "")}
+                      onChange={(e) => setMontosRanchos((prev) => ({ ...prev, [r.id]: e.target.value }))} />
+                  </div>
+                ))}
+                <p className={`num text-sm ${totalAsignado === Math.round(Number(monto) * 100) ? "text-muted-foreground" : "text-destructive"}`}>
+                  Total asignado: {formatoMXN(totalAsignado / 100)} · Total del gasto: {formatoMXN(Number(monto))}
+                </p>
+              </fieldset>
+            )}
             {celda?.concepto === "otros" && (
               <div className="space-y-2">
                 <Label htmlFor="gs-detalle">Concepto (obligatorio en «Otros»)</Label>
@@ -503,9 +554,10 @@ function GastosRancho() {
             {celda?.modo === "total" && (
               <p className="rounded-lg bg-secondary/50 p-3 text-sm text-muted-foreground">
                 Se repartirá:{" "}
-                {Object.entries(vigente)
-                  .map(([c, p]) => `${nombreCultivo(cultivos, c)} ${formatoNum(p)}%`)
-                  .join(" · ") || "define los % de reparto arriba"}
+                {ranchos.filter((r) => ranchosGasto.includes(r.id)).map((r) => {
+                  const porcentajes = repartoVigente(repartos.find((p) => p.ranchoId === r.id), semana);
+                  return `${r.nombre}: ${Object.entries(porcentajes).map(([c, p]) => `${nombreCultivo(cultivos, c)} ${formatoNum(p)}%`).join(" · ") || "sin % de reparto"}`;
+                }).join("; ")}
               </p>
             )}
           </div>
