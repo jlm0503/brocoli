@@ -3355,3 +3355,28 @@ export function validarAplicacionManual(lote: Lote, producto: Producto, d: { rec
 export function costoAplicacionesManuales(loteId: string, aplicaciones: AplicacionCampo[]): number {
   return redondear(aplicaciones.filter(a => a.loteId === loteId && a.fuenteManual).reduce((s, a) => s + (a.fuenteManual?.recibido ?? 0) * (a.precioManual ?? 0), 0));
 }
+
+/**
+ * Vista simple de aplicaciones: se asume consumido todo lo recibido que no se devolvió.
+ * Lo recibido y lo devuelto de un mismo rancho, producto y semana se reparten entre sus tablas
+ * en proporción a lo programado (dosis × ha) de cada una. Solo lectura: no guarda nada.
+ */
+export function consumoAsumidoAplicaciones(
+  fuentes: FuenteAplicacion[],
+  devoluciones: Pick<Devolucion, "ranchoId" | "productoId" | "semana" | "cantidad">[],
+) {
+  const clave = (r: string, p: string, s: number) => `${r}|${p}|${s}`;
+  const grupos = new Map<string, { programado: number; recibido: number; devuelto: number }>();
+  for (const f of fuentes) {
+    const g = grupos.get(clave(f.ranchoId, f.productoId, f.semana)) ?? { programado: 0, recibido: 0, devuelto: 0 };
+    g.programado += f.esperado; g.recibido += f.recibido;
+    grupos.set(clave(f.ranchoId, f.productoId, f.semana), g);
+  }
+  for (const d of devoluciones) { const g = grupos.get(clave(d.ranchoId, d.productoId, d.semana)); if (g) g.devuelto += d.cantidad; }
+  return fuentes.map((f) => {
+    const g = grupos.get(clave(f.ranchoId, f.productoId, f.semana))!;
+    const parte = g.programado > 0 ? f.esperado / g.programado : 0;
+    const recibido = g.recibido * parte, devuelto = Math.min(g.devuelto, g.recibido) * parte;
+    return { fuente: f, programado: redondear(f.esperado), dosis: f.ha > 0 ? redondear(f.esperado / f.ha) : 0, recibido: redondear(recibido), devuelto: redondear(devuelto), consumido: redondear(Math.max(0, recibido - devuelto)) };
+  });
+}
