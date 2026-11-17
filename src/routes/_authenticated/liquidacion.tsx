@@ -19,6 +19,7 @@ import {
   formatoMXN,
   formatoNum,
   porTablaViajes,
+  redondear,
   resumenSemanaPago,
   semanasDePago,
   type ResumenPago,
@@ -55,6 +56,16 @@ const ESTATUS: Record<EstatusLiquidacion, { label: string; variant: "pendiente" 
 function LiquidacionPage() {
   const { viajes, liquidaciones } = useCosecha();
   const semanas = [...new Set([...semanasDePago(viajes), ...liquidaciones.map((l) => l.id)])].sort((a, b) => b.localeCompare(a));
+  const totales = semanas.reduce(
+    (acc, j) => {
+      const r = resumenSemanaPago(viajes, j);
+      const liq = liquidaciones.find((l) => l.id === j);
+      acc.cobrado = redondear(acc.cobrado + (liq?.pagado ?? 0));
+      acc.pendiente = redondear(acc.pendiente + cobrosLiquidacion(r, liq).pendiente);
+      return acc;
+    },
+    { cobrado: 0, pendiente: 0 },
+  );
 
   return (
     <AppShell
@@ -63,6 +74,18 @@ function LiquidacionPage() {
       title="Liquidación semanal"
     >
       <div className="space-y-4">
+        {semanas.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+              <dt className="text-xs text-muted-foreground">Total cobrado</dt>
+              <dd className="num text-2xl font-semibold">{formatoMXN(totales.cobrado)}</dd>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+              <dt className="text-xs text-muted-foreground">Total pendiente de cobro</dt>
+              <dd className={`num text-2xl font-semibold ${totales.pendiente > 0 ? "text-destructive" : ""}`}>{formatoMXN(totales.pendiente)}</dd>
+            </div>
+          </div>
+        )}
         {semanas.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No hay liquidaciones registradas.</p>}
         {semanas.map((j) => (
           <Semana key={j} r={resumenSemanaPago(viajes, j)} liq={liquidaciones.find((l) => l.id === j)} />
