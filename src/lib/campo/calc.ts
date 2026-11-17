@@ -1949,8 +1949,8 @@ export function porTablaViajes(viajes: Viaje[]): { tablaId: string; kgBrutos: nu
 /** Abierta mientras corre la semana; luego Por cobrar hasta capturar el pago. */
 export function estatusLiquidacion(r: ResumenPago, liq: Liquidacion | undefined, hoy: string): EstatusLiquidacion {
   if (!liq) return hoy <= r.fin ? "abierta" : "por_cobrar";
-  if (liq.pagado < r.importeNeto - 0.005) return liq.pagado > 0 ? "parcial" : "por_cobrar";
-  return Math.abs(liq.pagado - r.importeNeto) < 1 ? "pagada" : "pagada_diferencia";
+  if (cobrosLiquidacion(r, liq).pendiente === 0) return "pagada";
+  return liq.pagado > 0 ? "parcial" : "por_cobrar";
 }
 
 /** Legacy weekly payments remain unassigned until the admin explicitly breaks them down. */

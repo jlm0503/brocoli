@@ -14,6 +14,14 @@ function pago(d = datos, anterior?: Liquidacion) {
   return result;
 }
 describe("Liquidaciones con viajes y abonos", () => {
+  it("pendiente de cobro cero se marca pagada automáticamente incluso si el pago excede el neto", () => {
+    for (const pagado of [3000, 3001, 3500]) {
+      const liq = { id: r.jueves, pagado, fecha: datos.fecha, comprobante: "p.pdf", por: "Jimena" };
+      expect(cobrosLiquidacion(r, liq).pendiente).toBe(0);
+      expect(estatusLiquidacion(r, liq, "2026-11-17")).toBe("pagada");
+      expect(liq.pagado).toBe(pagado);
+    }
+  });
   const correccion = { pagoId: "p1", fecha: datos.fecha, pagado: 400, viajes: [{ viajeId: "v1", monto: 400 }], motivo: "Pago duplicado", anular: false, por: "Jimena", corregidoEn: "2026-11-17T17:28:00Z" };
   it("solo Super Admin puede editar o anular pagos", () => {
     expect(corregirPagoLiquidacion(r, pago(), correccion, false)).toBe("Solo el Super Admin corrige pagos.");
