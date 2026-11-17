@@ -1729,7 +1729,6 @@ export function validarSalida(
     const b = d.bins?.[id];
     if (!(b !== undefined && Number.isInteger(b) && b > 0)) return "Escribe cuántos bins van de cada tabla (número entero mayor a 0).";
   }
-  if (!d.foto) return "Falta la foto de la hoja.";
   const cerrados = lotes.filter((l) => d.loteIds.includes(l.id) && l.finalizado);
   if (cerrados.length > 0) {
     if (!superAdmin) return "No se puede incluir un lote cerrado.";

@@ -347,9 +347,6 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
                   ) : (
                     <Badge variant={dias > 3 ? "urgente" : "pendiente"}>En tránsito · sin evaluación</Badge>
                   )}
-                  <VerEvidencia foto={v.foto} title="Ver foto de la hoja">
-                    <ImageIcon className="size-4" />
-                  </VerEvidencia>
                   {v.status === "transito" && puedeEvaluar && (
                     <Button size="sm" onClick={() => setEvaluando(v)}>
                       Evaluar

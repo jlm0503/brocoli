@@ -69,7 +69,6 @@ export function SalidaForm() {
   const [kgPorBin, setKgPorBin] = useState(String(KG_POR_BIN));
   const [verCerrados, setVerCerrados] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [foto, setFoto] = useState<string | undefined>();
   const [clave, setClave] = useState(0);
 
   const opciones = useMemo(
@@ -96,7 +95,6 @@ export function SalidaForm() {
       choferId: choferId || (choferNombre.trim() ? "capturado-en-salida" : ""),
       salida: { placas, destino, cumpleRequisitos: cumple, choferNombre, fotoCamion: fotoCamion ?? "", observaciones,
         tablas: loteIds.map((id) => { const l = lotes.find((x) => x.id === id); return { loteId: id, nombre: nombreLote(l), ha: l ? plantadasLote(l) : 0 }; }) },
-      foto,
       motivoCerrado: motivo,
       bins: modoCantidad === "bins" ? Object.fromEntries(loteIds.map((id) => [id, Number(bins[id] ?? 0)])) : undefined,
       kgSalida: modoCantidad === "kg" ? Object.fromEntries(loteIds.map((id) => [id, Number(kilos[id] ?? 0)])) : undefined,
@@ -115,7 +113,6 @@ export function SalidaForm() {
     setBins({});
     setKilos({});
     setMotivo("");
-    setFoto(undefined);
     setFotoCamion(undefined);
     setPlacas("");
     setDestino("");
@@ -248,7 +245,6 @@ export function SalidaForm() {
       )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <FotoInput key={clave} foto={foto} setFoto={setFoto} galeria texto="Foto de la hoja (cámara o galería)" />
         <FotoInput key={`camion-${clave}`} foto={fotoCamion} setFoto={setFotoCamion} galeria texto="Foto del camión (cámara o galería)" alt="Camión de la salida" />
       </div>
       <div className="mt-4 flex justify-end"><Button disabled={guardando} onClick={() => void guardar()}>{guardando ? "Guardando salida…" : "Dar salida y generar PDF"}</Button></div>

@@ -142,10 +142,11 @@ describe("Fase 4 · reglas de salida, evaluación y liquidación", () => {
     expect(validarSalida({ ...base, motivoCerrado: "Repaso" }, [abierto, cerrado], [], "2026-11-10", true)).toBeNull();
   });
 
-  it("la salida exige foto de la hoja y folio único", () => {
-    expect(validarSalida({ ...base, loteIds: ["l1"], foto: undefined }, [abierto], [], "2026-11-10", false)).toBe(
-      "Falta la foto de la hoja.",
-    );
+  it("la salida no requiere foto de la hoja generada en PDF", () => {
+    expect(validarSalida({ ...base, loteIds: ["l1"], foto: undefined }, [abierto], [], "2026-11-10", false)).toBeNull();
+  });
+
+  it("la salida exige folio único", () => {
     expect(
       validarSalida({ ...base, loteIds: ["l1"] }, [abierto], [viaje({ id: "x", folio: "h-1", fecha: "2026-11-09" })], "2026-11-10", false),
     ).toBe("Ya hay un viaje con ese folio.");

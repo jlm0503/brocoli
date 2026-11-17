@@ -22,10 +22,9 @@ async function imagenEvidencia(ruta: string): Promise<string> {
 }
 
 export async function pdfSalida(v: Viaje): Promise<Blob> {
-  const [{ jsPDF }, { default: autoTable }, camion, hoja] = await Promise.all([
+  const [{ jsPDF }, { default: autoTable }, camion] = await Promise.all([
     import("jspdf"), import("jspdf-autotable"),
     v.salida?.fotoCamion ? imagenEvidencia(v.salida.fotoCamion) : Promise.resolve(null),
-    v.foto ? imagenEvidencia(v.foto) : Promise.resolve(null),
   ]);
   const doc = new jsPDF({ unit: "mm", format: "letter" });
   const margen = 16;
@@ -62,7 +61,7 @@ export async function pdfSalida(v: Viaje): Promise<Blob> {
     headStyles: { fillColor: [47, 93, 58] }, footStyles: { fillColor: [47, 93, 58] },
   });
   let y = finalY() + 10;
-  for (const [titulo, imagen] of [["Fotografía del camión", camion], ["Hoja de embarque", hoja]] as const) {
+  for (const [titulo, imagen] of [["Fotografía del camión", camion]] as const) {
     if (!imagen) continue;
     const props = doc.getImageProperties(imagen);
     const alto = Math.min(80, ancho * props.height / props.width);
