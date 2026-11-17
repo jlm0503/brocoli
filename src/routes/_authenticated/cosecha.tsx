@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ImageIcon, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, ImageIcon, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import { AppShell, Stat } from "@/components/campo/AppShell";
 import { EvaluarDialog, SalidaForm, useNombreLote } from "@/components/campo/Cosecha";
 import { ViajesHistoricos } from "@/components/campo/ViajesHistoricos";
 import { VerEvidencia } from "@/components/campo/Evidencia";
+import { PdfSalida } from "@/components/campo/PdfSalida";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,7 +69,6 @@ function Cosecha() {
       path="/cosecha"
       eyebrow={`Cosecha · semana ${semanaActual}`}
       title="Cosecha"
-      description="La salida se registra sin kilos; los kilos entran con la evaluación de la congeladora. Solo cuentan los viajes evaluados."
       filtros
     >
         <Tabs defaultValue="panel">
@@ -286,10 +286,11 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
   const nombreLote = useNombreLote();
   const [buscar, setBuscar] = useState("");
   const [evaluando, setEvaluando] = useState<Viaje | null>(null);
+  const [salidaPdf, setSalidaPdf] = useState<Viaje | null>(null);
   const conImportes = roles.includes("admin");
 
   const texto = (v: Viaje) =>
-    [v.folio, v.fecha, fechaCorta(v.fecha), choferes.find((c) => c.id === v.choferId)?.nombre ?? "", ...v.loteIds.map((id) => nombreLote(lotes.find((l) => l.id === id)))]
+    [v.folio, v.fecha, fechaCorta(v.fecha), v.salida?.choferNombre ?? choferes.find((c) => c.id === v.choferId)?.nombre ?? "", v.salida?.placas ?? "", v.salida?.destino ?? "", ...v.loteIds.map((id) => nombreLote(lotes.find((l) => l.id === id)))]
       .join(" ")
       .toLowerCase();
   const lista = viajes
@@ -319,9 +320,10 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
               <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 text-sm">
                 <div>
                   <div className="font-medium">
-                    {v.folio} · {fechaCorta(v.fecha)} {v.hora} · {choferes.find((c) => c.id === v.choferId)?.nombre ?? "Chofer"}
+                    {v.folio} · {fechaCorta(v.fecha)} {v.hora} · {v.salida?.choferNombre ?? choferes.find((c) => c.id === v.choferId)?.nombre ?? "Chofer"}
                   </div>
                   <div className="text-xs text-muted-foreground">{v.loteIds.map((id) => nombreLote(lotes.find((l) => l.id === id))).join(" + ")}</div>
+                  {v.salida && <div className="text-xs text-muted-foreground">{v.salida.placas} · {v.salida.destino} · {v.salida.cumpleRequisitos ? "Sí cumple" : "No cumple"}</div>}
                   {estimadoViaje(v).kg > 0 && (
                     <div className="num text-xs text-muted-foreground">
                       {v.kgSalida ? "Salida: " : `${estimadoViaje(v).bins} bins · el rancho dijo ≈ `}{formatoNum(estimadoViaje(v).kg)} kg
@@ -338,6 +340,8 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button size="icon" variant="outline" aria-label={`PDF de salida ${v.folio}`} title="PDF de salida" onClick={() => setSalidaPdf(v)}><FileText /></Button>
+                  {v.salida?.fotoCamion && <VerEvidencia foto={v.salida.fotoCamion} title="Ver foto del camión"><ImageIcon className="size-4" /></VerEvidencia>}
                   {v.status === "evaluado" ? (
                     <Badge variant="recibido">Evaluado</Badge>
                   ) : (
@@ -363,6 +367,7 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
         </ul>
       )}
       <EvaluarDialog viaje={evaluando} onClose={() => setEvaluando(null)} />
+      <PdfSalida viaje={salidaPdf} onClose={() => setSalidaPdf(null)} />
     </section>
   );
 }

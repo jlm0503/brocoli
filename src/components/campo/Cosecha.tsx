@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { FotoInput } from "@/components/campo/Evidencia";
+import { PdfSalida } from "@/components/campo/PdfSalida";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +24,7 @@ import {
   plantadasLote,
   repartirKg,
 } from "@/lib/campo/calc";
-import { useCosecha } from "@/lib/campo/cosecha";
+import { useCosecha, type DatosSalida } from "@/lib/campo/cosecha";
 import { useFiltro } from "@/lib/campo/filtro";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
@@ -53,6 +54,14 @@ export function SalidaForm() {
   const [fecha, setFecha] = useState(hoy);
   const [hora, setHora] = useState(ahora);
   const [choferId, setChoferId] = useState("");
+  const [choferNombre, setChoferNombre] = useState("");
+  const [placas, setPlacas] = useState("");
+  const [destino, setDestino] = useState("");
+  const [cumple, setCumple] = useState<boolean | undefined>();
+  const [observaciones, setObservaciones] = useState("");
+  const [fotoCamion, setFotoCamion] = useState<string | undefined>();
+  const [guardando, setGuardando] = useState(false);
+  const [salidaPdf, setSalidaPdf] = useState<Viaje | null>(null);
   const [loteIds, setLoteIds] = useState<string[]>([]);
   const [bins, setBins] = useState<Record<string, string>>({});
   const [modoCantidad, setModoCantidad] = useState<"bins" | "kg">("bins");
@@ -76,20 +85,30 @@ export function SalidaForm() {
   );
   const hayCerrado = lotes.some((l) => loteIds.includes(l.id) && l.finalizado);
 
-  const guardar = () => {
-    const e = registrarSalida({
+  const guardar = async () => {
+    if (guardando) return;
+    if (cumple === undefined) return void toast.error("Indica si cumple o no los requisitos.");
+    const datos: DatosSalida = {
       folio,
       fecha,
       hora,
       loteIds,
-      choferId,
+      choferId: choferId || (choferNombre.trim() ? "capturado-en-salida" : ""),
+      salida: { placas, destino, cumpleRequisitos: cumple, choferNombre, fotoCamion: fotoCamion ?? "", observaciones,
+        tablas: loteIds.map((id) => { const l = lotes.find((x) => x.id === id); return { loteId: id, nombre: nombreLote(l), ha: l ? plantadasLote(l) : 0 }; }) },
       foto,
       motivoCerrado: motivo,
       bins: modoCantidad === "bins" ? Object.fromEntries(loteIds.map((id) => [id, Number(bins[id] ?? 0)])) : undefined,
       kgSalida: modoCantidad === "kg" ? Object.fromEntries(loteIds.map((id) => [id, Number(kilos[id] ?? 0)])) : undefined,
       kgPorBin: modoCantidad === "bins" ? Number(kgPorBin) : undefined,
-    });
-    if (e) return void toast.error(e);
+    };
+    setGuardando(true);
+    let resultado: string | Viaje;
+    try { resultado = await registrarSalida(datos); }
+    catch { toast.error("No se pudo guardar la salida. Inténtalo de nuevo."); return; }
+    finally { setGuardando(false); }
+    if (typeof resultado === "string") return void toast.error(resultado);
+    setSalidaPdf(resultado);
     toast.success(`Viaje ${folio} registrado: en tránsito, sin evaluación.`);
     setFolio("");
     setLoteIds([]);
@@ -97,6 +116,13 @@ export function SalidaForm() {
     setKilos({});
     setMotivo("");
     setFoto(undefined);
+    setFotoCamion(undefined);
+    setPlacas("");
+    setDestino("");
+    setCumple(undefined);
+    setObservaciones("");
+    setChoferId("");
+    setChoferNombre("");
     setHora(ahora());
     setClave((k) => k + 1);
   };
@@ -114,13 +140,13 @@ export function SalidaForm() {
           <Input id="sl-fecha" type="date" max={hoy} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="sl-hora">Hora</Label>
+          <Label htmlFor="sl-hora">Hora de salida</Label>
           <Input id="sl-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Chofer</Label>
-          <Select value={choferId} onValueChange={setChoferId}>
-            <SelectTrigger>
+          <Label>Chofer del catálogo</Label>
+          <Select value={choferId} onValueChange={(id) => { setChoferId(id); setChoferNombre(choferes.find((c) => c.id === id)?.nombre ?? ""); }}>
+            <SelectTrigger aria-label="Chofer del catálogo">
               <SelectValue placeholder={choferes.length ? "Elige" : "Sin choferes en Catálogos"} />
             </SelectTrigger>
             <SelectContent>
@@ -133,6 +159,14 @@ export function SalidaForm() {
           </Select>
         </div>
       </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-2"><Label htmlFor="sl-placas">Placas</Label><Input id="sl-placas" value={placas} onChange={(e) => setPlacas(e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="sl-destino">Destino</Label><Input id="sl-destino" value={destino} onChange={(e) => setDestino(e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="sl-chofer-nombre">Nombre del chofer</Label><Input id="sl-chofer-nombre" value={choferNombre} onChange={(e) => { setChoferNombre(e.target.value); setChoferId(""); }} /></div>
+        <div className="space-y-2"><Label>Cumple los requisitos</Label><div className="flex gap-2" role="group" aria-label="Cumplimiento de requisitos"><Button variant={cumple === true ? "default" : "outline"} aria-pressed={cumple === true} onClick={() => setCumple(true)}>Sí cumple</Button><Button variant={cumple === false ? "default" : "outline"} aria-pressed={cumple === false} onClick={() => setCumple(false)}>No cumple</Button></div></div>
+      </div>
+      <div className="mt-4 space-y-2"><Label htmlFor="sl-observaciones">Observaciones de la revisión</Label><Textarea id="sl-observaciones" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} /></div>
 
       <div className="mt-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -213,10 +247,12 @@ export function SalidaForm() {
         </div>
       )}
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <FotoInput key={clave} foto={foto} setFoto={setFoto} galeria texto="Foto de la hoja (cámara o galería)" />
-        <Button onClick={guardar}>Guardar salida</Button>
+        <FotoInput key={`camion-${clave}`} foto={fotoCamion} setFoto={setFotoCamion} galeria texto="Foto del camión (cámara o galería)" alt="Camión de la salida" />
       </div>
+      <div className="mt-4 flex justify-end"><Button disabled={guardando} onClick={() => void guardar()}>{guardando ? "Guardando salida…" : "Dar salida y generar PDF"}</Button></div>
+      <PdfSalida viaje={salidaPdf} onClose={() => setSalidaPdf(null)} />
     </section>
   );
 }

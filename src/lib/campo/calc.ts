@@ -1687,6 +1687,17 @@ export function lotesParaSalida(lotes: Lote[], incluirCerrados = false): Lote[] 
   return lotes.filter((l) => !l.cancelado && plantadasLote(l) > 0 && (incluirCerrados || !l.finalizado));
 }
 
+/** La revisión nueva no se exige a los viajes históricos ya registrados. */
+export function validarChecklistSalida(d: { hora: string; salida?: { placas: string; destino: string; cumpleRequisitos?: boolean | undefined; choferNombre: string; fotoCamion: string } | undefined }): string | null {
+  if (!d.salida?.placas.trim()) return "Escribe las placas del camión.";
+  if (!d.salida.destino.trim()) return "Escribe el destino.";
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(d.hora)) return "Indica la hora de salida.";
+  if (typeof d.salida.cumpleRequisitos !== "boolean") return "Indica si cumple o no los requisitos.";
+  if (!d.salida.choferNombre.trim()) return "Escribe el nombre del chofer.";
+  if (!d.salida.fotoCamion) return "Adjunta una imagen del camión.";
+  return null;
+}
+
 export function validarSalida(
   d: {
     folio: string;
@@ -3319,7 +3330,7 @@ export function viajesConsulta(viajes: Viaje[], lotes: Lote[], ciclos: CicloCerr
       const descuento = e && r ? e.descuento * r.pct / 100 : null;
       return [{ loteId: id, tablaId: r?.tablaId ?? l?.tablaId ?? c?.tablaId ?? "", ranchoId: r?.ranchoId ?? l?.ranchoId ?? c?.ranchoId ?? "", cultivo: l?.cultivo ?? c?.cultivo ?? "", plantacion: c?.fechaPlantacion ?? (l ? fechaPlantacionLote(l) : ""), kgBrutos: r?.kgBrutos ?? null, kgPagables: r?.kgPagables ?? null, precio: r?.precio ?? null, descuento, neto: r && descuento !== null ? r.importe - descuento : null }];
     });
-    return { id: v.id, folio: v.folio, fecha: v.fecha, hora: v.hora, chofer: choferes.find((c) => c.id === v.choferId)?.nombre ?? "—", placas: "", bins: v.bins ? Object.values(v.bins).reduce((s, n) => s + n, 0) : null, calidad: e?.calificacion ?? null, foto: v.foto, reporte: e?.reporte ?? "", historico: false, evaluado: !!e, reparto, kgTotal: e?.kgBrutos ?? null };
+    return { id: v.id, folio: v.folio, fecha: v.fecha, hora: v.hora, chofer: v.salida?.choferNombre ?? choferes.find((c) => c.id === v.choferId)?.nombre ?? "—", placas: v.salida?.placas ?? "", bins: v.bins ? Object.values(v.bins).reduce((s, n) => s + n, 0) : null, calidad: e?.calificacion ?? null, foto: v.foto, reporte: e?.reporte ?? "", historico: false, evaluado: !!e, reparto, kgTotal: e?.kgBrutos ?? null };
   });
   const historicos = new Map<string, ConsultaViaje>();
   for (const c of ciclos.filter((c) => c.tipo === "historico" && !c.reabierto)) for (const [i, v] of (c.viajesHistoricos ?? []).entries()) {

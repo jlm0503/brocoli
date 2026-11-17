@@ -537,6 +537,16 @@ export interface EvaluacionViaje {
   importeNeto: number;
 }
 
+export interface ChecklistSalida {
+  placas: string;
+  destino: string;
+  cumpleRequisitos: boolean;
+  choferNombre: string;
+  fotoCamion: string;
+  observaciones: string;
+  tablas: { loteId: string; nombre: string; ha: number }[];
+}
+
 export interface Viaje {
   id: string;
   /** Folio de la hoja */
@@ -552,6 +562,8 @@ export interface Viaje {
   kgPorBin?: number | undefined;
   choferId: string;
   congeladoraId: string;
+  /** Lista de salida y nombres originales; ausente en viajes anteriores. */
+  salida?: ChecklistSalida | undefined;
   /** Foto de la hoja (cámara o galería). */
   foto: string;
   por: string;

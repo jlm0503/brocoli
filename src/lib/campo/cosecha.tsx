@@ -14,12 +14,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-import { KG_POR_BIN, agregarPagoLiquidacion, corregirPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
+import { KG_POR_BIN, agregarPagoLiquidacion, corregirPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, validarChecklistSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
 import { PERMISOS_COSECHA, tiene } from "./roles";
 import { actualizarLiquidacion } from "./guardar-liquidacion";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
-import type { CicloCerrado, Liquidacion, Viaje } from "./types";
+import type { ChecklistSalida, CicloCerrado, Liquidacion, Viaje } from "./types";
 
 /**
  * Datos de la Fase 4 (viajes de cosecha y pagos semanales). Se guardan elemento por elemento
@@ -37,6 +37,7 @@ export interface DatosSalida {
   hora: string;
   loteIds: string[];
   choferId: string;
+  salida: ChecklistSalida;
   foto?: string | undefined;
   motivoCerrado?: string | undefined;
 }
@@ -49,7 +50,7 @@ interface CosechaValue {
   guardarCiclo: (c: CicloCerrado) => void;
   puedeViajes: boolean;
   puedeEvaluar: boolean;
-  registrarSalida: (d: DatosSalida) => string | null;
+  registrarSalida: (d: DatosSalida) => Promise<string | Viaje>;
   evaluar: (id: string, d: DatosEvaluacion) => string | null;
   eliminarViaje: (id: string) => void;
   guardarPago: (jueves: string, d: { fecha: string; comprobante?: string | undefined; viajes: { viajeId: string; monto: number }[]; desglosarAnterior?: boolean | undefined }) => string | null;
@@ -136,14 +137,15 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
   const superAdmin = roles.includes("admin");
 
   const registrarSalida = useCallback(
-    (d: DatosSalida) => {
+    async (d: DatosSalida): Promise<string | Viaje> => {
       if (!puedeViajes) return "Tu puesto no captura salidas de cosecha.";
       const error = validarSalida(d, lotes, viajes, hoy, superAdmin);
       if (error) return error;
-      if (!d.foto) return "Falta la foto de la hoja.";
+      const checklistError = validarChecklistSalida(d);
+      if (checklistError) return checklistError;
       const cerrado = lotes.some((l) => d.loteIds.includes(l.id) && l.finalizado);
-      poner("viajes", {
-        id: `vj-${Date.now()}`,
+      const viaje: Viaje = {
+        id: `vj-${crypto.randomUUID()}`,
         folio: d.folio.trim(),
         fecha: d.fecha,
         hora: d.hora,
@@ -153,14 +155,21 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
         kgPorBin: d.kgSalida ? undefined : d.kgPorBin && d.kgPorBin > 0 ? d.kgPorBin : KG_POR_BIN,
         choferId: d.choferId,
         congeladoraId: congeladoras[0]?.id ?? "principal",
-        foto: d.foto,
+        foto: d.foto ?? "",
+        salida: { ...d.salida, placas: d.salida.placas.trim(), destino: d.salida.destino.trim(), choferNombre: d.salida.choferNombre.trim() },
         por: nombre,
         motivoCerrado: cerrado ? d.motivoCerrado?.trim() : undefined,
         status: "transito",
-      } satisfies Viaje);
-      return null;
+      };
+      if (!simRef.current) {
+        if (!user) return "Inicia sesión para guardar la salida.";
+        const { error: errorGuardar } = await supabase.from("registros").insert({ coleccion: "viajes", id: viaje.id, data: JSON.parse(JSON.stringify(viaje)) as Json, updated_by: user.id });
+        if (errorGuardar) return "No se pudo guardar la salida. Revisa tu conexión e inténtalo de nuevo.";
+      }
+      setViajes((xs) => xs.some((v) => v.id === viaje.id) ? xs : [...xs, viaje]);
+      return viaje;
     },
-    [puedeViajes, lotes, viajes, hoy, superAdmin, congeladoras, nombre, poner],
+    [puedeViajes, lotes, viajes, hoy, superAdmin, congeladoras, nombre, user],
   );
 
   const evaluar = useCallback(
