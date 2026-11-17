@@ -546,6 +546,8 @@ export interface Viaje {
   loteIds: string[];
   /** Bins que mandó el rancho de cada lote (loteId → bins). Viajes anteriores pueden no tenerlos. */
   bins?: Record<string, number> | undefined;
+  /** Kilos capturados directamente en campo por lote; no son la evaluación de la congeladora. */
+  kgSalida?: Record<string, number> | undefined;
   /** Kg aproximados por bin al registrar la salida. */
   kgPorBin?: number | undefined;
   choferId: string;

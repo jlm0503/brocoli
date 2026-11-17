@@ -29,6 +29,7 @@ const COLS: Col4[] = ["viajes", "liquidaciones", "ciclos"];
 
 export interface DatosSalida {
   bins?: Record<string, number> | undefined;
+  kgSalida?: Record<string, number> | undefined;
   kgPorBin?: number | undefined;
   folio: string;
   fecha: string;
@@ -137,6 +138,7 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
       if (!puedeViajes) return "Tu puesto no captura salidas de cosecha.";
       const error = validarSalida(d, lotes, viajes, hoy, superAdmin);
       if (error) return error;
+      if (!d.foto) return "Falta la foto de la hoja.";
       const cerrado = lotes.some((l) => d.loteIds.includes(l.id) && l.finalizado);
       poner("viajes", {
         id: `vj-${Date.now()}`,
@@ -144,11 +146,12 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
         fecha: d.fecha,
         hora: d.hora,
         loteIds: d.loteIds,
-        bins: Object.fromEntries(d.loteIds.map((id) => [id, d.bins?.[id] ?? 0])),
-        kgPorBin: d.kgPorBin && d.kgPorBin > 0 ? d.kgPorBin : KG_POR_BIN,
+        bins: d.kgSalida ? undefined : Object.fromEntries(d.loteIds.map((id) => [id, d.bins?.[id] ?? 0])),
+        kgSalida: d.kgSalida ? Object.fromEntries(d.loteIds.map((id) => [id, d.kgSalida?.[id] ?? 0])) : undefined,
+        kgPorBin: d.kgSalida ? undefined : d.kgPorBin && d.kgPorBin > 0 ? d.kgPorBin : KG_POR_BIN,
         choferId: d.choferId,
         congeladoraId: congeladoras[0]?.id ?? "principal",
-        foto: d.foto!,
+        foto: d.foto,
         por: nombre,
         motivoCerrado: cerrado ? d.motivoCerrado?.trim() : undefined,
         status: "transito",

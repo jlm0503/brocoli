@@ -1696,6 +1696,7 @@ export function validarSalida(
     foto?: string | undefined;
     motivoCerrado?: string | undefined;
     bins?: Record<string, number> | undefined;
+    kgSalida?: Record<string, number> | undefined;
   },
   lotes: Lote[],
   viajes: Viaje[],
@@ -1709,6 +1710,11 @@ export function validarSalida(
   if (d.loteIds.length === 0) return "Elige al menos una tabla o lote.";
   if (!d.choferId) return "Elige el chofer.";
   for (const id of d.loteIds) {
+    if (d.kgSalida) {
+      const kg = d.kgSalida[id];
+      if (!(kg !== undefined && Number.isFinite(kg) && kg > 0)) return "Escribe los kilos de cada tabla (mayor a 0).";
+      continue;
+    }
     const b = d.bins?.[id];
     if (!(b !== undefined && Number.isInteger(b) && b > 0)) return "Escribe cuántos bins van de cada tabla (número entero mayor a 0).";
   }
@@ -1731,13 +1737,15 @@ export function repartirKg(
   kgPagables: number,
   ajuste?: { modo: "pct" | "kg"; valores: Record<string, number> },
   bins?: Record<string, number>,
+  kgSalida?: Record<string, number>,
 ): { error: string } | { filas: Pick<RepartoKg, "loteId" | "tablaId" | "ranchoId" | "pct" | "kgBrutos" | "kgPagables">[] } {
   if (lotes.length === 0) return { error: "El viaje no tiene lotes." };
   let pesos: number[];
   if (lotes.length === 1 || !ajuste) {
-    // Con bins capturados en la salida, se reparte proporcional a los bins; si no, por hectáreas.
+    // Usar los kilos directos o bins de salida; viajes anteriores conservan reparto por hectáreas.
+    const conKilos = kgSalida && lotes.every((l) => (kgSalida[l.id] ?? 0) > 0);
     const conBins = bins && lotes.every((l) => (bins[l.id] ?? 0) > 0);
-    pesos = lotes.map((l) => (conBins ? bins[l.id]! : plantadasLote(l)));
+    pesos = lotes.map((l) => (conKilos ? kgSalida?.[l.id] ?? 0 : conBins ? bins?.[l.id] ?? 0 : plantadasLote(l)));
   } else if (ajuste.modo === "pct") {
     pesos = lotes.map((l) => ajuste.valores[l.id] ?? 0);
     if (pesos.some((p) => p < 0)) return { error: "Los porcentajes no pueden ser negativos." };
@@ -1797,7 +1805,7 @@ export function evaluarViaje(
     if (p.modo === "pct" && p.valor > 100) return { error: "El % castigado no puede pasar de 100." };
   }
   const ls = v.loteIds.map((id) => ctx.lotes.find((l) => l.id === id)).filter((l): l is Lote => !!l);
-  const r = repartirKg(ls, d.kgBrutos, d.kgPagables, ls.length > 1 ? d.ajuste : undefined, v.bins);
+  const r = repartirKg(ls, d.kgBrutos, d.kgPagables, ls.length > 1 ? d.ajuste : undefined, v.bins, v.kgSalida);
   if ("error" in r) return r;
   const reparto: RepartoKg[] = r.filas.map((f) => {
     const l = ls.find((x) => x.id === f.loteId)!;
@@ -1888,26 +1896,29 @@ export function resumenSemanaPago(viajes: Viaje[], jueves: string): ResumenPago 
 
 export const KG_POR_BIN = 200;
 
-/** Kg que el rancho dijo que mandó (bins × kg por bin), por lote y total. 0 si el viaje no tiene bins. */
+/** Kg declarados en campo: kilos directos o bins × kg por bin, sin modificar la evaluación. */
 export function estimadoViaje(v: Viaje): { bins: number; kg: number; porLote: Record<string, { bins: number; kg: number }> } {
   const kgBin = v.kgPorBin ?? KG_POR_BIN;
   const porLote: Record<string, { bins: number; kg: number }> = {};
   let bins = 0;
+  let kg = 0;
   for (const id of v.loteIds) {
     const b = v.bins?.[id] ?? 0;
-    porLote[id] = { bins: b, kg: b * kgBin };
+    const kilos = v.kgSalida?.[id] ?? b * kgBin;
+    porLote[id] = { bins: b, kg: kilos };
     bins += b;
+    kg += kilos;
   }
-  return { bins, kg: bins * kgBin, porLote };
+  return { bins, kg, porLote };
 }
 
-/** Lo que el rancho dijo que mandó contra lo que llegó (kg brutos), solo de viajes evaluados con bins. */
+/** Lo declarado en campo contra lo recibido, solo de viajes evaluados con cantidad de salida. */
 export function enviadoVsLlegado(viajes: Viaje[]): { bins: number; kgDicho: number; kgLlegado: number; diferencia: number; pct: number } {
   let bins = 0, kgDicho = 0, kgLlegado = 0;
   for (const v of viajes) {
-    if (!v.evaluacion || !v.bins) continue;
+    if (!v.evaluacion) continue;
     const e = estimadoViaje(v);
-    if (e.bins === 0) continue;
+    if (e.kg === 0) continue;
     bins += e.bins;
     kgDicho += e.kg;
     kgLlegado += v.evaluacion.kgBrutos;

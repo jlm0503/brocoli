@@ -39,7 +39,7 @@ export function useNombreLote() {
   };
 }
 
-/* ───────────── 4.1 Salida del embarque (sin kilos) ───────────── */
+/* ───────────── 4.1 Salida del embarque ───────────── */
 
 export function SalidaForm() {
   const { lotes, choferes, hoy, semanaActual } = useCampo();
@@ -55,6 +55,8 @@ export function SalidaForm() {
   const [choferId, setChoferId] = useState("");
   const [loteIds, setLoteIds] = useState<string[]>([]);
   const [bins, setBins] = useState<Record<string, string>>({});
+  const [modoCantidad, setModoCantidad] = useState<"bins" | "kg">("bins");
+  const [kilos, setKilos] = useState<Record<string, string>>({});
   const [kgPorBin, setKgPorBin] = useState(String(KG_POR_BIN));
   const [verCerrados, setVerCerrados] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -83,14 +85,16 @@ export function SalidaForm() {
       choferId,
       foto,
       motivoCerrado: motivo,
-      bins: Object.fromEntries(loteIds.map((id) => [id, Number(bins[id] ?? 0)])),
-      kgPorBin: Number(kgPorBin),
+      bins: modoCantidad === "bins" ? Object.fromEntries(loteIds.map((id) => [id, Number(bins[id] ?? 0)])) : undefined,
+      kgSalida: modoCantidad === "kg" ? Object.fromEntries(loteIds.map((id) => [id, Number(kilos[id] ?? 0)])) : undefined,
+      kgPorBin: modoCantidad === "bins" ? Number(kgPorBin) : undefined,
     });
     if (e) return void toast.error(e);
     toast.success(`Viaje ${folio} registrado: en tránsito, sin evaluación.`);
     setFolio("");
     setLoteIds([]);
     setBins({});
+    setKilos({});
     setMotivo("");
     setFoto(undefined);
     setHora(ahora());
@@ -100,7 +104,6 @@ export function SalidaForm() {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-card">
       <h2 className="text-2xl font-semibold">Registrar salida</h2>
-      <p className="mb-4 text-sm text-muted-foreground">Sin kilos: esos llegan con la evaluación de la congeladora.</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Label htmlFor="sl-folio">Folio de la hoja</Label>
@@ -167,11 +170,14 @@ export function SalidaForm() {
       {loteIds.length > 0 && (
         <div className="mt-4 space-y-2 rounded-lg border border-border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label>Bins de cada tabla</Label>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1" role="group" aria-label="Cantidad de salida">
+              <Button size="sm" variant={modoCantidad === "bins" ? "default" : "outline"} aria-pressed={modoCantidad === "bins"} onClick={() => setModoCantidad("bins")}>Bins</Button>
+              <Button size="sm" variant={modoCantidad === "kg" ? "default" : "outline"} aria-pressed={modoCantidad === "kg"} onClick={() => setModoCantidad("kg")}>Kilos</Button>
+            </div>
+            {modoCantidad === "bins" && <label className="flex items-center gap-2 text-xs text-muted-foreground">
               Kg aprox. por bin
               <Input type="number" inputMode="decimal" className="num h-8 w-20" value={kgPorBin} onChange={(e) => setKgPorBin(e.target.value)} />
-            </label>
+            </label>}
           </div>
           {loteIds.map((id) => {
             const l = lotes.find((x) => x.id === id);
@@ -181,21 +187,21 @@ export function SalidaForm() {
                 <span className="flex-1">{nombreLote(l)}</span>
                 <Input
                   type="number"
-                  inputMode="numeric"
-                  min={1}
+                  inputMode={modoCantidad === "bins" ? "numeric" : "decimal"}
+                  min={modoCantidad === "bins" ? 1 : 0.01}
+                  step={modoCantidad === "bins" ? 1 : "any"}
                   className="num w-24"
-                  aria-label={`Bins de ${l?.codigo ?? ""}`}
-                  placeholder="bins"
-                  value={bins[id] ?? ""}
-                  onChange={(e) => setBins((b) => ({ ...b, [id]: e.target.value }))}
+                  aria-label={`${modoCantidad === "bins" ? "Bins" : "Kilos"} de ${l?.codigo ?? ""}`}
+                  placeholder={modoCantidad === "bins" ? "bins" : "kg"}
+                  value={(modoCantidad === "bins" ? bins : kilos)[id] ?? ""}
+                  onChange={(e) => (modoCantidad === "bins" ? setBins : setKilos)((b) => ({ ...b, [id]: e.target.value }))}
                 />
-                <span className="num w-28 text-right text-xs text-muted-foreground">≈ {formatoNum(n * (Number(kgPorBin) || 0))} kg</span>
+                {modoCantidad === "bins" && <span className="num w-28 text-right text-xs text-muted-foreground">≈ {formatoNum(n * (Number(kgPorBin) || 0))} kg</span>}
               </div>
             );
           })}
           <p className="num text-right text-xs text-muted-foreground">
-            Total: {formatoNum(loteIds.reduce((s, id) => s + Number(bins[id] ?? 0), 0))} bins ≈{" "}
-            {formatoNum(loteIds.reduce((s, id) => s + Number(bins[id] ?? 0), 0) * (Number(kgPorBin) || 0))} kg
+            Total: {modoCantidad === "bins" ? `${formatoNum(loteIds.reduce((s, id) => s + Number(bins[id] ?? 0), 0))} bins ≈ ${formatoNum(loteIds.reduce((s, id) => s + Number(bins[id] ?? 0), 0) * (Number(kgPorBin) || 0))} kg` : `${formatoNum(loteIds.reduce((s, id) => s + Number(kilos[id] ?? 0), 0))} kg`}
           </p>
         </div>
       )}
@@ -257,7 +263,7 @@ function EvaluarForm({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) 
         : undefined,
   };
   const previa = Number(brutos) > 0 ? evaluarViaje(viaje, { ...datos, reporte: "previa" }, { lotes, parametros, hoy, por: nombre }) : null;
-  const repartoAuto = Number(brutos) > 0 ? repartirKg(ls, Number(brutos), Number(pagables) || 0, undefined, viaje.bins) : null;
+  const repartoAuto = Number(brutos) > 0 ? repartirKg(ls, Number(brutos), Number(pagables) || 0, undefined, viaje.bins, viaje.kgSalida) : null;
   const est = estimadoViaje(viaje);
 
   const guardar = () => {
@@ -277,15 +283,15 @@ function EvaluarForm({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) 
         </DialogDescription>
       </DialogHeader>
 
-      {est.bins > 0 && (
+      {est.kg > 0 && (
         <div className="rounded-lg bg-muted/60 p-3 text-sm">
           <p className="font-medium">
-            El rancho dice que mandó {formatoNum(est.bins)} bins ≈ <span className="num">{formatoNum(est.kg)} kg</span>
+            El rancho dice que mandó {viaje.kgSalida ? "" : `${formatoNum(est.bins)} bins ≈ `}<span className="num">{formatoNum(est.kg)} kg</span>
           </p>
           <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
             {ls.map((l) => (
               <li key={l.id} className="num">
-                {nombreLote(l)}: {est.porLote[l.id]?.bins ?? 0} bins ≈ {formatoNum(est.porLote[l.id]?.kg ?? 0)} kg
+                {nombreLote(l)}: {viaje.kgSalida ? "" : `${est.porLote[l.id]?.bins ?? 0} bins ≈ `}{formatoNum(est.porLote[l.id]?.kg ?? 0)} kg
               </li>
             ))}
           </ul>
@@ -379,7 +385,7 @@ function EvaluarForm({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="auto">{est.bins > 0 ? "Proporcional a los bins" : "Por hectáreas en cosecha"}</SelectItem>
+                  <SelectItem value="auto">{viaje.kgSalida ? "Proporcional a los kilos de salida" : est.bins > 0 ? "Proporcional a los bins" : "Por hectáreas en cosecha"}</SelectItem>
                   <SelectItem value="pct">Ajustar %</SelectItem>
                   <SelectItem value="kg">Kg pagables por tabla</SelectItem>
                 </SelectContent>

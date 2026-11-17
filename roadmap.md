@@ -34,7 +34,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Prueba completa con datos de prueba (3 nov): "Rancho Prueba", tablas Prueba 1-4, variedad "Prueba", EX-0001 a EX-0005, una devolución; el ingeniero Prueba quedó asignado solo a Rancho Prueba
 - [ ] Borrar los datos de prueba cuando Jimena lo pida (por ahora se quedan para pruebas; incluye Chofer Prueba y viaje PRUEBA-V1) (ids prueba-*, rancho prueba-rancho, ex-* de ese rancho, alertas y devolución ligadas)
 ## Fase 4 — Cosecha (cerrada por el usuario, 5 nov)
-- [x] Salida del embarque sin kilos (folio, fecha/hora, chofer, lotes, foto de la hoja); lote cerrado solo Super Admin con motivo
+- [x] Salida del embarque con elección de bins o kilos directos por tabla (folio, fecha/hora, chofer, lotes, foto); kilos de campo separados de la evaluación. 22 pruebas pasando; captura de 1,250.5 kg guardada y comprobada al recargar, prueba retirada y vista móvil revisada. Lote cerrado solo Super Admin con motivo.
 - [x] Evaluación: kg brutos/pagables, calificación, problemas, reporte; reparto por ha o ajuste del Super Admin; merma, bruto, descuento, neto
 - [x] Descuento por viaje abona a la Cuenta de planta
 - [x] Panel de cosecha con semana, indicadores, semáforo de meta y "Cosecha terminada"; alerta de viaje sin evaluar a 3 días

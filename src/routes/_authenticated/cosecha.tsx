@@ -322,9 +322,9 @@ function ListaViajes({ soloTransito }: { soloTransito: boolean }) {
                     {v.folio} · {fechaCorta(v.fecha)} {v.hora} · {choferes.find((c) => c.id === v.choferId)?.nombre ?? "Chofer"}
                   </div>
                   <div className="text-xs text-muted-foreground">{v.loteIds.map((id) => nombreLote(lotes.find((l) => l.id === id))).join(" + ")}</div>
-                  {estimadoViaje(v).bins > 0 && (
+                  {estimadoViaje(v).kg > 0 && (
                     <div className="num text-xs text-muted-foreground">
-                      {estimadoViaje(v).bins} bins · el rancho dijo ≈ {formatoNum(estimadoViaje(v).kg)} kg
+                      {v.kgSalida ? "Salida: " : `${estimadoViaje(v).bins} bins · el rancho dijo ≈ `}{formatoNum(estimadoViaje(v).kg)} kg
                       {v.evaluacion && ` · llegaron ${formatoNum(v.evaluacion.kgBrutos)} kg (${v.evaluacion.kgBrutos - estimadoViaje(v).kg >= 0 ? "+" : ""}${formatoNum(v.evaluacion.kgBrutos - estimadoViaje(v).kg)})`}
                     </div>
                   )}

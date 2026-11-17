@@ -211,7 +211,32 @@ describe("bins por tabla en la salida", () => {
   });
 });
 
-describe("salida exige bins", () => {
+describe("salida permite elegir bins o kilos", () => {
+  const base = { folio: "H-9", fecha: "2026-11-10", loteIds: ["x"], choferId: "c", foto: "f" };
+  it("acepta kilos decimales sin exigir ni inventar bins", async () => {
+    const { estimadoViaje } = await import("@/lib/campo/calc");
+    expect(validarSalida({ ...base, kgSalida: { x: 1250.5 } }, [], [], base.fecha, false)).toBeNull();
+    const v = viaje({ id: "kg", fecha: base.fecha, loteIds: ["x"], kgSalida: { x: 1250.5 } });
+    expect(estimadoViaje(v)).toMatchObject({ bins: 0, kg: 1250.5 });
+    expect(v.evaluacion).toBeUndefined();
+  });
+  it("conserva la captura de bins enteros sin exigir kilos", () => {
+    expect(validarSalida({ ...base, bins: { x: 8 } }, [], [], base.fecha, false)).toBeNull();
+    expect(validarSalida({ ...base, bins: { x: 8.5 } }, [], [], base.fecha, false)).not.toBeNull();
+  });
+  it("exige kilos positivos y finitos en todas las tablas elegidas", () => {
+    for (const kg of [0, -1, NaN, Infinity]) {
+      expect(validarSalida({ ...base, kgSalida: { x: kg } }, [], [], base.fecha, false)).not.toBeNull();
+    }
+    expect(validarSalida({ ...base, loteIds: ["x", "y"], kgSalida: { x: 100 } }, [], [], base.fecha, false)).not.toBeNull();
+  });
+  it("reparte la evaluación por kilos de salida y compara lo enviado sin bins", async () => {
+    const { enviadoVsLlegado } = await import("@/lib/campo/calc");
+    const ls = [lote({ id: "a" }), lote({ id: "b" })];
+    const v = evaluado(viaje({ id: "kg2", fecha: base.fecha, loteIds: ["a", "b"], kgSalida: { a: 3000, b: 1000 } }), ls, 3600, 3200);
+    expect(v.evaluacion?.reparto.map((r) => r.kgPagables)).toEqual([2400, 800]);
+    expect(enviadoVsLlegado([v])).toMatchObject({ bins: 0, kgDicho: 4000, kgLlegado: 3600, diferencia: -400 });
+  });
   it("rechaza la salida sin bins de una tabla", async () => {
     const { validarSalida } = await import("@/lib/campo/calc");
     expect(validarSalida({ folio: "H-9", fecha: "2026-11-10", loteIds: ["x"], choferId: "c", foto: "f" }, [], [], "2026-11-10", false)).toMatch(/bins/);
