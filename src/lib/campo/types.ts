@@ -578,6 +578,7 @@ export interface Liquidacion {
   comprobante: string;
   por: string;
   pagos?: PagoLiquidacion[] | undefined;
+  correcciones?: { pagoAnterior: PagoLiquidacion; motivo: string; fecha: string; por: string; anulacion: boolean }[] | undefined;
 }
 
 export type EstatusLiquidacion = "abierta" | "por_cobrar" | "parcial" | "pagada" | "pagada_diferencia";

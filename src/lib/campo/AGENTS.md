@@ -1,5 +1,5 @@
 # Architecture rules
-- Weekly settlements append dated receipts with explicit per-trip amounts; calc.ts derives outstanding balances and reconciles legacy unassigned receipts without charging twice. Why: partial payments must retain their evidence and unpaid trips.
+- Weekly settlements append dated receipts with explicit per-trip amounts; calc.ts derives balances and reconciles legacy receipts. Admin-only corrections preserve originals and reasons and use conditional updates. Why: partial payments and duplicate corrections must retain evidence without overwriting concurrent changes.
 - Capture permissions and provider-operation guards live in roles.ts; shared collections use explicit updates for existing rows and database triggers enforce per-action and assigned-ranch scope. Why: an upsert invokes insert guards even when receiving an existing order.
 - Engineers and ranch managers insert unevaluated harvest departures through the shared harvest provider; a database trigger reserves trip changes and deletion for admins. Why: departure access must not permit historical or financial changes.
 - Departures store either bins or direct kg per lot; calc helpers validate, compare and allocate using that quantity without creating an evaluation. Why: field weights must remain distinct from frozen freezer receipts and legacy trips.

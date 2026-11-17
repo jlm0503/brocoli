@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-import { KG_POR_BIN, agregarPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
+import { KG_POR_BIN, agregarPagoLiquidacion, corregirPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
 import { PERMISOS_COSECHA, tiene } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
@@ -52,6 +52,7 @@ interface CosechaValue {
   evaluar: (id: string, d: DatosEvaluacion) => string | null;
   eliminarViaje: (id: string) => void;
   guardarPago: (jueves: string, d: { fecha: string; comprobante?: string | undefined; viajes: { viajeId: string; monto: number }[]; desglosarAnterior?: boolean | undefined }) => string | null;
+  corregirPago: (jueves: string, d: { pagoId: string; fecha: string; pagado: number; viajes: { viajeId: string; monto: number }[]; motivo: string; anular: boolean }) => Promise<string | null>;
 }
 
 const KEY = "__campoCosecha__";
@@ -204,6 +205,22 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     [superAdmin, nombre, poner, viajes, liquidaciones],
   );
 
+  const corregirPago = useCallback(async (jueves: string, d: { pagoId: string; fecha: string; pagado: number; viajes: { viajeId: string; monto: number }[]; motivo: string; anular: boolean }) => {
+    if (!superAdmin) return "Solo el Super Admin corrige pagos.";
+    const liq = liquidaciones.find((l) => l.id === jueves);
+    if (!liq) return "No se encontró la liquidación.";
+    const resultado = corregirPagoLiquidacion(resumenSemanaPago(viajes, jueves), liq, { ...d, por: nombre, corregidoEn: new Date().toISOString() }, superAdmin);
+    if (typeof resultado === "string") return resultado;
+    if (!simRef.current) {
+      if (!user) return "Inicia sesión para corregir el pago.";
+      const { data, error } = await supabase.from("registros").update({ data: JSON.parse(JSON.stringify(resultado)) as Json, updated_by: user.id }).eq("coleccion", "liquidaciones").eq("id", jueves).eq("data", JSON.parse(JSON.stringify(liq)) as NonNullable<Json>).select("id");
+      if (error) return "No se pudo guardar la corrección. Inténtalo de nuevo.";
+      if (!data?.length) { await cargar(); return "El pago cambió en otro dispositivo. Revisa los datos e inténtalo de nuevo."; }
+    }
+    setLiqs((xs) => xs.map((l) => l.id === jueves ? resultado : l));
+    return null;
+  }, [superAdmin, liquidaciones, viajes, nombre, user, cargar]);
+
   const guardarCiclo = useCallback(
     (c: CicloCerrado) => {
       if (superAdmin) poner("ciclos", c);
@@ -212,8 +229,8 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<CosechaValue>(
-    () => ({ viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago }),
-    [viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago],
+    () => ({ viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago, corregirPago }),
+    [viajes, liquidaciones, ciclos, guardarCiclo, puedeViajes, puedeEvaluar, registrarSalida, evaluar, eliminarViaje, guardarPago, corregirPago],
   );
   return <CosechaContext.Provider value={value}>{children}</CosechaContext.Provider>;
 }

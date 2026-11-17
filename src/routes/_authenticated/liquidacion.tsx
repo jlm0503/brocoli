@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileDown, FileSpreadsheet, ImageIcon } from "lucide-react";
+import { FileDown, FileSpreadsheet, ImageIcon, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/campo/AppShell";
+import { CorregirPago } from "@/components/campo/CorregirPago";
 import { useNombreLote } from "@/components/campo/Cosecha";
 import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,7 @@ import { useCosecha } from "@/lib/campo/cosecha";
 import { exportarExcel, exportarPdf } from "@/lib/campo/exportar-liquidacion";
 import { useCampo } from "@/lib/campo/store";
 import { useSesion } from "@/lib/campo/sesion";
-import type { EstatusLiquidacion, Liquidacion } from "@/lib/campo/types";
+import type { EstatusLiquidacion, Liquidacion, PagoLiquidacion } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/liquidacion")({
   head: () => ({
@@ -82,6 +83,8 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
   const [desglosarAnterior, setDesglosarAnterior] = useState(false);
   const [fecha, setFecha] = useState(hoy);
   const [comprobante, setComprobante] = useState<string | undefined>();
+  const [editando, setEditando] = useState<PagoLiquidacion | null>(null);
+  const pagos = liq?.pagos ?? (liq ? [{ id: `anterior-${r.jueves}`, fecha: liq.fecha, pagado: liq.pagado, comprobante: liq.comprobante, por: liq.por, viajes: [] }] : []);
   const est = estatusLiquidacion(r, liq, hoy);
   const cobros = cobrosLiquidacion(r, liq);
   const seleccionados = Object.entries(montos).map(([viajeId, monto]) => ({ viajeId, monto: Number(monto) }));
@@ -142,7 +145,7 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => setAbierta((v) => !v)}>
-          {abierta ? "Ocultar desglose" : "Ver desglose y registrar pago"}
+          {abierta ? "Ocultar desglose" : puedePagar ? "Ver desglose y registrar pago" : "Ver desglose"}
         </Button>
         <Button size="sm" variant="outline" onClick={() => exportarExcel(r, nombres, liq)}>
           <FileSpreadsheet /> Excel
@@ -257,15 +260,18 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
               {desglosarAnterior ? "Guardar desglose anterior" : "Registrar abono"}
             </Button>
           </div>}
-          {!!liq?.pagos?.length && <div className="space-y-2 border-t border-border pt-3">
+          {!!pagos.length && <div className="space-y-2 border-t border-border pt-3">
             <h3 className="font-medium">Pagos registrados</h3>
-            {liq.pagos.map((p) => <div key={p.id} className="flex flex-wrap justify-between gap-2 text-sm">
+            {pagos.map((p) => <div key={p.id} className="flex flex-wrap justify-between gap-2 text-sm">
               <span>{fechaCorta(p.fecha)} · {p.viajes.length ? p.viajes.map((f) => `${r.viajes.find((v) => v.id === f.viajeId)?.folio ?? f.viajeId}: ${formatoMXN(f.monto)}`).join(" · ") : "Sin asignar a viajes"}</span>
               <span className="num">{formatoMXN(p.pagado)} · <VerEvidencia foto={p.comprobante} title="Ver comprobante del abono"><span className="text-primary">Comprobante</span></VerEvidencia></span>
+              {puedePagar && <Button size="sm" variant="outline" aria-label={`Editar pago ${p.id}`} onClick={() => setEditando(p)}><Pencil /> Editar pago</Button>}
             </div>)}
           </div>}
+          {!!liq?.correcciones?.length && <div className="space-y-2 border-t border-border pt-3 text-sm"><h3 className="font-medium">Correcciones de pagos</h3>{liq.correcciones.map((c, i) => <p key={`${c.fecha}-${i}`}>{c.anulacion ? "Anulado" : "Corregido"}: {formatoMXN(c.pagoAnterior.pagado)} · {c.motivo} · {c.por}</p>)}</div>}
         </div>
       )}
+      {puedePagar && editando && <CorregirPago pago={editando} jueves={r.jueves} viajes={r.viajes} cerrar={() => setEditando(null)} />}
     </article>
   );
 }

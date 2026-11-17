@@ -2006,6 +2006,42 @@ export function agregarPagoLiquidacion(
   return { id: r.jueves, fecha, comprobante, por: d.por, pagado: d.desglosarAnterior ? (liq?.pagado ?? 0) : redondear((liq?.pagado ?? 0) + pagado), pagos };
 }
 
+/** Correct one receipt, retaining the original for audit and recalculating only payment balances. */
+export function corregirPagoLiquidacion(
+  r: ResumenPago,
+  liq: Liquidacion,
+  d: { pagoId: string; fecha: string; pagado: number; viajes: { viajeId: string; monto: number }[]; motivo: string; anular: boolean; por: string; corregidoEn: string },
+  superAdmin: boolean,
+): Liquidacion | string {
+  if (!superAdmin) return "Solo el Super Admin corrige pagos.";
+  if (!d.motivo.trim()) return "Indica el motivo de la corrección.";
+  const pagos = liq.pagos ?? [{ id: `anterior-${r.jueves}`, pagado: liq.pagado, fecha: liq.fecha, comprobante: liq.comprobante, por: liq.por, viajes: [] }];
+  const anterior = pagos.find((p) => p.id === d.pagoId);
+  if (!anterior) return "No se encontró el pago.";
+  const restantes = pagos.filter((p) => p.id !== d.pagoId);
+  const base = { ...liq, pagos: restantes, pagado: redondear(restantes.reduce((s, p) => s + p.pagado, 0)) };
+  if (!d.anular) {
+    if (anterior.viajes.length) {
+      const nuevo = agregarPagoLiquidacion(r, base, { id: anterior.id, fecha: d.fecha, comprobante: anterior.comprobante, por: d.por, viajes: d.viajes });
+      if (typeof nuevo === "string") return nuevo;
+      const reemplazo = nuevo.pagos?.find((p) => p.id === anterior.id);
+      if (!reemplazo) return "No se pudo corregir el pago.";
+      restantes.splice(pagos.indexOf(anterior), 0, reemplazo);
+    } else {
+      const error = validarPago({ pagado: d.pagado, fecha: d.fecha, comprobante: anterior.comprobante });
+      if (error) return error;
+      if (d.pagado <= 0) return "Captura un monto mayor a cero.";
+      restantes.splice(pagos.indexOf(anterior), 0, { ...anterior, fecha: d.fecha, pagado: redondear(d.pagado), por: d.por });
+    }
+  }
+  const ultimo = restantes.at(-1);
+  return {
+    ...liq, pagos: restantes, pagado: redondear(restantes.reduce((s, p) => s + p.pagado, 0)),
+    fecha: ultimo?.fecha ?? liq.fecha, comprobante: ultimo?.comprobante ?? liq.comprobante, por: d.por,
+    correcciones: [...(liq.correcciones ?? []), { pagoAnterior: anterior, motivo: d.motivo.trim(), fecha: d.corregidoEn, por: d.por, anulacion: d.anular }],
+  };
+}
+
 export function validarPago(d: { pagado: number; fecha: string; comprobante?: string | undefined }): string | null {
   if (!(d.pagado >= 0) || !Number.isFinite(d.pagado)) return "Captura el monto pagado.";
   if (!d.fecha) return "Captura la fecha del pago.";

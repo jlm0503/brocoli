@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agregarPagoLiquidacion, cobrosLiquidacion, estatusLiquidacion, resumenSemanaPago } from "@/lib/campo/calc";
+import { agregarPagoLiquidacion, corregirPagoLiquidacion, cobrosLiquidacion, estatusLiquidacion, resumenSemanaPago } from "@/lib/campo/calc";
 import type { Liquidacion, Viaje } from "@/lib/campo/types";
 
 const viajes: Viaje[] = [1, 2, 3].map((n) => ({
@@ -14,6 +14,40 @@ function pago(d = datos, anterior?: Liquidacion) {
   return result;
 }
 describe("Liquidaciones con viajes y abonos", () => {
+  const correccion = { pagoId: "p1", fecha: datos.fecha, pagado: 400, viajes: [{ viajeId: "v1", monto: 400 }], motivo: "Pago duplicado", anular: false, por: "Jimena", corregidoEn: "2026-11-17T17:28:00Z" };
+  it("solo Super Admin puede editar o anular pagos", () => {
+    expect(corregirPagoLiquidacion(r, pago(), correccion, false)).toBe("Solo el Super Admin corrige pagos.");
+    expect(corregirPagoLiquidacion(r, pago(), { ...correccion, anular: true }, false)).toBe("Solo el Super Admin corrige pagos.");
+    expect(typeof corregirPagoLiquidacion(r, pago(), correccion, true)).toBe("object");
+  });
+  it("editar un abono restaura el saldo y conserva el original", () => {
+    const l = corregirPagoLiquidacion(r, pago(), correccion, true);
+    if (typeof l === "string") throw new Error(l);
+    expect(l.pagado).toBe(400);
+    expect(cobrosLiquidacion(r, l).porViaje[0]?.pendiente).toBe(600);
+    expect(l.correcciones?.[0]?.pagoAnterior.pagado).toBe(1000);
+  });
+  it("anular el duplicado conserva los otros abonos sin borrar evidencia", () => {
+    const l = pago({ ...datos, id: "p2", viajes: [{ viajeId: "v2", monto: 1000 }] }, pago());
+    const result = corregirPagoLiquidacion(r, l, { ...correccion, anular: true }, true);
+    if (typeof result === "string") throw new Error(result);
+    expect(result.pagado).toBe(1000);
+    expect(result.pagos?.map((p) => p.id)).toEqual(["p2"]);
+    expect(cobrosLiquidacion(r, result).porViaje.map((v) => v.pendiente)).toEqual([1000, 0, 1000]);
+    expect(result.correcciones?.[0]?.pagoAnterior.comprobante).toBe("p.pdf");
+    expect(l.pagado).toBe(2000);
+  });
+  it("corrige pagos antiguos sin inventar asignaciones", () => {
+    const original = { id: r.jueves, pagado: 1000, fecha: datos.fecha, comprobante: "original.pdf", por: "J" };
+    const l = corregirPagoLiquidacion(r, original, { ...correccion, pagoId: `anterior-${r.jueves}`, viajes: [] }, true);
+    if (typeof l === "string") throw new Error(l);
+    expect(l.pagado).toBe(400);
+    expect(cobrosLiquidacion(r, l).sinAsignar).toBe(400);
+  });
+  it("rechaza correcciones sin motivo y montos mayores al saldo real", () => {
+    expect(typeof corregirPagoLiquidacion(r, pago(), { ...correccion, motivo: " " }, true)).toBe("string");
+    expect(typeof corregirPagoLiquidacion(r, pago(), { ...correccion, viajes: [{ viajeId: "v1", monto: 1001 }] }, true)).toBe("string");
+  });
   it("pagar un viaje deja los otros dos pendientes de esa semana", () => {
     const l = pago();
     expect(l.pagado).toBe(1000);
