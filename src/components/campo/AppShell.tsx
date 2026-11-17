@@ -35,7 +35,7 @@ import { MiCuenta } from "@/components/campo/MiCuenta";
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
 import { useAvisos } from "@/lib/campo/fase3";
-import { NAV, ROLES, puedeVer, type NavPath } from "@/lib/campo/roles";
+import { NAV, ROLES, inicioDe, puedeVer, type NavPath } from "@/lib/campo/roles";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 
@@ -211,10 +211,10 @@ export function AppShell({ path, eyebrow, title, description, actions, filtros, 
               <ShieldAlert className="mx-auto size-8 text-soil" />
               <h1 className="mt-4 text-2xl font-semibold">Esta pantalla no es para tu puesto</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Como {ROLES[role].nombre.toLowerCase()} no tienes acceso a esta sección.
+                {role === "personalizado" ? "No tienes permiso para ver esta sección." : `Como ${ROLES[role].nombre.toLowerCase()} no tienes acceso a esta sección.`}
               </p>
               <Button asChild className="mt-6">
-                <Link to={ROLES[role].home}>Ir a mi pantalla</Link>
+                <Link to={inicioDe(roles)}>Ir a mi pantalla</Link>
               </Button>
             </div>
           )}

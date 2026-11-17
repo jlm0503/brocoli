@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      permisos_pantalla: {
+        Row: {
+          borrar: boolean
+          capturar: boolean
+          editar: boolean
+          pantalla: string
+          user_id: string
+          ver: boolean
+        }
+        Insert: {
+          borrar?: boolean
+          capturar?: boolean
+          editar?: boolean
+          pantalla: string
+          user_id: string
+          ver?: boolean
+        }
+        Update: {
+          borrar?: boolean
+          capturar?: boolean
+          editar?: boolean
+          pantalla?: string
+          user_id?: string
+          ver?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -89,6 +116,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      pantallas_de: { Args: { _coleccion: string }; Returns: string[] }
+      personalizado: { Args: { _user_id: string }; Returns: boolean }
       puede_escribir: {
         Args: { _coleccion: string; _user_id: string }
         Returns: boolean
@@ -105,7 +134,16 @@ export type Database = {
         Args: { _roles: string[]; _user_id: string }
         Returns: boolean
       }
+      tiene_permiso: {
+        Args: { _accion: string; _coleccion: string; _user_id: string }
+        Returns: boolean
+      }
       tiene_puesto: { Args: { _user_id: string }; Returns: boolean }
+      todos_ranchos: { Args: { _user_id: string }; Returns: boolean }
+      ve_pantalla: {
+        Args: { _pantallas: string[]; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:

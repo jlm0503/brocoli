@@ -103,7 +103,7 @@ interface Fase3Value {
     foto?: string | undefined;
   }) => string | null;
   eliminarDevolucion: (id: string) => void;
-  guardarAsignacion: (userId: string, ranchoIds: string[]) => void;
+  guardarAsignacion: (userId: string, ranchoIds: string[], todos?: boolean) => void;
 }
 
 const KEY = "__campoFase3__";
@@ -405,7 +405,7 @@ export function Fase3Provider({ children }: { children: ReactNode }) {
 
   const eliminarDevolucion = useCallback((id: string) => { if (puedeCapturar(roles, "/devoluciones")) quitar("devoluciones", id); }, [quitar, roles]);
   const guardarAsignacion = useCallback(
-    (userId: string, ranchoIds: string[]) => poner("asignaciones", { id: userId, ranchoIds }),
+    (userId: string, ranchoIds: string[], todos?: boolean) => poner("asignaciones", todos === undefined ? { id: userId, ranchoIds } : { id: userId, ranchoIds, todos }),
     [poner],
   );
 

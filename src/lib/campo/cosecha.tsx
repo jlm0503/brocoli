@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 import { KG_POR_BIN, agregarPagoLiquidacion, corregirPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, validarChecklistSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
-import { PERMISOS_COSECHA, tiene } from "./roles";
+import { PERMISOS_COSECHA, permite, tiene } from "./roles";
 import { actualizarLiquidacion } from "./guardar-liquidacion";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
@@ -116,12 +116,17 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     };
   }, [user, role, setters]);
 
+  // Acceso personalizado: Capturar registra salidas; Editar evalúa y corrige viajes.
+  const puedeViajes = roles.permisos ? permite(roles, "/cosecha", "capturar") : tiene(roles, ...PERMISOS_COSECHA.viajes);
+  const puedeEvaluar = roles.includes("admin") || (!!roles.permisos && permite(roles, "/cosecha", "editar")) || (!roles.permisos && tiene(roles, ...PERMISOS_COSECHA.evaluaciones));
+  const superAdmin = roles.includes("admin");
+
   const poner = useCallback(
     <T extends { id: string }>(col: Col4, item: T) => {
       setters[col]((xs) => (xs.some((x) => x.id === item.id) ? xs.map((x) => (x.id === item.id ? item : x)) : [...xs, item]));
       if (simRef.current || !user) return;
       const fila = { coleccion: col, id: item.id, data: JSON.parse(JSON.stringify(item)) as Json, updated_by: user.id };
-      const escritura = col === "viajes" && !roles.includes("admin")
+      const escritura = col === "viajes" && !puedeEvaluar
         ? supabase.from("registros").insert(fila)
         : supabase.from("registros").upsert(fila);
       void escritura
@@ -129,12 +134,9 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
           if (error) toast.error("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.");
         });
     },
-    [setters, user, roles],
+    [setters, user, puedeEvaluar],
   );
 
-  const puedeViajes = tiene(roles, ...PERMISOS_COSECHA.viajes);
-  const puedeEvaluar = tiene(roles, ...PERMISOS_COSECHA.evaluaciones);
-  const superAdmin = roles.includes("admin");
 
   const registrarSalida = useCallback(
     async (d: DatosSalida): Promise<string | Viaje> => {

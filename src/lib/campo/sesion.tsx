@@ -13,7 +13,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 
-import { puestoPrincipal } from "./roles";
+import { accesoPersonalizado, normalizarNivel, puestoPrincipal, type Acceso, type NavPath, type PermisosPantalla } from "./roles";
 import type { Role } from "./types";
 
 interface SesionValue {
@@ -23,8 +23,8 @@ interface SesionValue {
   nombre: string;
   /** Puesto asignado por el administrador; null = espera aprobación. */
   role: Role | null;
-  /** Todos los puestos de la persona. */
-  roles: Role[];
+  /** Puestos de la persona o su acceso personalizado por pantalla. */
+  roles: Acceso;
   salir: () => Promise<void>;
   recargarPuesto: () => Promise<void>;
 }
@@ -40,7 +40,7 @@ export function SesionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [nombre, setNombre] = useState("");
   const [role, setRole] = useState<Role | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<Acceso>([]);
   const [lista, setLista] = useState(false);
 
   const cargarPuesto = useCallback(async (u: User | null) => {
@@ -50,11 +50,21 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       setNombre("");
       return;
     }
-    const [roles, perfil] = await Promise.all([
+    const [roles, perfil, permisos, asig] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", u.id),
       supabase.from("profiles").select("nombre").eq("id", u.id).maybeSingle(),
+      supabase.from("permisos_pantalla").select("pantalla, ver, capturar, editar, borrar").eq("user_id", u.id),
+      supabase.from("registros").select("data").eq("coleccion", "asignaciones").eq("id", u.id).maybeSingle(),
     ]);
-    const mios = (roles.data ?? []).map((r) => r.role as Role);
+    let mios: Acceso = (roles.data ?? []).map((r) => r.role as Role);
+    const filas = permisos.data ?? [];
+    // Sin puestos guardados, el acceso es el que el Super Admin marcó pantalla por pantalla.
+    if (!mios.length && filas.some((f) => f.ver)) {
+      const mapa: PermisosPantalla = {};
+      for (const f of filas) mapa[f.pantalla as NavPath] = normalizarNivel(f);
+      const todos = !!(asig.data?.data as { todos?: boolean } | null)?.todos;
+      mios = accesoPersonalizado(mapa, todos);
+    }
     setRoles(mios);
     setRole(puestoPrincipal(mios));
     setNombre(

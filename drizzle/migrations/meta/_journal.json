@@ -85,6 +85,20 @@
       "when": 1794448717503,
       "tag": "0011_ajustes_captura_catalogos_y_consulta_recetas",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794955467087,
+      "tag": "0012_permisos_por_pantalla",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794955498933,
+      "tag": "0013_permisos_por_pantalla_reglas",
+      "breakpoints": true
     }
   ]
 }

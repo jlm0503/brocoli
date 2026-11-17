@@ -7,7 +7,9 @@ export type Role =
   | "compras"
   | "almacen"
   | "direccion"
-  | "encargado";
+  | "encargado"
+  /** Solo en la app: acceso personalizado por pantalla (no es un puesto guardado). */
+  | "personalizado";
 
 export type Familia =
   | "Insumos de preparación"
@@ -492,6 +494,8 @@ export interface Devolucion {
 export interface Asignacion {
   id: string;
   ranchoIds: string[];
+  /** Ve todos los ranchos sin marcarlos uno por uno. */
+  todos?: boolean;
 }
 
 /* ───────────── Fase 4: cosecha ───────────── */

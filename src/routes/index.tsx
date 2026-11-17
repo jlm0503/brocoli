@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import campo from "@/assets/campo-brocoli.jpg";
 import { EsperandoPuesto } from "@/components/campo/AppShell";
 import { Button } from "@/components/ui/button";
-import { ROLES } from "@/lib/campo/roles";
+import { ROLES, inicioDe } from "@/lib/campo/roles";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
 import type { Role } from "@/lib/campo/types";
@@ -33,10 +33,10 @@ export const Route = createFileRoute("/")({
 const ORDEN: Role[] = ["admin", "ingeniero", "compras"];
 
 function Index() {
-  const { lista, user, role } = useSesion();
+  const { lista, user, role, roles } = useSesion();
   const { semanaActual } = useCampo();
 
-  if (lista && user && role) return <Navigate to={ROLES[role].home} />;
+  if (lista && user && role) return <Navigate to={inicioDe(roles)} />;
   if (lista && user && !role) return <EsperandoPuesto />;
 
   return (

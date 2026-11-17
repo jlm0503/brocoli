@@ -59,6 +59,12 @@ export const ROLES: Record<
     descripcion: "Consulta el panel de campo, costos, consumos y alertas, sin utilidad real.",
     home: "/panel",
   },
+  personalizado: {
+    nombre: "Acceso personalizado",
+    persona: "",
+    descripcion: "Pantallas y permisos asignados uno por uno por el Super Admin.",
+    home: "/",
+  },
   encargado: {
     nombre: "Encargado de rancho",
     persona: "",
@@ -115,16 +121,65 @@ export const NAV: { to: NavPath; label: string; roles: Role[] }[] = [
   { to: "/paquete", label: "Paquete tecnológico", roles: ["admin", "ingeniero", "encargado", "compras", "almacen", "administrador"] },
   { to: "/catalogos", label: "Catálogos", roles: ["admin", "administrador"] },
   { to: "/parametros", label: "Parámetros", roles: ["admin"] },
-  { to: "/usuarios", label: "Usuarios y puestos", roles: ["admin"] },
+  { to: "/usuarios", label: "Usuarios y permisos", roles: ["admin"] },
 ];
 
-/** Se ve la pantalla si cualquiera de los puestos de la persona la tiene. */
-export function puedeVer(roles: Role[], path: NavPath): boolean {
+export type Accion = "ver" | "capturar" | "editar" | "borrar";
+export type Nivel = Record<Accion, boolean>;
+export type PermisosPantalla = Partial<Record<NavPath, Nivel>>;
+/** Puestos de la persona; con `permisos`, el acceso es personalizado por pantalla. */
+export type Acceso = readonly Role[] & { permisos?: PermisosPantalla; todosRanchos?: boolean };
+
+export const ACCIONES: { id: Accion; label: string }[] = [
+  { id: "ver", label: "Ver" },
+  { id: "capturar", label: "Capturar" },
+  { id: "editar", label: "Editar" },
+  { id: "borrar", label: "Borrar" },
+];
+
+export function accesoPersonalizado(permisos: PermisosPantalla, todosRanchos = false): Acceso {
+  return Object.assign(["personalizado"] as Role[], { permisos, todosRanchos });
+}
+
+/** Sin "Ver" no hay ninguna otra acción en esa pantalla. */
+export function normalizarNivel(n: Partial<Nivel>): Nivel {
+  const ver = !!n.ver;
+  return { ver, capturar: ver && !!n.capturar, editar: ver && !!n.editar, borrar: ver && !!n.borrar };
+}
+
+function verLegacy(roles: readonly Role[], path: NavPath): boolean {
   const n = NAV.find((x) => x.to === path);
   return !!n && roles.some((r) => n.roles.includes(r));
 }
 
-export function tiene(roles: Role[], ...cuales: Role[]): boolean {
+/** Super Admin todo; personalizado según su casilla; puestos anteriores según su matriz. */
+export function permite(a: Acceso, path: NavPath, accion: Accion): boolean {
+  if (!NAV.some((n) => n.to === path)) return false;
+  if (a.includes("admin")) return true;
+  if (a.permisos) {
+    const n = a.permisos[path];
+    return !!n?.ver && !!n[accion];
+  }
+  if (!verLegacy(a, path)) return false;
+  return accion === "ver" || tiene(a, ...(CAPTURA[path] ?? []));
+}
+
+/** Se ve la pantalla si cualquiera de los puestos de la persona la tiene. */
+export function puedeVer(roles: Acceso, path: NavPath): boolean {
+  return permite(roles, path, "ver");
+}
+
+/** Equivalencia de puestos anteriores para acceso personalizado. */
+const EQUIVALE: Partial<Record<Role, [NavPath, Accion]>> = {
+  ingeniero: ["/extraordinarios", "capturar"],
+  autorizador: ["/extraordinarios", "editar"],
+  compras: ["/compras", "capturar"],
+};
+
+export function tiene(roles: Acceso, ...cuales: Role[]): boolean {
+  if (roles.permisos && !roles.includes("admin")) {
+    return cuales.some((r) => { const e = EQUIVALE[r]; return !!e && permite(roles, e[0], e[1]); });
+  }
   return roles.some((r) => cuales.includes(r));
 }
 
@@ -137,19 +192,29 @@ const CAPTURA: Partial<Record<NavPath, Role[]>> = {
   "/catalogos": ["administrador"],
 };
 
-/** Consulta nunca concede captura; varios puestos suman permisos. */
-export function puedeCapturar(roles: Role[], path: NavPath): boolean {
-  return puedeVer(roles, path) && (roles.includes("admin") || tiene(roles, ...(CAPTURA[path] ?? [])));
+/** Consulta nunca concede captura; varios puestos suman permisos. Editar también guarda cambios. */
+export function puedeCapturar(roles: Acceso, path: NavPath): boolean {
+  return permite(roles, path, "capturar") || (!!roles.permisos && permite(roles, path, "editar"));
 }
 
-export function puedeResolverSobrantes(roles: Role[]): boolean {
+export function puedeResolverSobrantes(roles: Acceso): boolean {
+  if (roles.permisos && !roles.includes("admin")) return puedeCapturar(roles, "/aplicaciones");
   return tiene(roles, "admin", "ingeniero", "administrador");
 }
 
 /** null = todos; [] = ninguno, incluso mientras se cargan las asignaciones. */
-export function alcanceRanchos(roles: Role[], asignados: string[]): string[] | null {
+export function alcanceRanchos(roles: Acceso, asignados: string[]): string[] | null {
   if (!roles.length) return [];
+  if (roles.includes("admin")) return null;
+  if (roles.permisos) return roles.todosRanchos ? null : asignados;
   return roles.some(r => r !== "ingeniero" && r !== "encargado") ? null : asignados;
+}
+
+/** Pantalla de inicio: la del puesto o la primera pantalla autorizada. */
+export function inicioDe(roles: Acceso): string {
+  const p = puestoPrincipal(roles);
+  if (p && p !== "personalizado") return ROLES[p].home;
+  return NAV.find((n) => puedeVer(roles, n.to))?.to ?? "/";
 }
 
 export const OPERACIONES_CAMPO: Record<string, NavPath> = {
@@ -167,7 +232,7 @@ export const OPERACIONES_CAMPO: Record<string, NavPath> = {
   corregirFechas: "/parametros",
 };
 
-export function puedeOperacionCampo(roles: Role[], operacion: string): boolean {
+export function puedeOperacionCampo(roles: Acceso, operacion: string): boolean {
   const path = OPERACIONES_CAMPO[operacion];
   return !!path && puedeCapturar(roles, path);
 }
@@ -187,7 +252,7 @@ export const PERMISOS_COSECHA: Record<"viajes" | "evaluaciones", Role[]> = {
 };
 
 /** Si alguien tiene varios puestos, entra con el de más alcance. Sin puesto = espera aprobación. */
-export function puestoPrincipal(roles: Role[]): Role | null {
+export function puestoPrincipal(roles: readonly Role[]): Role | null {
   for (const r of ORDEN_PUESTOS) if (roles.includes(r)) return r;
-  return null;
+  return roles.includes("personalizado") ? "personalizado" : null;
 }

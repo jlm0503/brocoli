@@ -6,16 +6,9 @@ describe("Administración de cuentas", () => {
     expect(() => exigirAdmin(false)).toThrow();
     expect(() => exigirAdmin(true)).not.toThrow();
   });
-  it("rechaza puestos que no existen", () => {
-    expect(nuevoUsuario.safeParse({ nombre: "Persona", email: "persona@example.com", password: "clave-segura", puestos: ["dueño"], ranchoIds: [] }).success).toBe(false);
-  });
-  it("conserva los puestos y ranchos elegidos", () => {
-    const data = nuevoUsuario.parse({ nombre: "Persona", email: "persona@example.com", password: "clave-segura", puestos: ["ingeniero"], ranchoIds: ["trejo"] });
-    expect(data.puestos).toEqual(["ingeniero"]);
+  it("conserva los ranchos elegidos", () => {
+    const data = nuevoUsuario.parse({ nombre: "Persona", email: "persona@example.com", password: "clave-segura", ranchoIds: ["trejo"] });
     expect(data.ranchoIds).toEqual(["trejo"]);
-  });
-  it("no permite cuentas sin puesto", () => {
-    expect(nuevoUsuario.safeParse({ nombre: "Persona", email: "persona@example.com", password: "clave-segura", puestos: [], ranchoIds: [] }).success).toBe(false);
   });
   it("valida contraseñas antes de enviarlas", () => {
     expect(claveUsuario.safeParse("corta").success).toBe(false);
