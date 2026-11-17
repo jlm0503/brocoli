@@ -1949,7 +1949,7 @@ export function porTablaViajes(viajes: Viaje[]): { tablaId: string; kgBrutos: nu
 /** Abierta mientras corre la semana; luego Por cobrar hasta capturar el pago. */
 export function estatusLiquidacion(r: ResumenPago, liq: Liquidacion | undefined, hoy: string): EstatusLiquidacion {
   if (!liq) return hoy <= r.fin ? "abierta" : "por_cobrar";
-  if (cobrosLiquidacion(r, liq).pendiente === 0) return "pagada";
+  if (Math.round(cobrosLiquidacion(r, liq).pendiente) === 0) return "pagada";
   return liq.pagado > 0 ? "parcial" : "por_cobrar";
 }
 

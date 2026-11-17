@@ -22,6 +22,13 @@ describe("Liquidaciones con viajes y abonos", () => {
       expect(liq.pagado).toBe(pagado);
     }
   });
+  it("un pendiente que se muestra como cero pesos queda pagado sin alterar los centavos", () => {
+    const liq = { id: r.jueves, pagado: 2999.51, fecha: datos.fecha, comprobante: "p.pdf", por: "Jimena" };
+    expect(cobrosLiquidacion(r, liq).pendiente).toBe(0.49);
+    expect(estatusLiquidacion(r, liq, datos.fecha)).toBe("pagada");
+    expect(estatusLiquidacion(r, { ...liq, pagado: 2999.5 }, datos.fecha)).toBe("parcial");
+    expect(liq.pagado).toBe(2999.51);
+  });
   const correccion = { pagoId: "p1", fecha: datos.fecha, pagado: 400, viajes: [{ viajeId: "v1", monto: 400 }], motivo: "Pago duplicado", anular: false, por: "Jimena", corregidoEn: "2026-11-17T17:28:00Z" };
   it("solo Super Admin puede editar o anular pagos", () => {
     expect(corregirPagoLiquidacion(r, pago(), correccion, false)).toBe("Solo el Super Admin corrige pagos.");
