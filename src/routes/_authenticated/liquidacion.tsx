@@ -7,11 +7,13 @@ import { AppShell } from "@/components/campo/AppShell";
 import { useNombreLote } from "@/components/campo/Cosecha";
 import { FotoInput, VerEvidencia } from "@/components/campo/Evidencia";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   estatusLiquidacion,
+  cobrosLiquidacion,
   fechaCorta,
   formatoMXN,
   formatoNum,
@@ -24,6 +26,7 @@ import {
 import { useCosecha } from "@/lib/campo/cosecha";
 import { exportarExcel, exportarPdf } from "@/lib/campo/exportar-liquidacion";
 import { useCampo } from "@/lib/campo/store";
+import { useSesion } from "@/lib/campo/sesion";
 import type { EstatusLiquidacion, Liquidacion } from "@/lib/campo/types";
 
 export const Route = createFileRoute("/_authenticated/liquidacion")({
@@ -43,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/liquidacion")({
 const ESTATUS: Record<EstatusLiquidacion, { label: string; variant: "pendiente" | "gris" | "recibido" | "rojo" }> = {
   abierta: { label: "Abierta", variant: "gris" },
   por_cobrar: { label: "Por cobrar", variant: "pendiente" },
+  parcial: { label: "Pagada parcialmente", variant: "pendiente" },
   pagada: { label: "Pagada", variant: "recibido" },
   pagada_diferencia: { label: "Pagada con diferencia", variant: "rojo" },
 };
@@ -56,7 +60,6 @@ function LiquidacionPage() {
       path="/liquidacion"
       eyebrow="Cosecha · jueves a miércoles"
       title="Liquidación semanal"
-      description="Cada viaje cae en su semana de pago por la fecha de salida. Captura lo que pagó la congeladora; si no cuadra, se marca en rojo."
     >
       <div className="space-y-4">
         {semanas.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No hay liquidaciones registradas.</p>}
@@ -71,13 +74,18 @@ function LiquidacionPage() {
 function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
   const { hoy, tablas, lotes, choferes } = useCampo();
   const { guardarPago } = useCosecha();
+  const { roles } = useSesion();
+  const puedePagar = roles.includes("admin");
   const nombreLote = useNombreLote();
   const [abierta, setAbierta] = useState(false);
-  const [pagado, setPagado] = useState(liq ? String(liq.pagado) : "");
-  const [fecha, setFecha] = useState(liq?.fecha ?? hoy);
-  const [comprobante, setComprobante] = useState<string | undefined>(liq?.comprobante);
+  const [montos, setMontos] = useState<Record<string, string>>({});
+  const [desglosarAnterior, setDesglosarAnterior] = useState(false);
+  const [fecha, setFecha] = useState(hoy);
+  const [comprobante, setComprobante] = useState<string | undefined>();
   const est = estatusLiquidacion(r, liq, hoy);
-  const diferencia = liq ? liq.pagado - r.importeNeto : 0;
+  const cobros = cobrosLiquidacion(r, liq);
+  const seleccionados = Object.entries(montos).map(([viajeId, monto]) => ({ viajeId, monto: Number(monto) }));
+  const totalSeleccionado = seleccionados.reduce((s, v) => s + (Number.isFinite(v.monto) ? v.monto : 0), 0);
   const nombres = { tablas, lotes, choferes };
 
   return (
@@ -125,9 +133,9 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
           <dd className="num">{liq ? formatoMXN(liq.pagado) : "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Diferencia</dt>
-          <dd className={`num ${liq && Math.abs(diferencia) >= 1 ? "font-medium text-destructive" : ""}`}>
-            {liq ? formatoMXN(diferencia) : "—"}
+          <dt className="text-xs text-muted-foreground">Pendiente de cobro</dt>
+          <dd className={`num ${cobros.pendiente > 0 ? "font-medium text-destructive" : ""}`}>
+            {formatoMXN(cobros.pendiente)}
           </dd>
         </div>
       </dl>
@@ -136,13 +144,13 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
         <Button size="sm" variant="outline" onClick={() => setAbierta((v) => !v)}>
           {abierta ? "Ocultar desglose" : "Ver desglose y registrar pago"}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => exportarExcel(r, nombres, liq?.pagado)}>
+        <Button size="sm" variant="outline" onClick={() => exportarExcel(r, nombres, liq)}>
           <FileSpreadsheet /> Excel
         </Button>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => void exportarPdf(r, nombres, liq?.pagado).catch(() => toast.error("No se pudo crear el PDF."))}
+          onClick={() => void exportarPdf(r, nombres, liq).catch(() => toast.error("No se pudo crear el PDF."))}
         >
           <FileDown /> PDF
         </Button>
@@ -157,10 +165,17 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
 
       {abierta && (
         <div className="mt-4 space-y-5">
+          {cobros.sinAsignar > 0 && (
+            <div className="flex flex-wrap items-center gap-3 border-l-2 border-border pl-3 text-sm">
+              <p>Pago anterior sin asignar a viajes: <span className="num">{formatoMXN(cobros.sinAsignar)}</span></p>
+              {puedePagar && <Button size="sm" variant="outline" onClick={() => { setDesglosarAnterior(!desglosarAnterior); setMontos({}); }}>{desglosarAnterior ? "Cancelar desglose anterior" : "Desglosar pago anterior"}</Button>}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr>
+                  {puedePagar && <th className="py-1 pr-3 font-medium"><Checkbox aria-label={`Seleccionar todos los viajes de ${r.jueves}`} checked={r.viajes.some((v) => cobros.porViaje.find((c) => c.viajeId === v.id)?.pendiente) && r.viajes.filter((v) => v.evaluacion && (cobros.porViaje.find((c) => c.viajeId === v.id)?.pendiente ?? 0) > 0).every((v) => v.id in montos)} onCheckedChange={(checked) => setMontos(checked ? Object.fromEntries(cobros.porViaje.filter((c) => c.pendiente > 0).map((c) => [c.viajeId, String(c.pendiente)])) : {})} /></th>}
                   <th className="py-1 pr-3 font-medium">Viaje</th>
                   <th className="py-1 pr-3 font-medium">Tablas</th>
                   <th className="py-1 pr-3 text-right font-medium">Brutos</th>
@@ -168,11 +183,18 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
                   <th className="py-1 pr-3 text-right font-medium">Bruto</th>
                   <th className="py-1 pr-3 text-right font-medium">Descuento</th>
                   <th className="py-1 text-right font-medium">Neto</th>
+                  <th className="py-1 pl-3 text-right font-medium">Pagado</th>
+                  <th className="py-1 pl-3 text-right font-medium">Pendiente</th>
+                  {puedePagar && <th className="py-1 pl-3 text-right font-medium">Este pago</th>}
                 </tr>
               </thead>
               <tbody>
-                {r.viajes.map((v) => (
+                {r.viajes.map((v) => {
+                  const cobro = cobros.porViaje.find((c) => c.viajeId === v.id);
+                  const saldo = cobro?.pendiente ?? 0;
+                  return (
                   <tr key={v.id} className="border-t border-border/60">
+                    {puedePagar && <td className="py-1.5 pr-3"><Checkbox aria-label={`Seleccionar viaje ${v.folio}`} disabled={!v.evaluacion || saldo <= 0} checked={v.id in montos} onCheckedChange={(checked) => setMontos((prev) => { const next = { ...prev }; if (checked) next[v.id] = String(saldo); else delete next[v.id]; return next; })} /></td>}
                     <td className="py-1.5 pr-3">
                       {v.folio} · {fechaCorta(v.fecha)}
                     </td>
@@ -190,8 +212,11 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
                         En tránsito, sin evaluación
                       </td>
                     )}
+                    <td className="num py-1.5 pl-3 text-right">{v.evaluacion ? formatoMXN(cobro?.pagado ?? 0) : "—"}</td>
+                    <td className="num py-1.5 pl-3 text-right">{v.evaluacion ? formatoMXN(saldo) : "—"}</td>
+                    {puedePagar && <td className="py-1.5 pl-3">{v.id in montos && <Input aria-label={`Monto para viaje ${v.folio}`} type="number" inputMode="decimal" min="0.01" max={saldo} step="0.01" className="num w-32" value={montos[v.id]} onChange={(e) => setMontos((prev) => ({ ...prev, [v.id]: e.target.value }))} />}</td>}
                   </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>
@@ -210,26 +235,35 @@ function Semana({ r, liq }: { r: ResumenPago; liq: Liquidacion | undefined }) {
             </ul>
           </div>
 
-          <div className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_2fr_auto] sm:items-end">
+          {puedePagar && <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2 sm:items-end">
             <div className="space-y-2">
-              <Label htmlFor={`pg-${r.jueves}`}>Monto pagado</Label>
-              <Input id={`pg-${r.jueves}`} type="number" inputMode="decimal" className="num" value={pagado} onChange={(e) => setPagado(e.target.value)} />
+              <p className="text-sm">{desglosarAnterior ? "Desglose del pago anterior" : "Nuevo abono"} · {seleccionados.length} viajes</p>
+              <p className="num font-semibold">{formatoMXN(totalSeleccionado)}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor={`pf-${r.jueves}`}>Fecha del pago</Label>
-              <Input id={`pf-${r.jueves}`} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              <Input id={`pf-${r.jueves}`} type="date" disabled={desglosarAnterior} value={desglosarAnterior ? liq?.fecha ?? fecha : fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
-            <FotoInput foto={comprobante} setFoto={setComprobante} galeria pdf texto="Comprobante (foto o PDF)" />
+            {!desglosarAnterior && <FotoInput foto={comprobante} setFoto={setComprobante} galeria pdf texto="Comprobante (foto o PDF)" />}
             <Button
+              disabled={!seleccionados.length}
               onClick={() => {
-                const e = guardarPago(r.jueves, { pagado: pagado === "" ? NaN : Number(pagado), fecha, comprobante });
+                const e = guardarPago(r.jueves, { viajes: seleccionados, fecha, comprobante, desglosarAnterior });
                 if (e) return void toast.error(e);
+                setMontos({}); setComprobante(undefined); setDesglosarAnterior(false);
                 toast.success("Pago registrado.");
               }}
             >
-              Guardar pago
+              {desglosarAnterior ? "Guardar desglose anterior" : "Registrar abono"}
             </Button>
-          </div>
+          </div>}
+          {!!liq?.pagos?.length && <div className="space-y-2 border-t border-border pt-3">
+            <h3 className="font-medium">Pagos registrados</h3>
+            {liq.pagos.map((p) => <div key={p.id} className="flex flex-wrap justify-between gap-2 text-sm">
+              <span>{fechaCorta(p.fecha)} · {p.viajes.length ? p.viajes.map((f) => `${r.viajes.find((v) => v.id === f.viajeId)?.folio ?? f.viajeId}: ${formatoMXN(f.monto)}`).join(" · ") : "Sin asignar a viajes"}</span>
+              <span className="num">{formatoMXN(p.pagado)} · <VerEvidencia foto={p.comprobante} title="Ver comprobante del abono"><span className="text-primary">Comprobante</span></VerEvidencia></span>
+            </div>)}
+          </div>}
         </div>
       )}
     </article>

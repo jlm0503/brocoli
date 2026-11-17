@@ -169,7 +169,7 @@ describe("Fase 4 · reglas de salida, evaluación y liquidación", () => {
     expect(estatusLiquidacion(r, undefined, "2026-11-12")).toBe("por_cobrar");
     const liq = { id: r.jueves, fecha: "2026-11-13", comprobante: "c.jpg", por: "J" };
     expect(estatusLiquidacion(r, { ...liq, pagado: 500 }, "2026-11-13")).toBe("pagada");
-    expect(estatusLiquidacion(r, { ...liq, pagado: 400 }, "2026-11-13")).toBe("pagada_diferencia");
+    expect(estatusLiquidacion(r, { ...liq, pagado: 400 }, "2026-11-13")).toBe("parcial");
   });
 
   it("alerta solo cuando un lote cierra abajo de 16,000 kg pagables/ha", () => {

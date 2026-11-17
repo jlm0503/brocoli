@@ -39,6 +39,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 - [x] Descuento por viaje abona a la Cuenta de planta
 - [x] Panel de cosecha con semana, indicadores, semáforo de meta y "Cosecha terminada"; alerta de viaje sin evaluar a 3 días
 - [x] Liquidación jueves a miércoles con pago real, comprobante, estatus, Excel y PDF
+- [x] Liquidaciones con selección de viajes, abonos parciales acumulados y saldo pendiente; pagos anteriores sin asignar conservados y desglose sin duplicar. 425 pruebas pasando; abono temporal guardado/recargado y retirado, simulador y celular verificados.
 - [x] Rendimiento y retorno por lote/tabla/rancho/ingeniero, gráfica contra meta, ranking; reporte de calidad
 - [x] Caso de prueba Fase 4 en pruebas automáticas
 - [ ] Salidas sin señal (va con el modo offline de la Fase 7)

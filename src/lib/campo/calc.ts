@@ -1949,11 +1949,65 @@ export function porTablaViajes(viajes: Viaje[]): { tablaId: string; kgBrutos: nu
 /** Abierta mientras corre la semana; luego Por cobrar hasta capturar el pago. */
 export function estatusLiquidacion(r: ResumenPago, liq: Liquidacion | undefined, hoy: string): EstatusLiquidacion {
   if (!liq) return hoy <= r.fin ? "abierta" : "por_cobrar";
+  if (liq.pagado < r.importeNeto - 0.005) return liq.pagado > 0 ? "parcial" : "por_cobrar";
   return Math.abs(liq.pagado - r.importeNeto) < 1 ? "pagada" : "pagada_diferencia";
 }
 
+/** Legacy weekly payments remain unassigned until the admin explicitly breaks them down. */
+export function cobrosLiquidacion(r: ResumenPago, liq?: Liquidacion) {
+  const asignado = new Map<string, number>();
+  for (const p of liq?.pagos ?? []) for (const v of p.viajes) {
+    asignado.set(v.viajeId, redondear((asignado.get(v.viajeId) ?? 0) + v.monto));
+  }
+  const porViaje = r.viajes.map((v) => {
+    const pagado = asignado.get(v.id) ?? 0;
+    return { viajeId: v.id, pagado, pendiente: redondear(Math.max(0, (v.evaluacion?.importeNeto ?? 0) - pagado)) };
+  });
+  return {
+    porViaje,
+    pendiente: redondear(Math.max(0, r.importeNeto - (liq?.pagado ?? 0))),
+    sinAsignar: redondear(Math.max(0, (liq?.pagado ?? 0) - [...asignado.values()].reduce((s, m) => s + m, 0))),
+  };
+}
+
+/** Append a dated receipt; assigning a legacy receipt never adds to the amount paid. */
+export function agregarPagoLiquidacion(
+  r: ResumenPago,
+  liq: Liquidacion | undefined,
+  d: { id: string; fecha: string; comprobante?: string | undefined; por: string; viajes: { viajeId: string; monto: number }[]; desglosarAnterior?: boolean | undefined },
+): Liquidacion | string {
+  if (!d.viajes.length) return "Selecciona al menos un viaje.";
+  if (new Set(d.viajes.map((v) => v.viajeId)).size !== d.viajes.length) return "Hay viajes repetidos.";
+  const cobros = cobrosLiquidacion(r, liq);
+  for (const f of d.viajes) {
+    const v = r.viajes.find((v) => v.id === f.viajeId);
+    if (!v?.evaluacion) return "Selecciona viajes evaluados de esta semana.";
+    if (!Number.isFinite(f.monto) || f.monto <= 0) return "Captura un monto mayor a cero por viaje.";
+    const saldo = cobros.porViaje.find((v) => v.viajeId === f.viajeId)?.pendiente ?? 0;
+    if (redondear(f.monto) > saldo) return "El pago supera el saldo pendiente de un viaje.";
+  }
+  const pagado = redondear(d.viajes.reduce((s, v) => s + v.monto, 0));
+  if (d.desglosarAnterior && (!liq || cobros.sinAsignar <= 0 || pagado !== cobros.sinAsignar)) return "El desglose debe coincidir con el pago anterior sin asignar.";
+  const fecha = d.desglosarAnterior && liq ? liq.fecha : d.fecha;
+  const comprobante = d.desglosarAnterior && liq ? liq.comprobante : d.comprobante;
+  const error = validarPago({ pagado, fecha, comprobante });
+  if (error) return error;
+  if (!comprobante) return "Falta el comprobante.";
+  const pagos = [...(liq?.pagos ?? [])];
+  // Keep the complete original receipt as an unassigned history entry.
+  if (liq && !liq.pagos) pagos.push({ ...liq, id: `anterior-${r.jueves}`, viajes: [] });
+  if (d.desglosarAnterior) {
+    for (let i = pagos.length - 1; i >= 0; i--) {
+      const p = pagos[i];
+      if (p && p.viajes.length === 0) pagos.splice(i, 1);
+    }
+  }
+  pagos.push({ id: d.id, fecha, comprobante, por: d.desglosarAnterior && liq ? liq.por : d.por, pagado, viajes: d.viajes.map((v) => ({ ...v, monto: redondear(v.monto) })) });
+  return { id: r.jueves, fecha, comprobante, por: d.por, pagado: d.desglosarAnterior ? (liq?.pagado ?? 0) : redondear((liq?.pagado ?? 0) + pagado), pagos };
+}
+
 export function validarPago(d: { pagado: number; fecha: string; comprobante?: string | undefined }): string | null {
-  if (!(d.pagado >= 0) || Number.isNaN(d.pagado)) return "Captura el monto pagado.";
+  if (!(d.pagado >= 0) || !Number.isFinite(d.pagado)) return "Captura el monto pagado.";
   if (!d.fecha) return "Captura la fecha del pago.";
   if (!d.comprobante) return "Falta el comprobante.";
   return null;

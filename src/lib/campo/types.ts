@@ -561,6 +561,15 @@ export interface Viaje {
   evaluacion?: EvaluacionViaje | undefined;
 }
 
+export interface PagoLiquidacion {
+  id: string;
+  pagado: number;
+  fecha: string;
+  comprobante: string;
+  por: string;
+  viajes: { viajeId: string; monto: number }[];
+}
+
 /** Pago real de una semana de pago (jueves a miércoles). `id` = fecha del jueves. */
 export interface Liquidacion {
   id: string;
@@ -568,9 +577,10 @@ export interface Liquidacion {
   fecha: string;
   comprobante: string;
   por: string;
+  pagos?: PagoLiquidacion[] | undefined;
 }
 
-export type EstatusLiquidacion = "abierta" | "por_cobrar" | "pagada" | "pagada_diferencia";
+export type EstatusLiquidacion = "abierta" | "por_cobrar" | "parcial" | "pagada" | "pagada_diferencia";
 
 /** Viaje de un ciclo histórico (captura rápida o importado de Excel/CSV). */
 export interface ViajeHistorico {

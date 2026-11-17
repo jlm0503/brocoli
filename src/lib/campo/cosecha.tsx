@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-import { KG_POR_BIN, evaluarViaje, parametroVigente, validarPago, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
+import { KG_POR_BIN, agregarPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
 import { PERMISOS_COSECHA, tiene } from "./roles";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
@@ -51,7 +51,7 @@ interface CosechaValue {
   registrarSalida: (d: DatosSalida) => string | null;
   evaluar: (id: string, d: DatosEvaluacion) => string | null;
   eliminarViaje: (id: string) => void;
-  guardarPago: (jueves: string, d: { pagado: number; fecha: string; comprobante?: string | undefined }) => string | null;
+  guardarPago: (jueves: string, d: { fecha: string; comprobante?: string | undefined; viajes: { viajeId: string; monto: number }[]; desglosarAnterior?: boolean | undefined }) => string | null;
 }
 
 const KEY = "__campoCosecha__";
@@ -194,14 +194,14 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
   );
 
   const guardarPago = useCallback(
-    (jueves: string, d: { pagado: number; fecha: string; comprobante?: string | undefined }) => {
+    (jueves: string, d: { fecha: string; comprobante?: string | undefined; viajes: { viajeId: string; monto: number }[]; desglosarAnterior?: boolean | undefined }) => {
       if (!superAdmin) return "Solo el Super Admin registra pagos.";
-      const error = validarPago(d);
-      if (error) return error;
-      poner("liquidaciones", { id: jueves, pagado: d.pagado, fecha: d.fecha, comprobante: d.comprobante!, por: nombre });
+      const resultado = agregarPagoLiquidacion(resumenSemanaPago(viajes, jueves), liquidaciones.find((l) => l.id === jueves), { ...d, id: crypto.randomUUID(), por: nombre });
+      if (typeof resultado === "string") return resultado;
+      poner("liquidaciones", resultado);
       return null;
     },
-    [superAdmin, nombre, poner],
+    [superAdmin, nombre, poner, viajes, liquidaciones],
   );
 
   const guardarCiclo = useCallback(
