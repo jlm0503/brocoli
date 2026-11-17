@@ -16,6 +16,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 import { KG_POR_BIN, agregarPagoLiquidacion, corregirPagoLiquidacion, resumenSemanaPago, evaluarViaje, parametroVigente, validarSalida, viajesSinEvaluar, type DatosEvaluacion } from "./calc";
 import { PERMISOS_COSECHA, tiene } from "./roles";
+import { actualizarLiquidacion } from "./guardar-liquidacion";
 import { useSesion } from "./sesion";
 import { useCampo } from "./store";
 import type { CicloCerrado, Liquidacion, Viaje } from "./types";
@@ -213,7 +214,7 @@ export function CosechaProvider({ children }: { children: ReactNode }) {
     if (typeof resultado === "string") return resultado;
     if (!simRef.current) {
       if (!user) return "Inicia sesión para corregir el pago.";
-      const { data, error } = await supabase.from("registros").update({ data: JSON.parse(JSON.stringify(resultado)) as Json, updated_by: user.id }).eq("coleccion", "liquidaciones").eq("id", jueves).eq("data", JSON.parse(JSON.stringify(liq)) as NonNullable<Json>).select("id");
+      const { data, error } = await actualizarLiquidacion(supabase, liq, resultado, user.id);
       if (error) return "No se pudo guardar la corrección. Inténtalo de nuevo.";
       if (!data?.length) { await cargar(); return "El pago cambió en otro dispositivo. Revisa los datos e inténtalo de nuevo."; }
     }
