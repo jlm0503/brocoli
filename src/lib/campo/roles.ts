@@ -1,3 +1,4 @@
+import { GRUPOS } from "./navegacion";
 import type { Role } from "./types";
 
 /** Orden de alcance: con varios puestos, la pantalla de inicio es la del primero. */
@@ -20,7 +21,7 @@ export const ROLES: Record<
     nombre: "Super Admin",
     persona: "Jimena",
     descripcion: "Todo: parámetros, usuarios, corregir fechas, costos y utilidades.",
-    home: "/ranchos",
+    home: "/planeacion",
   },
   administrador: {
     nombre: "Administrador",
@@ -214,7 +215,8 @@ export function alcanceRanchos(roles: Acceso, asignados: string[]): string[] | n
 export function inicioDe(roles: Acceso): string {
   const p = puestoPrincipal(roles);
   if (p && p !== "personalizado") return ROLES[p].home;
-  return NAV.find((n) => puedeVer(roles, n.to))?.to ?? "/";
+  const orden = GRUPOS.flatMap((g) => g.paths);
+  return orden.find((to) => puedeVer(roles, to)) ?? "/";
 }
 
 export const OPERACIONES_CAMPO: Record<string, NavPath> = {
