@@ -1,5 +1,4 @@
 # Architecture rules
-- Menu and user permission lists share visual groups from navegacion.ts after filtering their existing screen entries. Why: consistent ordering without changing access rules or default home screens.
 - Multi-ranch expenses split one total in cents via repartirGastoRanchos, allow explicit allocations, and validate all destinations before creating ordinary per-ranch expenses; existing expenses are edited individually. Why: avoid duplicated totals and overwriting captured expenses.
 - Weekly settlements append dated receipts with explicit per-trip amounts; calc.ts derives balances and reconciles legacy receipts. Admin-only corrections preserve originals and reasons and use conditional updates. Why: partial payments and duplicate corrections must retain evidence without overwriting concurrent changes.
 - Conditional settlement writes use guardar-liquidacion.ts with serialized JSON filters. Why: PostgREST stringifies raw objects as invalid JSON instead of matching the stored receipt.
