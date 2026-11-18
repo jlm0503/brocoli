@@ -35,6 +35,7 @@ import { MiCuenta } from "@/components/campo/MiCuenta";
 import { Button } from "@/components/ui/button";
 import { fechaCorta } from "@/lib/campo/calc";
 import { useAvisos } from "@/lib/campo/fase3";
+import { agruparPantallas } from "@/lib/campo/navegacion";
 import { NAV, ROLES, inicioDe, puedeVer, type NavPath } from "@/lib/campo/roles";
 import { useSesion } from "@/lib/campo/sesion";
 import { useCampo } from "@/lib/campo/store";
@@ -133,7 +134,10 @@ export function AppShell({ path, eyebrow, title, description, actions, filtros, 
         <nav
           className={`${menuAbierto ? "flex" : "hidden"} max-h-[62vh] flex-col gap-1 overflow-y-auto px-3 pb-3 lg:flex lg:max-h-none lg:flex-1 lg:pb-0`}
         >
-          {items.map((item) => {
+          {agruparPantallas(items).map((grupo) => (
+            <div key={grupo.id} className="shrink-0 pb-3">
+              <h2 className="px-3 pt-3 pb-2 text-xs font-semibold uppercase text-ink-foreground/60">{grupo.label}</h2>
+              {grupo.items.map((item) => {
             const Icon = ICONS[item.to];
             return (
               <Link
@@ -154,7 +158,9 @@ export function AppShell({ path, eyebrow, title, description, actions, filtros, 
                 )}
               </Link>
             );
-          })}
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="mt-auto hidden border-t border-sidebar-border p-4 lg:block">

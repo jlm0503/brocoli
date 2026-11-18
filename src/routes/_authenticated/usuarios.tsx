@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { UserPlus, KeyRound, Loader2 } from "lucide-react";
 
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from "@/integrations/supabase/client";
 import { useFase3 } from "@/lib/campo/fase3";
 import { ACCIONES, NAV, normalizarNivel, type Nivel, type NavPath, type PermisosPantalla } from "@/lib/campo/roles";
+import { agruparPantallas } from "@/lib/campo/navegacion";
 import { crearUsuario, cambiarClaveUsuario } from "@/lib/campo/usuarios.functions";
 import { useCampo } from "@/lib/campo/store";
 import { useSesion } from "@/lib/campo/sesion";
@@ -146,7 +147,12 @@ function Usuarios() {
                     </tr>
                   </thead>
                   <tbody>
-                    {PANTALLAS.map((n) => {
+                    {agruparPantallas(PANTALLAS).map((grupo) => (
+                      <Fragment key={grupo.id}>
+                        <tr className="border-b border-border bg-muted/60">
+                          <th colSpan={ACCIONES.length + 1} scope="colgroup" className="px-2 py-2 text-left font-semibold text-primary">{grupo.label}</th>
+                        </tr>
+                        {grupo.items.map((n) => {
                       const nivel = p.permisos[n.to] ?? normalizarNivel({});
                       return (
                         <tr key={n.to} className="border-b border-border/60">
@@ -166,7 +172,9 @@ function Usuarios() {
                           ))}
                         </tr>
                       );
-                    })}
+                        })}
+                      </Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>

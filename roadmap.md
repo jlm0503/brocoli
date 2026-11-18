@@ -66,6 +66,7 @@ Documento vigente: PROMPT COMPLETO (31 oct). Una fase a la vez; se confirma con 
 ## Fase 7 — Ubicación de tablas, offline, integración CSV, app móvil
 
 ## Vistas operativas
+- [x] Agrupar Dirección en menú y permisos: Panel de Dirección, Estatus y costos, Liquidación semanal, Cierre e históricos y Rendimiento y calidad; permisos individuales intactos, ambas vistas verificadas con sesión de Jimena y menú sin desbordes en 829 px y celular; 6 pruebas pasando.
 - [x] Crear cuentas y asignar contraseñas desde Usuarios, conservando registro abierto, puestos y ranchos; 179 pruebas pasando y cuenta temporal creada, contraseña cambiada, acceso y rancho verificados y cuenta retirada. La prueba no pudo enviar confirmación por correo; el acceso se comprobó confirmando solo la cuenta temporal.
 - [x] Reorganizar permisos según la tabla del 11 nov: correspondencia presentada y aprobada, menú y consulta/captura, recepciones en Llegadas, salidas de Encargado, restricciones por acción y ranchos en la nube; 252 pruebas pasando. Ingeniería y administración comprobados con datos reales; demás puestos cubiertos por pruebas de matriz, sin cuentas existentes para comprobación de pantalla.
 - [x] Habilitar salidas e históricos para Ingeniero; 22 pruebas pasando, permiso de guardado confirmado y ambas pestañas consultadas con su cuenta. Evaluaciones, cambios y eliminación de viajes reservados al Super Admin; sin viajes ficticios guardados.
