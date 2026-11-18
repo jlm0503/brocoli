@@ -37,3 +37,18 @@ export const cambiarClaveUsuario = createServerFn({ method: "POST" })
     const result = await supabaseAdmin.auth.admin.updateUserById(data.id, { password: data.password });
     return { ok: !result.error, mensaje: result.error ? "No se pudo cambiar la contraseña." : "Contraseña actualizada." };
   });
+
+export const eliminarUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const permiso = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    exigirAdmin(!permiso.error && permiso.data === true);
+    if (data.id === context.userId) return { ok: false, mensaje: "No puedes eliminar tu propia cuenta." };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Solo se quita el acceso de la persona; sus capturas en campo se conservan.
+    await supabaseAdmin.from("permisos_pantalla").delete().eq("user_id", data.id);
+    await supabaseAdmin.from("registros").delete().eq("coleccion", "asignaciones").eq("id", data.id);
+    const result = await supabaseAdmin.auth.admin.deleteUser(data.id);
+    return { ok: !result.error, mensaje: result.error ? "No se pudo eliminar el usuario." : "Usuario eliminado." };
+  });

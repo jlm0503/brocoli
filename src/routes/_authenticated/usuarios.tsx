@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Fragment, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, KeyRound, Loader2 } from "lucide-react";
+import { UserPlus, KeyRound, Loader2, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/campo/AppShell";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFase3 } from "@/lib/campo/fase3";
 import { ACCIONES, NAV, normalizarNivel, type Nivel, type NavPath, type PermisosPantalla } from "@/lib/campo/roles";
 import { agruparPantallas } from "@/lib/campo/navegacion";
-import { crearUsuario, cambiarClaveUsuario } from "@/lib/campo/usuarios.functions";
+import { crearUsuario, cambiarClaveUsuario, eliminarUsuario } from "@/lib/campo/usuarios.functions";
 import { useCampo } from "@/lib/campo/store";
 import { useSesion } from "@/lib/campo/sesion";
 
@@ -68,6 +68,15 @@ function Usuarios() {
   const qc = useQueryClient();
   const [creando, setCreando] = useState(false);
   const [personaClave, setPersonaClave] = useState<Persona | null>(null);
+  const borrarFn = useServerFn(eliminarUsuario);
+  const borrar = useMutation({
+    mutationFn: async (id: string) => borrarFn({ data: { id } }),
+    onSuccess: (r) => {
+      if (r.ok) toast.success(r.mensaje); else toast.error(r.mensaje);
+      void qc.invalidateQueries({ queryKey: ["personas"] });
+    },
+    onError: () => toast.error("No se pudo eliminar el usuario."),
+  });
   const { data: personas = [], isLoading } = useQuery({ queryKey: ["personas"], queryFn: cargarPersonas });
 
   const cambiarAdmin = useMutation({
@@ -130,6 +139,15 @@ function Usuarios() {
               Super Admin
             </label>
             <Button variant="outline" size="sm" onClick={() => setPersonaClave(p)}><KeyRound />Cambiar contraseña</Button>
+            {!yo && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={borrar.isPending}
+                className="text-destructive"
+                onClick={() => { if (window.confirm(`¿Eliminar la cuenta de ${p.nombre}? Ya no podrá entrar; lo que capturó se conserva.`)) borrar.mutate(p.id); }}
+              ><Trash2 />Eliminar</Button>
+            )}
           </div>
         </div>
         {p.admin ? (
