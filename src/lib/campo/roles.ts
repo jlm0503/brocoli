@@ -142,6 +142,12 @@ export function accesoPersonalizado(permisos: PermisosPantalla, todosRanchos = f
   return Object.assign(["personalizado"] as Role[], { permisos, todosRanchos });
 }
 
+/** Las casillas asignadas prevalecen sobre puestos antiguos, incluso si todas están desmarcadas. */
+export function resolverAcceso(roles: readonly Role[], permisos: PermisosPantalla, todosRanchos = false): Acceso {
+  if (roles.includes("admin") || Object.keys(permisos).length === 0) return roles;
+  return accesoPersonalizado(permisos, todosRanchos);
+}
+
 /** Sin "Ver" no hay ninguna otra acción en esa pantalla. */
 export function normalizarNivel(n: Partial<Nivel>): Nivel {
   const ver = !!n.ver;

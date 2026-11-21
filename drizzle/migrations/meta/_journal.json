@@ -99,6 +99,13 @@
       "when": 1794955498933,
       "tag": "0013_permisos_por_pantalla_reglas",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795234660738,
+      "tag": "0014_prioridad_permisos_personalizados",
+      "breakpoints": true
     }
   ]
 }

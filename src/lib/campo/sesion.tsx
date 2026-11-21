@@ -13,7 +13,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 
-import { accesoPersonalizado, normalizarNivel, puestoPrincipal, type Acceso, type NavPath, type PermisosPantalla } from "./roles";
+import { resolverAcceso, normalizarNivel, puestoPrincipal, type Acceso, type NavPath, type PermisosPantalla } from "./roles";
 import type { Role } from "./types";
 
 interface SesionValue {
@@ -56,15 +56,12 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       supabase.from("permisos_pantalla").select("pantalla, ver, capturar, editar, borrar").eq("user_id", u.id),
       supabase.from("registros").select("data").eq("coleccion", "asignaciones").eq("id", u.id).maybeSingle(),
     ]);
-    let mios: Acceso = (roles.data ?? []).map((r) => r.role as Role);
+    const anteriores = (roles.data ?? []).map((r) => r.role as Role);
     const filas = permisos.data ?? [];
-    // Sin puestos guardados, el acceso es el que el Super Admin marcó pantalla por pantalla.
-    if (!mios.length && filas.some((f) => f.ver)) {
-      const mapa: PermisosPantalla = {};
-      for (const f of filas) mapa[f.pantalla as NavPath] = normalizarNivel(f);
-      const todos = !!(asig.data?.data as { todos?: boolean } | null)?.todos;
-      mios = accesoPersonalizado(mapa, todos);
-    }
+    const mapa: PermisosPantalla = {};
+    for (const f of filas) mapa[f.pantalla as NavPath] = normalizarNivel(f);
+    const todos = !!(asig.data?.data as { todos?: boolean } | null)?.todos;
+    const mios: Acceso = resolverAcceso(anteriores, mapa, todos);
     setRoles(mios);
     setRole(puestoPrincipal(mios));
     setNombre(
